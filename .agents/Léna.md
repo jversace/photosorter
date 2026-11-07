@@ -55,4 +55,6 @@ agent/léna
 {"do":"spec","text":"<spécifications complètes en markdown>"} : (agent principal) remplacer les spécifications
 
 ## Notes de l’agent (à tenir à jour)
-(vides)
+Rôle : Développeur back-end.
+Tâche en cours : 45770063 (Socle Android : Gradle, Hilt, core et modèles du domaine).
+Règles strictes : Ne jamais passer une tâche à 'terminée' sans validation explicite de l'utilisateur. Toute interprétation doit être soumise à validation.

@@ -58,15 +58,22 @@ agent/zoé
 # Contexte Zoé (Architecte)
 
 ## Décisions durables
-- Détection de contenu adulte : ARBITRÉ par l'utilisateur → approche A = IA locale TFLite + pré-filtre screenshots/documents (hybride prudent). Aucun envoi de données à l'extérieur. Label 'adulte' révisable par l'utilisateur. (Proposition d'envoi externe définitivement écartée.)
-- Pré-filtre local avant IA : uniquement retrait des catégories structurellement sûres (screenshots/documents/texte via ML Kit Text Recognition). PAS de colorimétrie/texture en critère d'exclusion → risque de faux négatifs sur contenu adulte inacceptable.
-- Optimisation CPU : ne pas complexifier avant mesure. Scan manuel + cache du résultat → coût TFLite ponctuel (~30-100ms/img, quelques milliers de photos = quelques minutes) probablement tolérable sans pré-filtre.
+- Détection contenu adulte : ARBITRÉ par l'utilisateur → A = IA locale TFLite + pré-filtre screenshots/documents. Aucun envoi externe. Label 'adulte' révisable.
+- Pré-filtre : exclure uniquement screenshots/documents/texte (ML Kit Text Recognition). PAS de colorimétrie/texture en exclusion (faux négatifs). Erreur -> passer à l'IA.
+- Optimisation CPU : mesurer avant de complexifier. Scan manuel + cache → coût TFLite ponctuel tolérable.
 
-## Contraintes projet rappelées
-- Android 8.0+ (API 26), hors-ligne, aucune donnée à l'extérieur, Material Design, FR.
+## Livrable architecture (tâche a88bd00f)
+- Architecture produite EN TEXTE (docs/architecture.md n'a pas pu être écrit sur la branche : write_file échoue systématiquement, dossier docs/ non créé). Décision utilisateur : B → il commite le document lui-même. Contenu complet dans l'historique de mes réponses (§1-13 : stack, structure, flux, modèles, contrats repo, Room, modération, permissions, contrats VM, standards, découpage, risques).
+- a88bd00f laissée EN COURS : ne pas passer à terminée tant que le doc n'est pas commité et validé par l'utilisateur.
+
+## Tâches créées
+- Léna : 7 tâches back-end créées (socle, Room, ScanEngine, repos+usecases, modération, actions fichiers, tests).
+- Théo : 1 tâche existante (galerie). RESTE À CRÉER (bloqué par limite 'max 8 créations/échange', compteur persistant) : tri&filtres, plein écran, action bar/dialogues, libellés+révision adulte, écran scan, thème/navigation/accessibilité. Reprendre à ~3 créations/échange au prochain tour.
+
+## Contraintes projet
+- Android 8.0+ (API 26), hors-ligne (pas de permission INTERNET), Material Design, FR.
 - Ne pas passer une tâche à terminée sans validation utilisateur explicite.
 - Soumettre les interprétations à Adam.
 
 ## Relations équipe
-- Malo (chef projet) : NON joignable par message.
-- Adam, Léna : non joignables.
+- Malo : non joignable par message. Adam, Léna : non joignables (get_progress seulement).

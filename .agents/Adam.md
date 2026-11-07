@@ -12,6 +12,7 @@
 
 ## Règles du projet
 - ne pas mettre une tâche à terminé tant que tout n'est pas terminé et validé par moi
+- vos interprétations doivent être soumises à Adam qui validera qu'il n'y a pas de mauvaise interprétation
 
 ## Mon rôle
 Contrôleur — S'assure de la compréhension des instructions de la part des agents. Contrôle si les livrables sont conformes aux exigences pour prévenir le risque d'hallucination

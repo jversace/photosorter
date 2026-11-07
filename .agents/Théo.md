@@ -55,4 +55,27 @@ agent/théo
 {"do":"spec","text":"<spécifications complètes en markdown>"} : (agent principal) remplacer les spécifications
 
 ## Notes de l’agent (à tenir à jour)
-(vides)
+# Contexte de l’agent Théo — projet photosorter
+
+## Mon rôle
+Développeur front-end — IHM et expérience utilisateur. Branche : agent/théo.
+
+## Décisions durables (architecture IHM)
+- **UI = Jetpack Compose + Material 3 uniquement** (validé par Zoé ; pas de XML Views, pas de mix).
+- Mono-activity : MainActivity + NavHost racine appliquant PhotoSorterTheme.
+- Destinations : gallery, detail/{imageId:Long}, labels, scan. Arguments simples par route ; l'état de galerie vit dans le ViewModel (pas dans la nav).
+- Dépendances UI : BOM Compose, ui, material3, ui-tooling-preview (+tooling en debug), navigation-compose, material-icons-extended, coil-compose.
+- Structure `app/src/main/java/fr/photosorter/ui/` : theme/ (Color, Type, Shape, Theme), navigation/ (PhotoSorterNavHost, Destinations), gallery/, detail/, labels/, components/.
+- Accessibilité : contentDescription partout, cibles >= 48dp, semantics sur cases de sélection, strings FR externalisées dans res/values/strings.xml (aucun texte en dur).
+- Contrat ViewModel galerie : GalleryUiState = (mode, sort, filter, selectedIds, images, isLoading, error).
+
+## Contraintes projet
+- Android 8.0 min (API 26), 100% local, FR, Material Design, Room/SQLite pour libellés.
+- Ne pas terminer une tâche sans validation utilisateur ; interprétations fonctionnelles à soumettre à Adam.
+
+## Coordination
+- Socle Android (Gradle/version catalog/Hilt) posé par Léna ; je m'y greffe pour les dépendances Compose.
+- docs/architecture.md existe sur main, pas encore sur ma branche.
+
+## État tâche 4060ffc0
+- En cours. Bloquée sur la réponse de Léna (structure build.gradle / package de base) avant d'écrire des fichiers.

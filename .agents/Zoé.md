@@ -63,12 +63,15 @@ agent/zoé
 - Optimisation CPU : mesurer avant de complexifier. Scan manuel + cache → coût TFLite ponctuel tolérable.
 
 ## Livrable architecture (tâche a88bd00f)
-- Architecture produite EN TEXTE (docs/architecture.md n'a pas pu être écrit sur la branche : write_file échoue systématiquement, dossier docs/ non créé). Décision utilisateur : B → il commite le document lui-même. Contenu complet dans l'historique de mes réponses (§1-13 : stack, structure, flux, modèles, contrats repo, Room, modération, permissions, contrats VM, standards, découpage, risques).
-- a88bd00f laissée EN COURS : ne pas passer à terminée tant que le doc n'est pas commité et validé par l'utilisateur.
+- Architecture produite EN TEXTE (write_file échoue sur docs/architecture.md : dossier docs/ non créé malgré plusieurs essais). Décision utilisateur : B → il commite le document lui-même. Contenu complet (v1.0, §1-13) fourni en réponse texte à l'utilisateur, prêt à commiter.
+- a88bd00f laissée EN COURS : ne pas passer à terminée tant que le doc n'est pas commité/visible sur la branche et validé par l'utilisateur.
+
+## Synchronisation git
+- Malo a demandé de récupérer les derniers commits de main sur agent/zoé. JE NE PEUX PAS faire fetch/merge (pas d'action git). Ma branche ne voit que README.md + .agents/. À refaire côté utilisateur/Malo. Vérifier via list_files/read_file une fois fait.
 
 ## Tâches créées
 - Léna : 7 tâches back-end créées (socle, Room, ScanEngine, repos+usecases, modération, actions fichiers, tests).
-- Théo : 1 tâche existante (galerie). RESTE À CRÉER (bloqué par limite 'max 8 créations/échange', compteur persistant) : tri&filtres, plein écran, action bar/dialogues, libellés+révision adulte, écran scan, thème/navigation/accessibilité. Reprendre à ~3 créations/échange au prochain tour.
+- Théo : 1 tâche existante (galerie). RESTE À CRÉER (bloqué par limite 'max 8 créations/échange') : tri&filtres, plein écran, action bar/dialogues, libellés+révision adulte, écran scan, thème/navigation/accessibilité. Reprendre à ~3 créations/échange au prochain tour.
 
 ## Contraintes projet
 - Android 8.0+ (API 26), hors-ligne (pas de permission INTERNET), Material Design, FR.
@@ -76,4 +79,4 @@ agent/zoé
 - Soumettre les interprétations à Adam.
 
 ## Relations équipe
-- Malo : non joignable par message. Adam, Léna : non joignables (get_progress seulement).
+- Malo : joignable par message (m'a demandé la synchro main). Adam, Léna : non joignables (get_progress seulement).

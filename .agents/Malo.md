@@ -69,5 +69,28 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - Détection contenu adulte : pré-filtre screenshots/documents (sans IA) + modèle TFLite embarqué local. Label 'adulte' révisable par l'utilisateur. Décision validée par l'utilisateur.
 - Zoé est l'architecte : à contacter pour les décisions techniques et l'architecture
 
+## Dépendances des tâches (analyse Zoé)
+
+### Peuvent démarrer immédiatement
+- Léna : 45770063 (en cours) — socle Android, racine de tout le back
+- Théo : 4060ffc0 — thème M3, navigation, accessibilité (aucun prérequis)
+
+### Débloquées dès que 45770063 est livré
+- Léna : 31fa8938 (Room) + 68b19a34 (ScanEngine) en parallèle
+- Léna : 596d8d9a (Modération TFLite) en parallèle de Room/ScanEngine
+- Théo : 5ee8aef7 (galerie) sur stubs/mocks
+
+### Débloquées après 31fa8938 + 68b19a34
+- Léna : 87bcaabc (Repositories + use cases)
+- Théo : e93e44ff (tri/filtres), 79906e61 (plein écran), f1d46c78 (écran scan)
+
+### Débloquées après 87bcaabc
+- Léna : e3a1d1a6 (actions fichiers), 4d0303c8 (tests)
+- Théo : 10f2b02d (action bar), a3be7352 (libellés)
+
+### Chemin critique
+45770063 → 31fa8938 → 68b19a34 → 87bcaabc → e3a1d1a6
+
 ## Tâches
 - 6jspo8e : Rédiger le cahier des charges initial → à valider par l'utilisateur
+- 4060ffc0 : passée en cours, message à Théo en attente (erreurs 503 service IA)

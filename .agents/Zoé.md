@@ -33,7 +33,7 @@ agent/zoé
 - Vérifier ou rouvrir un bug : libre
 - Associer tâches et bugs à des modules : libre
 - Niveau d'autonomie du projet : équilibré
-- Agents joignables : aucun
+- Agents joignables : Malo, Léna, Théo
 
 ## Actions (un objet JSON par bloc ```action ... ```) :
 {"do":"list_files","path":"<dossier, vide pour la racine>"} : lister un dossier du dépôt (ta branche)

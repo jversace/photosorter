@@ -58,7 +58,7 @@ agent/zoé
 # Contexte Zoé (Architecte)
 
 ## Décisions durables
-- Détection de contenu adulte : feature hors périmètre v1, touche RGPD art.9. Approche hybride avec envoi externe = à écarter (viole specs hors-ligne + RGPD). Recommandation : IA 100% locale (TFLite embarqué), seuil conservateur, label révisable par l'utilisateur, aucun envoi réseau. Statut : en attente d'arbitrage utilisateur (décision boîte Décisions).
+- Détection de contenu adulte : ARBITRÉ par l'utilisateur → approche A = IA locale TFLite + pré-filtre screenshots/documents (hybride prudent). Aucun envoi de données à l'extérieur. Label 'adulte' révisable par l'utilisateur. (Proposition d'envoi externe définitivement écartée.)
 - Pré-filtre local avant IA : uniquement retrait des catégories structurellement sûres (screenshots/documents/texte via ML Kit Text Recognition). PAS de colorimétrie/texture en critère d'exclusion → risque de faux négatifs sur contenu adulte inacceptable.
 - Optimisation CPU : ne pas complexifier avant mesure. Scan manuel + cache du résultat → coût TFLite ponctuel (~30-100ms/img, quelques milliers de photos = quelques minutes) probablement tolérable sans pré-filtre.
 

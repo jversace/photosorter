@@ -12,6 +12,7 @@
 
 ## Règles du projet
 - ne pas mettre une tâche à terminé tant que tout n'est pas terminé et validé par moi
+- vos interprétations doivent être soumises à Adam qui validera qu'il n'y a pas de mauvaise interprétation
 
 ## Mon rôle
 Chef de projet — Planifie, priorise, coordonne l’équipe et rend compte de l’avancement.

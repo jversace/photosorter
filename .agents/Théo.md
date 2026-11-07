@@ -60,22 +60,29 @@ agent/théo
 ## Mon rôle
 Développeur front-end — IHM et expérience utilisateur. Branche : agent/théo.
 
+## Décision utilisateur (socle UI)
+- « compatible Android 8 ; si A et B le sont, choisir la plus simple ». Compose ET XML Views sont compatibles API 26 → critère simplicité → **Jetpack Compose + Material 3 retenu** (cohérent avec l'archi de Zoé, pas de mix).
+
 ## Décisions durables (architecture IHM)
-- **UI = Jetpack Compose + Material 3 uniquement** (validé par Zoé ; pas de XML Views, pas de mix).
+- **UI = Jetpack Compose + Material 3 uniquement** (validé Zoé + user ; pas de XML Views).
 - Mono-activity : MainActivity + NavHost racine appliquant PhotoSorterTheme.
-- Destinations : gallery, detail/{imageId:Long}, labels, scan. Arguments simples par route ; l'état de galerie vit dans le ViewModel (pas dans la nav).
-- Dépendances UI : BOM Compose, ui, material3, ui-tooling-preview (+tooling en debug), navigation-compose, material-icons-extended, coil-compose.
-- Structure `app/src/main/java/fr/photosorter/ui/` : theme/ (Color, Type, Shape, Theme), navigation/ (PhotoSorterNavHost, Destinations), gallery/, detail/, labels/, components/.
-- Accessibilité : contentDescription partout, cibles >= 48dp, semantics sur cases de sélection, strings FR externalisées dans res/values/strings.xml (aucun texte en dur).
+- Destinations : gallery, detail/{imageId:Long}, labels, scan. Arguments simples par route ; état galerie dans le ViewModel (pas dans la nav).
+- Dépendances UI (à mettre dans version catalog, pas en dur) : compose-bom 2024.06.00, ui, material3, ui-tooling-preview (+tooling debug), activity-compose, navigation-compose, material-icons-extended, coil-compose.
+- Structure `app/src/main/java/fr/photosorter/ui/` : theme/ (Color, Type, Shape, Theme), navigation/ (PhotoSorterNavHost, Destinations), gallery/, detail/, labels/, components/. À créer (n'existe pas encore).
+- Accessibilité : contentDescription partout, cibles >= 48dp, semantics sur cases de sélection, strings FR externalisées res/values/strings.xml (aucun texte en dur).
 - Contrat ViewModel galerie : GalleryUiState = (mode, sort, filter, selectedIds, images, isLoading, error).
+
+## Socle Android (Léna, agent/léna)
+- Module unique `app`, namespace fr.photosorter, Kotlin DSL + gradle/libs.versions.toml.
+- minSdk 26, target/compile 34, JVM 17, Kotlin 1.9.24, AGP 8.5.2. Plugins: android.application, kotlin.android, KSP, Hilt (pas de kapt). @HiltAndroidApp sur PhotoSorterApp.
+- Entrées Compose/Coil commentées dans le catalog (bom 2024.06.00, material3, ui, tooling, coil-compose, activity-compose) ; buildFeatures.compose + composeOptions commentés dans build.gradle.kts → à décommenter (prévenir Léna).
+- themes.xml: Theme.PhotoSorter basé android:Theme.Material.Light.NoActionBar → remplacer par thème Compose M3.
+- NE PAS modifier sans prévenir Léna : app/build.gradle.kts, libs.versions.toml, settings.gradle.kts, PhotoSorterApp.kt.
+- Packages: core/ (result, dispatchers, ext, di), domain/ (model, repository) — stables, l'IHM code contre les interfaces repository.
 
 ## Contraintes projet
 - Android 8.0 min (API 26), 100% local, FR, Material Design, Room/SQLite pour libellés.
 - Ne pas terminer une tâche sans validation utilisateur ; interprétations fonctionnelles à soumettre à Adam.
 
-## Coordination
-- Socle Android (Gradle/version catalog/Hilt) posé par Léna ; je m'y greffe pour les dépendances Compose.
-- docs/architecture.md existe sur main, pas encore sur ma branche.
-
 ## État tâche 4060ffc0
-- En cours. Bloquée sur la réponse de Léna (structure build.gradle / package de base) avant d'écrire des fichiers.
+- En cours. Décision UI tranchée (Compose). BLOQUÉ : le socle Android de Léna n'est pas sur ma branche (agent/théo vide hors README). Messages envoyés à Léna et Malo pour organiser merge sur main / rebase. Dès socle dispo : créer ui/theme, ui/navigation, MainActivity, décommenter Compose.

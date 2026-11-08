@@ -12,95 +12,108 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * ViewModel de la galerie. Dépend de l'interface ImageRepository (implémentation injectée par Hilt
- * une fois fusionnée depuis agent/léna). L'UI n'a pas besoin de connaître l'implémentation.
+ * ViewModel de la galerie. Dépend de l'interface ImageRepository ; l'implémentation
+ * concrète est fournie par Hilt (une fois fusionnée depuis agent/léna).
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class GalleryViewModel @Inject constructor(
     private val imageRepository: ImageRepository,
 ) : ViewModel() {
 
-    private val query = MutableStateFlow(GalleryQuery())
+    private val displayMode = MutableStateFlow(GalleryDisplayMode.GRID)
+    private val sort = MutableStateFlow(SortCriteria(SortField.DATE, ascending = false))
+    private val filter = MutableStateFlow(FilterState())
+    private val selectedIds = MutableStateFlow<Set<Long>>(emptySet())
 
-    /** État exposé à l'UI. */
-    val uiState: StateFlow<GalleryUiState> = query
-        .flatMapLatest { q ->
-            imageRepository.observeImages(q.sort, q.filter)
-                .mapToImages(q)
+    private val imagesState = MutableStateFlow<List<ImageItem>>(emptyList())
+    private val loading = MutableStateFlow(true)
+    private val error = MutableStateFlow<String?>(null)
+
+    /** Flux de la liste filtrée/triée provenant du repository. */
+    private val repositoryImages = combine3(sort, filter, selectedIds).let { _ ->
+        sort.flatMapLatest { s ->
+            filter.flatMapLatest { f ->
+                imageRepository.observeImages(s, f)
+                    .catch { e -> error.value = e.message }
+            }
         }
-        .catch { e ->
-            emit(GalleryUiState(isLoading = false, errorMessage = e.message))
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = GalleryUiState(isLoading = true),
+    }
+
+    val uiState: StateFlow<GalleryUiState> = combine5(
+        repositoryImages, displayMode, sort, filter, selectedIds,
+    ) { images, mode, s, f, sel ->
+        GalleryUiState(
+            images = images,
+            displayMode = mode,
+            sort = s,
+            filter = f,
+            selectedIds = sel.filterTo(LinkedHashSet()) { id -> images.any { it.id == id } },
+            isLoading = false,
         )
-
-    private fun kotlinx.coroutines.flow.Flow<List<ImageItem>>.mapToImages(q: GalleryQuery) =
-        kotlinx.coroutines.flow.map { images ->
-            GalleryUiState(
-                images = images,
-                displayMode = q.displayMode,
-                sort = q.sort,
-                filter = q.filter,
-                selectedIds = q.selectedIds.filterTo(LinkedHashSet()) { id -> images.any { it.id == id } },
-                isLoading = false,
-            )
-        }
-
-    fun setDisplayMode(mode: GalleryDisplayMode) = update { it.copy(displayMode = mode) }
-
-    fun setSort(field: SortField) = update {
-        val ascending = if (it.sort.field == field) !it.sort.ascending else true
-        it.copy(sort = SortCriteria(field, ascending))
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = GalleryUiState(isLoading = true),
+    ).also { state ->
+        // tenue à jour de la liste courante pour les actions de masse
+        viewModelScope.launch { state.collect { imagesState.value = it.images } }
     }
 
-    fun setFilter(filter: FilterState) = update { it.copy(filter = filter) }
+    fun setDisplayMode(mode: GalleryDisplayMode) { displayMode.value = mode }
 
-    fun toggleSelection(id: Long) = update {
-        val next = it.selectedIds.toMutableSet()
+    fun setSort(field: SortField) {
+        val current = sort.value
+        sort.value = SortCriteria(field, if (current.field == field) !current.ascending else true)
+    }
+
+    fun setFilter(next: FilterState) { filter.value = next }
+
+    fun toggleSelection(id: Long) {
+        val next = selectedIds.value.toMutableSet()
         if (!next.add(id)) next.remove(id)
-        it.copy(selectedIds = next)
+        selectedIds.value = next
     }
 
-    fun selectOnly(id: Long) = update { it.copy(selectedIds = setOf(id)) }
+    fun selectOnly(id: Long) { selectedIds.value = setOf(id) }
 
-    fun clearSelection() = update { it.copy(selectedIds = emptySet()) }
+    fun clearSelection() { selectedIds.value = emptySet() }
 
-    fun toggleSelectAll() = update {
-        if (it.selectedIds.size == currentImages.value.size) it.copy(selectedIds = emptySet())
-        else it.copy(selectedIds = currentImages.value.map { img -> img.id }.toSet())
+    fun toggleSelectAll() {
+        val all = imagesState.value.map { it.id }.toSet()
+        selectedIds.value = if (selectedIds.value == all) emptySet() else all
     }
 
     fun deleteSelected() {
-        val selected = currentImages.value.filter { it.id in query.value.selectedIds }
+        val selected = imagesState.value.filter { it.id in selectedIds.value }
         if (selected.isEmpty()) return
         viewModelScope.launch {
             imageRepository.delete(selected)
-            update { it.copy(selectedIds = emptySet()) }
+            selectedIds.value = emptySet()
         }
     }
 
-    private val currentImages = MutableStateFlow<List<ImageItem>>(emptyList())
+    // combine génériques (kotlinx combine 5 flux n'est pas surchargé au-delà de 5 : on reste à 5).
+    private fun <T> combine3(
+        a: MutableStateFlow<T>,
+        b: MutableStateFlow<T>,
+        c: MutableStateFlow<T>,
+    ): Unit = Unit // placeholder non utilisé (voir repositoryImages)
 
-    private inline fun update(transform: (GalleryQuery) -> GalleryQuery) {
-        query.value = transform(query.value)
-    }
-
-    /** Regroupe l'état interne (requête + sélection + mode). */
-    internal data class GalleryQuery(
-        val displayMode: GalleryDisplayMode = GalleryDisplayMode.GRID,
-        val sort: SortCriteria = SortCriteria(SortField.DATE, ascending = false),
-        val filter: FilterState = FilterState(),
-        val selectedIds: Set<Long> = emptySet(),
-    )
+    private fun <A, B, C, D, E, R> combine5(
+        a: kotlinx.coroutines.flow.Flow<A>,
+        b: kotlinx.coroutines.flow.Flow<B>,
+        c: kotlinx.coroutines.flow.Flow<C>,
+        d: kotlinx.coroutines.flow.Flow<D>,
+        e: kotlinx.coroutines.flow.Flow<E>,
+        transform: suspend (A, B, C, D, E) -> R,
+    ): kotlinx.coroutines.flow.Flow<R> = kotlinx.coroutines.flow.combine(a, b, c, d, e, transform)
 }

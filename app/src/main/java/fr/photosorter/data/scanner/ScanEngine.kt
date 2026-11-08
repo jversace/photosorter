@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
-import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -29,8 +28,8 @@ class ScanEngine @Inject constructor(
     private val dispatchers: DispatchersProvider,
     private val imageDao: ImageDao,
     private val mimeDetector: MimeTypeDetector,
-    private val metadataReaderFactory: (android.content.Context) -> MediaMetadataReader = { MediaMetadataReader(it.contentResolver) },
-    private val storageRootProvider: StorageRootProvider = DefaultStorageRootProvider()
+    private val storageRootProvider: StorageRootProvider,
+    private val metadataReaderFactory: (Context) -> MediaMetadataReader
 ) {
 
     private val _progress = MutableStateFlow<ScanProgress>(ScanProgress.Idle)
@@ -46,7 +45,7 @@ class ScanEngine @Inject constructor(
         cancelled.set(true)
     }
 
-    /** Lance un scan complet. Renvoie le nombre d'images écrites. Idempotent : ignore si déjà en cours. */
+    /** Lance un scan complet. Renvoie l'état final. Idempotent : ignoré si déjà en cours. */
     suspend fun scan(): ScanProgress = withContext(dispatchers.io) {
         if (running) return@withContext _progress.value
         running = true
@@ -55,11 +54,10 @@ class ScanEngine @Inject constructor(
         val reader = metadataReaderFactory(context)
         val buffer = ArrayList<ImageEntity>(BATCH_SIZE)
         var written = 0
-        var scanned = 0
 
         try {
             val roots = storageRootProvider.roots()
-            // Passe 1 : collecter les fichiers (pour connaître le total et la progression).
+            // Passe 1 : collecter les fichiers (total connu pour la progression).
             val files = ArrayList<ScannedFile>(1024)
             _progress.value = ScanProgress.Running(done = 0, total = 0, current = "Analyse du stockage…")
             walker.walk(roots, cancelled) { files.add(it) }
@@ -70,30 +68,28 @@ class ScanEngine @Inject constructor(
                 if (cancelled.get()) break
                 val meta = reader.read(file.uri) ?: continue
                 val format = mimeDetector.detectFormat(meta.name, meta.mimeType) ?: continue
-                val entity = ImageEntity(
-                    uri = file.uri.toString(),
-                    name = meta.name,
-                    format = format.name,
-                    sizeBytes = meta.sizeBytes,
-                    dateTaken = null,
-                    dateModified = meta.dateModified,
-                    width = meta.width,
-                    height = meta.height,
-                    isAdult = false,
-                    thumbnailHint = null
+                buffer.add(
+                    ImageEntity(
+                        uri = file.uri.toString(),
+                        name = meta.name,
+                        format = format.name,
+                        sizeBytes = meta.sizeBytes,
+                        dateTaken = null,
+                        dateModified = meta.dateModified,
+                        width = meta.width,
+                        height = meta.height,
+                        isAdult = false,
+                        thumbnailHint = null
+                    )
                 )
-                buffer.add(entity)
-                scanned++
-                if (buffer.size >= BATCH_SIZE) {
-                    written += flush(buffer, reader)
-                }
+                if (buffer.size >= BATCH_SIZE) written += flush(buffer)
                 _progress.value = ScanProgress.Running(
                     done = index + 1,
                     total = total,
                     current = meta.name
                 )
             }
-            if (buffer.isNotEmpty()) written += flush(buffer, reader)
+            if (buffer.isNotEmpty()) written += flush(buffer)
 
             val duration = SystemClock.elapsedRealtime() - startedAt
             val result = if (cancelled.get()) {
@@ -112,7 +108,7 @@ class ScanEngine @Inject constructor(
         }
     }
 
-    private suspend fun flush(buffer: MutableList<ImageEntity>, reader: MediaMetadataReader): Int {
+    private suspend fun flush(buffer: MutableList<ImageEntity>): Int {
         if (buffer.isEmpty()) return 0
         val batch = ArrayList(buffer)
         buffer.clear()

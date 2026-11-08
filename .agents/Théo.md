@@ -74,42 +74,41 @@ agent/théo
 Développeur front-end — IHM et expérience utilisateur. Branche : agent/théo.
 
 ## Décision utilisateur (socle UI)
-- Compose ET XML Views compatibles API 26 → critère simplicité → **Jetpack Compose + Material 3 retenu** (cohérent avec archi de Zoé, pas de mix).
+- Compose ET XML Views compatibles API 26 → critère simplicité → Jetpack Compose + Material 3 retenu.
 
 ## Décisions durables (architecture IHM)
-- **UI = Jetpack Compose + Material 3 uniquement**.
-- Mono-activity : MainActivity + NavHost racine appliquant PhotoSorterTheme.
-- Destinations (ui/navigation/Destinations.kt) : `gallery`, `detail/{imageId}` (LongType), `scan`, `labels`. Arguments par route ; état galerie dans le ViewModel.
-- Structure `app/src/main/java/fr/photosorter/ui/` : theme/ (Color, Type, Shape, Theme), navigation/ (Destinations, PhotoSorterNavHost), screens/ (PlaceholderScreens.kt = écrans provisoires), gallery/, detail/, labels/ (à venir), components/.
-- Accessibilité : contentDescription sur actions/icônes ; icônes purement décoratives à `contentDescription = null` quand le texte porte le sens ; cibles >= 48dp ; strings FR externalisées res/values/strings.xml (aucun texte en dur).
+- UI = Jetpack Compose + Material 3 uniquement, mono-activity.
+- Destinations : gallery, detail/{imageId} (LongType), scan, labels.
+- Structure ui/ : theme/, navigation/, screens/, gallery/ (GalleryUiState, GalleryViewModel, GalleryScreen, components/), detail/, labels/.
+- Accessibilité : contentDescription, cibles >= 48dp, strings FR externalisées (aucun texte en dur).
+- ViewModels = @HiltViewModel branchés sur les interfaces de domaine (ImageRepository etc.), implémentations fournies par Hilt via RepositoryModule.
 
-## État de la tâche 4060ffc0 (socle UI M3 + navigation + accessibilité)
-- Livré et soumis à vérification. Fichiers posés :
-  - build.gradle.kts : Compose activé (buildFeatures.compose, composeOptions 1.5.14) + deps material3/ui/tooling/icons-extended/coil/activity-compose/navigation-compose/lifecycle-viewmodel-compose.
-  - libs.versions.toml : ajouté navigationCompose 2.7.7, material-icons-extended, lifecycle-viewmodel-compose.
-  - MainActivity.kt (@AndroidEntryPoint, setContent, PhotoSorterTheme, Surface, NavHost) déclarée LAUNCHER.
-  - ui/theme/* : PhotoSorterTheme (clair/sombre/dynamique API S+, repli palette custom).
-  - ui/navigation/* : Destinations + PhotoSorterNavHost (4 destinations).
-  - ui/screens/PlaceholderScreens.kt : écrans placeholder (galerie/détail/scan/libellés) à remplacer par les tâches 5ee8aef7 / 79906e61 / f1d46c78 / a3be7352.
-  - AndroidManifest.xml : android:name=.PhotoSorterApp conservé, MainActivity LAUNCHER, label=@string/app_name.
-  - strings.xml : titres écrans, placeholders, actions, action_back.
-  - themes.xml : thème fenêtre android:Theme.Material.Light.NoActionBar (suffisant avec Compose, pas de dépendance Views Material Components).
+## Workflow release v1.0.0 (confirmé par Zoé)
+- Je pousse sur agent/théo, puis merge_request vers release/v1.0.0 ; Zoé fusionne quand tout est poussé ; ensuite pull depuis release/v1.0.0.
+- Les agents ont le token git pour pousser sur leur branche.
 
-## Socle Android (Léna) — validé
-- Module `app`, namespace fr.photosorter, Kotlin DSL + gradle/libs.versions.toml.
-- minSdk 26, target/compile 34, JVM 17, Kotlin 1.9.24, AGP 8.5.2, Hilt, KSP.
-- Léna a confirmé (message) que mes changements Gradle/manifest/ui ne créent AUCUN conflit avec son socle.
-- NE PAS modifier sans prévenir Léna : app/build.gradle.kts, libs.versions.toml, settings.gradle.kts, PhotoSorterApp.kt. MainActivity n'existait pas côté Léna.
-- Packages stables : core/ (result, dispatchers, ext, di), domain/ (model, repository), data/.
+## Tâches terminées (acceptées par Malo)
+- 4060ffc0 socle M3 + navigation + accessibilité : livré.
+- 5ee8aef7 écran galerie : livré (GalleryScreen liste/grille, badges adulte, sélection multiple, tri, états, Coil ; branchement NavHost ; strings FR).
 
-## Point d'intégration back↔front (à venir)
-- Léna : `ScanEngine` est `@Inject`-able, expose `progress: Flow<ScanProgress>` + `cancel()`. Mon ViewModel de scan devra consommer ce Flow. Elle préviendra quand ScanEngine et Room seront finalisés sur agent/léna.
-- Contrat ViewModel galerie prévu : GalleryUiState = (mode, sort, filter, selectedIds, images, isLoading, error). Types domaine côté Léna : ImageItem, FilterState, SortCriteria, Label, ScanProgress, ImageFormat ; repos ImageRepository, LabelRepository, ScanRepository.
+## État actuel — BLOQUÉ
+- Conflit de fusion en cours sur agent/théo (AndroidManifest.xml) empêche de soumettre les MR 4060ffc0 et 5ee8aef7.
+- Résolution de conflit = Adam (règle projet). Malo a remonté à l’utilisateur (problème git côté dépôt).
+- Dès déblocage : resoumettre les 2 merge_request immédiatement.
 
-## Contraintes projet
-- Android 8.0 min (API 26), 100% local, FR, Material Design, Room/SQLite pour libellés.
-- Ne pas terminer une tâche sans validation utilisateur ; interprétations fonctionnelles à soumettre à Adam (non joignable).
-- Merges main↔branches faits par l'utilisateur (agents sans accès git).
+## Contrats domaine confirmés (après pull release/v1.0.0)
+- ImageRepository : observeImages(sort, filter): Flow<List<ImageItem>> ; getImages(filter) ; delete(items): AppResult<Unit> ; move/copy/share(...): AppResult<Unit>.
+- ImageItem : id, uri, name, format(ImageFormat enum), sizeBytes, dateTaken?, dateModified, width, height, labels: Set<String>, isAdult, thumbnailHint?.
+- FilterState(formats:Set, dateFrom?, dateTo?, minSizeBytes?, labels:Set, includeAdult).
+- SortCriteria(field: SortField, ascending) ; SortField = NAME, DATE, SIZE, FORMAT, LABEL.
+- AppResult : Success / Failure(error.message).
+- Repos impl + RepositoryModule Hilt présents sur agent/léna (fusionnés).
 
-## Méthode de travail (leçon)
-- Livrer un socle ENTIER et COMPILABLE en une seule salve de write_file (pas fichier par fichier) : les vérifications intermédiaires coupent la session et la tâche est refusée.
+## NE PAS modifier sans prévenir Léna
+- app/build.gradle.kts, libs.versions.toml, settings.gradle.kts, PhotoSorterApp.kt.
+
+## Prochaines tâches (dépendent de 5ee8aef7, désormais acceptée)
+- e93e44ff tri/filtres galerie ; 79906e61 plein écran ; f1d46c78 écran scan ; 10f2b02d action bar/dialogues ; a3be7352 libellés + révision adulte.
+
+## Méthode (leçon)
+- Livrer en une salve de write_file complète et compilable ; ne pas déclarer terminé sans que tout compile réellement.

@@ -16,7 +16,9 @@ class DefaultStorageRootProvider : StorageRootProvider {
         val result = mutableListOf<File>()
         val primary = Environment.getExternalStorageDirectory()
         if (primary != null) result.add(primary)
-        val secondary = System.getenv("SECONDARY_STORAGE") // souvent ':'-séparé
+
+        // Cartes SD secondaires : souvent exposées via SECONDARY_STORAGE (' : '-séparé)
+        val secondary = System.getenv("SECONDARY_STORAGE")
         if (!secondary.isNullOrBlank()) {
             secondary.split(File.pathSeparator, ":")
                 .map { it.trim() }
@@ -24,13 +26,12 @@ class DefaultStorageRootProvider : StorageRootProvider {
                 .map { File(it) }
                 .forEach { if (it.absolutePath != primary?.absolutePath) result.add(it) }
         }
-        // Carte SD exposée via getExternalFilesDirs (second élément = externe)
+
+        // Fallback : points de montage sous /storage (hors emulated/self)
         runCatching {
-            val dirs = android.os.Environment.getExternalStorageDirectory()
-            // fallback : chemin standard de carte SD
-            val sd = File("/storage")
-            if (sd.exists()) {
-                sd.listFiles()?.forEach { mount ->
+            val storage = File("/storage")
+            if (storage.exists()) {
+                storage.listFiles()?.forEach { mount ->
                     if (mount.isDirectory && mount.canRead() &&
                         mount.name != "emulated" && mount.name != "self"
                     ) {
@@ -38,7 +39,6 @@ class DefaultStorageRootProvider : StorageRootProvider {
                     }
                 }
             }
-            dirs
         }
         return result.distinctBy { it.absolutePath }
     }

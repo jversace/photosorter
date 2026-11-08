@@ -7,8 +7,8 @@ import androidx.core.content.FileProvider
 import fr.photosorter.core.dispatchers.DispatchersProvider
 import fr.photosorter.core.result.AppError
 import fr.photosorter.core.result.AppResult
-import fr.photosorter.core.result.map
 import fr.photosorter.data.db.dao.ImageDao
+import fr.photosorter.data.db.dao.ImageLabelDao
 import fr.photosorter.data.db.dao.ImageQueryDao
 import fr.photosorter.domain.model.FilterState
 import fr.photosorter.domain.model.ImageItem
@@ -26,12 +26,13 @@ import javax.inject.Singleton
  * Implémentation [ImageRepository] :
  * - Lecture/tri/filtre poussés en SQL via [ImageQueryDao].
  * - Actions fichiers (delete/move/copy) via [File] sur le chemin réel de l'URI.
- * - Partage via [Intent.ACTION_SEND] (FileProvider pour les fichiers privatisés).
+ * - Partage via [Intent.ACTION_SEND] (FileProvider).
  */
 @Singleton
 class ImageRepositoryImpl @Inject constructor(
     private val context: Context,
     private val imageDao: ImageDao,
+    private val imageLabelDao: ImageLabelDao,
     private val imageQueryDao: ImageQueryDao,
     private val dispatchers: DispatchersProvider
 ) : ImageRepository {
@@ -70,7 +71,8 @@ class ImageRepositoryImpl @Inject constructor(
                 if (!deleted) {
                     failure = AppError.Io("Suppression impossible : ${item.name}")
                 } else {
-                    imageDao.clear?  
+                    imageLabelDao.clearForImage(item.id)
+                    imageDao.deleteById(item.id)
                 }
             }
             if (failure == null) AppResult.Success(Unit) else AppResult.Failure(failure)
@@ -87,7 +89,6 @@ class ImageRepositoryImpl @Inject constructor(
                 val src = item.uri.toFileOrNull() ?: return@runAction AppError.NotFound(item.name)
                 val target = File(destDir, src.name)
                 if (!src.renameTo(target)) {
-                    // fallback copie + suppression
                     if (!copyFile(src, target)) return@runAction AppError.Io("Déplacement échoué : ${item.name}")
                     if (!src.delete()) return@runAction AppError.Io("Suppression source échouée : ${item.name}")
                 }
@@ -170,7 +171,7 @@ class ImageRepositoryImpl @Inject constructor(
 
     private fun String.toFileOrNull(): File? = runCatching {
         val u = Uri.parse(this)
-        if (u.scheme == "file") u.path?.let(::File) else u.path?.let(::File)
+        u.path?.let(::File)
     }.getOrNull()
 
     private fun matchesFilter(item: ImageItem, filter: FilterState): Boolean {

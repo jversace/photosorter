@@ -71,25 +71,26 @@ agent/léna
 Rôle : Développeur back-end. Branche agent/léna.
 
 Tâches :
-- 45770063 Socle Android : terminée (Gradle/Hilt/core/domain).
+- 45770063 Socle Android : terminée.
 - 31fa8938 Persistance Room : terminée.
 - 68b19a34 ScanEngine : terminée.
-- 87bcaabc Repositories image/libellé + use cases : terminée, acceptée par Malo. MR vers release/v1.0.0 À SOUMETTRE (bloquée par conflit, voir plus bas).
-- 596d8d9a Modération adulte : code complet livré, passée 'à vérifier', acceptée par Malo. MR À SOUMETTRE (bloquée par conflit).
-- e3a1d1a6 Actions fichiers : à faire (dépend 87bcaabc → débloquée une fois MR fusionnée).
+- 87bcaabc Repositories : terminée, acceptée par Malo. MR vers release/v1.0.0 À SOUMETTRE (bloquée par conflit).
+- 596d8d9a Modération adulte : terminée, passée 'à vérifier', acceptée par Malo. MR À SOUMETTRE (bloquée par conflit).
+- e3a1d1a6 Actions fichiers : à faire (dépend 87bcaabc, débloquée après fusion MR).
 - 4d0303c8 Tests unitaires : à faire (dépend 87bcaabc, 596d8d9a, e3a1d1a6).
 
-Livrables 596d8d9a (sur agent/léna) :
-- data/moderation/PreFilter.kt (SKIP screenshots/documents via chemin/nom).
-- data/moderation/AdultClassifier.kt (TFLite app/assets/model.tflite, labels drawings/neutral/porn/sexy, isAdult=(porn+sexy)>=0.5, dégradation propre Result.Unavailable si modèle absent, init lazy thread-safe, inputSize lu depuis shape modèle).
-- data/scanner/ScanEngine.kt (PreFilter+AdultClassifier injectés, ensureInitialized au démarrage, isAdult par image).
-- libs.versions.toml : tflite=2.14.0 + library tensorflow-lite.
-- app/build.gradle.kts : implementation(libs.tensorflow.lite) + androidResources.noCompress += "tflite" (obligatoire pour AssetManager.openFd).
+Livrables 596d8d9a (sur agent/léna) : data/moderation/PreFilter.kt ; data/moderation/AdultClassifier.kt (TFLite, labels drawings/neutral/porn/sexy, isAdult=(porn+sexy)>=0.5, dégradation propre, init lazy) ; data/scanner/ScanEngine.kt (intégration) ; libs.versions.toml (tflite=2.14.0 + lib) ; app/build.gradle.kts (impl + noCompress += "tflite").
 
-Décisions/interprétations en attente de validation Adam : seuil 0.5 (porn+sexy) ; screenshots/documents = non adulte par défaut (révisable utilisateur).
+BLOQUAGE CONFIRMÉ (dernier pull = conflit sur app/build.gradle.kts + gradle/libs.versions.toml) :
+- Origine : activation Compose (Théo, côté release) vs ajouts TFLite (moi).
+- Règle : résolution confiée à Adam, MAIS Adam inactif/non joignable (get_progress=aucune tâche).
+- Malo a annoncé qu'il écrira lui-même les fichiers fusionnés sur agent/léna, puis me demandera de soumettre. MAIS dernier pull APRÈS cette annonce = toujours en conflit => fichiers fusionnés pas (encore) poussés sur ma branche.
+- Messages à Malo non délivrés (profondeur d'échange max).
 
-BLOQUAGE ACTUEL : pull release/v1.0.0 → conflit sur app/build.gradle.kts + gradle/libs.versions.toml (activation Compose Théo vs ajouts TFLite). Règle projet : résolution confiée à Adam, mais Adam sans tâche / non joignable / inactif. Message à Malo non délivré (profondeur d'échange max).=> NE PAS soumettre les 2 MR tant que conflit non résolu. Pas d'autorisation explicite pour resolve_merge de ma part.
+CONTENU CIBLE de la fusion (à conserver des DEUX côtés, ajouts indépendants) :
+- TFLite : [versions] tflite=2.14.0 ; [libraries] tensorflow-lite = { module="org.tensorflow:tensorflow-lite", version.ref="tflite" } ; dependencies implementation(libs.tensorflow.lite) ; android { androidResources { noCompress += "tflite" } }.
+- Compose : buildFeatures.compose=true, composeOptions, libs Compose/Coil décommentées + impl.
 
-Plan de résolution si autorisé : garder LES DEUX côtés (TFLite + Compose), ajouts indépendants. Puis vérifier presence app/assets/model.tflite+labels.txt sur la branche (actuellement sur main seulement). Puis soumettre MR 596d8d9a et 87bcaabc.
+NE PAS soumettre les 2 MR tant que le pull renvoie un conflit. Dès qu'un pull passe SANS conflit (Malo a poussé la fusion) : vérifier présence app/assets/model.tflite + labels.txt sur la branche (actuellement sur main seulement), puis soumettre MR 87bcaabc puis 596d8d9a.
 
-Synchronisation git : agents peuvent pousser dans leur branche ; Zoé fusionne dans release/v1.0.0 une fois tout poussé ; les agents re-pull ensuite depuis release/v1.0.0. Modèle TFLite + labels déposés par l'utilisateur dans app/assets sur main.
+Synchronisation git : agents poussent dans leur branche ; Zoé fusionne dans release/v1.0.0 une fois tout poussé ; les agents re-pull ensuite.

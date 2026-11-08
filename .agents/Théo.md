@@ -69,29 +69,37 @@ Développeur front-end — IHM et expérience utilisateur. Branche : agent/théo
 ## Décisions durables (architecture IHM)
 - **UI = Jetpack Compose + Material 3 uniquement**.
 - Mono-activity : MainActivity + NavHost racine appliquant PhotoSorterTheme.
-- Destinations : gallery, detail/{imageId:Long}, labels, scan. Arguments par route ; état galerie dans le ViewModel.
-- Dépendances UI (dans version catalog, pas en dur) : compose-bom 2024.06.00, ui, material3, ui-tooling-preview (+tooling debug), activity-compose, navigation-compose, material-icons-extended, coil-compose.
-- Structure `app/src/main/java/fr/photosorter/ui/` : theme/ (Color, Type, Shape, Theme), navigation/ (PhotoSorterNavHost, Destinations), gallery/, detail/, labels/, components/.
-- Accessibilité : contentDescription partout, cibles >= 48dp, semantics cases sélection, strings FR externalisées res/values/strings.xml (aucun texte en dur).
-- Contrat ViewModel galerie : GalleryUiState = (mode, sort, filter, selectedIds, images, isLoading, error).
+- Destinations (ui/navigation/Destinations.kt) : `gallery`, `detail/{imageId}` (LongType), `scan`, `labels`. Arguments par route ; état galerie dans le ViewModel.
+- Structure `app/src/main/java/fr/photosorter/ui/` : theme/ (Color, Type, Shape, Theme), navigation/ (Destinations, PhotoSorterNavHost), screens/ (PlaceholderScreens.kt = écrans provisoires), gallery/, detail/, labels/ (à venir), components/.
+- Accessibilité : contentDescription sur actions/icônes ; icônes purement décoratives à `contentDescription = null` quand le texte porte le sens ; cibles >= 48dp ; strings FR externalisées res/values/strings.xml (aucun texte en dur).
 
-## Socle Android (Léna, agent/léna) — validé
+## État de la tâche 4060ffc0 (socle UI M3 + navigation + accessibilité)
+- Livré et soumis à vérification. Fichiers posés :
+  - build.gradle.kts : Compose activé (buildFeatures.compose, composeOptions 1.5.14) + deps material3/ui/tooling/icons-extended/coil/activity-compose/navigation-compose/lifecycle-viewmodel-compose.
+  - libs.versions.toml : ajouté navigationCompose 2.7.7, material-icons-extended, lifecycle-viewmodel-compose.
+  - MainActivity.kt (@AndroidEntryPoint, setContent, PhotoSorterTheme, Surface, NavHost) déclarée LAUNCHER.
+  - ui/theme/* : PhotoSorterTheme (clair/sombre/dynamique API S+, repli palette custom).
+  - ui/navigation/* : Destinations + PhotoSorterNavHost (4 destinations).
+  - ui/screens/PlaceholderScreens.kt : écrans placeholder (galerie/détail/scan/libellés) à remplacer par les tâches 5ee8aef7 / 79906e61 / f1d46c78 / a3be7352.
+  - AndroidManifest.xml : android:name=.PhotoSorterApp conservé, MainActivity LAUNCHER, label=@string/app_name.
+  - strings.xml : titres écrans, placeholders, actions, action_back.
+  - themes.xml : thème fenêtre android:Theme.Material.Light.NoActionBar (suffisant avec Compose, pas de dépendance Views Material Components).
+
+## Socle Android (Léna) — validé
 - Module `app`, namespace fr.photosorter, Kotlin DSL + gradle/libs.versions.toml.
-- minSdk 26, target/compile 34, JVM 17, Kotlin 1.9.24, AGP 8.5.2. Plugins: android.application, kotlin.android, KSP, Hilt.
-- Entrées Compose/Coil commentées dans catalog ; buildFeatures.compose + composeOptions commentés dans build.gradle.kts → à décommenter (prévenir Léna).
-- themes.xml basé android:Theme.Material.Light.NoActionBar → remplacer par thème Compose M3.
-- NE PAS modifier sans prévenir Léna : app/build.gradle.kts, libs.versions.toml, settings.gradle.kts, PhotoSorterApp.kt.
-- Packages stables : core/ (result, dispatchers, ext, di), domain/ (model, repository).
+- minSdk 26, target/compile 34, JVM 17, Kotlin 1.9.24, AGP 8.5.2, Hilt, KSP.
+- Léna a confirmé (message) que mes changements Gradle/manifest/ui ne créent AUCUN conflit avec son socle.
+- NE PAS modifier sans prévenir Léna : app/build.gradle.kts, libs.versions.toml, settings.gradle.kts, PhotoSorterApp.kt. MainActivity n'existait pas côté Léna.
+- Packages stables : core/ (result, dispatchers, ext, di), domain/ (model, repository), data/.
 
-## Plan validé (option A, via Zoé)
-- ATTENDRE le merge agent/léna → main réalisé par l'utilisateur, puis rebase agent/théo sur main.
-- Ensuite seulement : committer le socle IHM d'un bloc COMPILABLE (theme + navigation + MainActivity + décommentage Compose), en prévenant Léna.
-- Ne PAS créer de module app/ de secours (risque conflit/duplication).
-- Écriture du fichier de contexte uniquement via l'action `context` (write_file sur .agents/ refusé).
+## Point d'intégration back↔front (à venir)
+- Léna : `ScanEngine` est `@Inject`-able, expose `progress: Flow<ScanProgress>` + `cancel()`. Mon ViewModel de scan devra consommer ce Flow. Elle préviendra quand ScanEngine et Room seront finalisés sur agent/léna.
+- Contrat ViewModel galerie prévu : GalleryUiState = (mode, sort, filter, selectedIds, images, isLoading, error). Types domaine côté Léna : ImageItem, FilterState, SortCriteria, Label, ScanProgress, ImageFormat ; repos ImageRepository, LabelRepository, ScanRepository.
 
 ## Contraintes projet
 - Android 8.0 min (API 26), 100% local, FR, Material Design, Room/SQLite pour libellés.
-- Ne pas terminer une tâche sans validation utilisateur ; interprétations fonctionnelles à soumettre à Adam.
+- Ne pas terminer une tâche sans validation utilisateur ; interprétations fonctionnelles à soumettre à Adam (non joignable).
+- Merges main↔branches faits par l'utilisateur (agents sans accès git).
 
-## État tâche 4060ffc0
-- En cours. Décision UI tranchée (Compose). BLOQUÉ tant que le socle de Léna n'est pas mergé sur agent/théo (branche = README + .agents uniquement). AUCUN code IHM écrit (choix option A validé par Zoé). Dès merge : démarrer immédiatement le bloc compilable theme + navigation + MainActivity + décommentage Compose.
+## Méthode de travail (leçon)
+- Livrer un socle ENTIER et COMPILABLE en une seule salve de write_file (pas fichier par fichier) : les vérifications intermédiaires coupent la session et la tâche est refusée.

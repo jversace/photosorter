@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Thème provisoire : sera remplacé/étendu par le thème Compose (Théo) -->
+    <style name="Theme.PhotoSorter" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

@@ -55,4 +55,35 @@ agent/théo
 {"do":"spec","text":"<spécifications complètes en markdown>"} : (agent principal) remplacer les spécifications
 
 ## Notes de l’agent (à tenir à jour)
-(vides)
+# Contexte de l’agent Théo — projet photosorter
+
+## Mon rôle
+Développeur front-end — IHM et expérience utilisateur. Branche : agent/théo.
+
+## Décision utilisateur (socle UI)
+- « compatible Android 8 ; si A et B le sont, choisir la plus simple ». Compose ET XML Views sont compatibles API 26 → critère simplicité → **Jetpack Compose + Material 3 retenu** (cohérent avec l'archi de Zoé, pas de mix).
+
+## Décisions durables (architecture IHM)
+- **UI = Jetpack Compose + Material 3 uniquement** (validé Zoé + user ; pas de XML Views).
+- Mono-activity : MainActivity + NavHost racine appliquant PhotoSorterTheme.
+- Destinations : gallery, detail/{imageId:Long}, labels, scan. Arguments simples par route ; état galerie dans le ViewModel (pas dans la nav).
+- Dépendances UI (à mettre dans version catalog, pas en dur) : compose-bom 2024.06.00, ui, material3, ui-tooling-preview (+tooling debug), activity-compose, navigation-compose, material-icons-extended, coil-compose.
+- Structure `app/src/main/java/fr/photosorter/ui/` : theme/ (Color, Type, Shape, Theme), navigation/ (PhotoSorterNavHost, Destinations), gallery/, detail/, labels/, components/. À créer.
+- Accessibilité : contentDescription partout, cibles >= 48dp, semantics sur cases de sélection, strings FR externalisées res/values/strings.xml (aucun texte en dur).
+- Contrat ViewModel galerie : GalleryUiState = (mode, sort, filter, selectedIds, images, isLoading, error).
+
+## Socle Android (Léna, agent/léna)
+- Module unique `app`, namespace fr.photosorter, Kotlin DSL + gradle/libs.versions.toml.
+- minSdk 26, target/compile 34, JVM 17, Kotlin 1.9.24, AGP 8.5.2. Plugins: android.application, kotlin.android, KSP, Hilt (pas de kapt). @HiltAndroidApp sur PhotoSorterApp.
+- Entrées Compose/Coil commentées dans le catalog ; buildFeatures.compose + composeOptions commentés dans build.gradle.kts → à décommenter (prévenir Léna).
+- themes.xml: Theme.PhotoSorter basé android:Theme.Material.Light.NoActionBar → remplacer par thème Compose M3.
+- NE PAS modifier sans prévenir Léna : app/build.gradle.kts, libs.versions.toml, settings.gradle.kts, PhotoSorterApp.kt.
+- Packages: core/ (result, dispatchers, ext, di), domain/ (model, repository) — stables, l'IHM code contre les interfaces repository.
+- Socle commité sur agent/léna ; merge agent/léna→main→agent/théo à réaliser par l'utilisateur (je n'ai pas le droit ni l'outil pour merger sur main).
+
+## Contraintes projet
+- Android 8.0 min (API 26), 100% local, FR, Material Design, Room/SQLite pour libellés.
+- Ne pas terminer une tâche sans validation utilisateur ; interprétations fonctionnelles à soumettre à Adam.
+
+## État tâche 4060ffc0
+- En cours. Décision UI tranchée (Compose). BLOQUÉ : le socle Android de Léna n'est pas encore mergé sur agent/théo (branche = README + .agents uniquement). Merge utilisateur demandé à plusieurs reprises. Dès socle dispo : créer ui/theme, ui/navigation, MainActivity, décommenter Compose.

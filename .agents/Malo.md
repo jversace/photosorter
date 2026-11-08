@@ -81,26 +81,32 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 ## Dépendances des tâches (analyse Zoé)
 
 ### Peuvent démarrer immédiatement
-- Léna : 87bcaabc (Repositories + use cases) — débloquée, en cours
-
-### Débloquées dès que 87bcaabc est livré
-- Léna : 596d8d9a (Modération TFLite), e3a1d1a6 (actions fichiers), 4d0303c8 (tests)
+- Léna : 596d8d9a (Modération TFLite), e3a1d1a6 (actions fichiers)
 - Théo : 5ee8aef7 (galerie), f1d46c78 (écran scan)
 
 ### Débloquées après 5ee8aef7
 - Théo : e93e44ff (tri/filtres), 79906e61 (plein écran), 10f2b02d (action bar), a3be7352 (libellés)
 
-### Chemin critique
-45770063 → 31fa8938 → 68b19a34 → 87bcaabc → e3a1d1a6
+### Débloquées après 596d8d9a et e3a1d1a6
+- Léna : 4d0303c8 (tests unitaires back-end)
+- Théo : 10f2b02d (action bar, dépend aussi de 5ee8aef7), a3be7352 (libellés, dépend aussi de 5ee8aef7)
 
 ## Tâches
-- 6jspo8e : Cahier des charges → passé à vérifier (validé v1, à rouvrir si prochaine release)
-- 4060ffc0 : Thème M3, navigation, accessibilité → acceptée ✓
-- 31fa8938 : vérifiée et acceptée ✓
-- 68b19a34 : vérifiée et acceptée ✓
-- 45770063 : vérifiée et acceptée ✓
-- 87bcaabc : en cours (Léna démarre, lit DAO/entités Label, cross-ref, AppResult)
+- 6jspo8e : Cahier des charges → terminée ✓
+- 4060ffc0 : Thème M3, navigation, accessibilité → terminée ✓
+- 31fa8938 : Persistance Room → terminée ✓
+- 68b19a34 : ScanEngine → terminée ✓
+- 45770063 : Socle Android → terminée ✓
+- 87bcaabc : Repositories + use cases → terminée ✓ (MR #14 fusionnée)
+- 596d8d9a : Modération TFLite → lancée (Léna)
+- e3a1d1a6 : Actions fichiers → lancée (Léna)
+- 5ee8aef7 : Écran galerie → lancée (Théo)
+- f1d46c78 : Écran scan → lancée (Théo)
 
-## Blocage actuel
-- Aucun blocage immédiat. Tout dépend maintenant de 87bcaabc (Léna en cours).
-- Dès que 87bcaabc est fusionné, lancer en parallèle : 596d8d9a + e3a1d1a6 (Léna) et 5ee8aef7 + f1d46c78 (Théo)
+## Chemin critique
+45770063 → 31fa8938 → 68b19a34 → 87bcaabc → e3a1d1a6 → 10f2b02d
+                                              ↓
+                                         596d8d9a → a3be7352
+                                              ↓
+                                         4d0303c8
+5ee8aef7 → e93e44ff, 79906e61, 10f2b02d, a3be7352

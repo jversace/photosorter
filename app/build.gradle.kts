@@ -37,9 +37,15 @@ android {
         jvmTarget = "17"
     }
 
-    // --- UI (à activer par Théo après la décision socle UI) ---
-    // buildFeatures { compose = true }
-    // composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
+    // Le modèle TFLite doit rester non compressé pour être mappé en mémoire
+    // via AssetManager.openFd() (sinon IllegalArgumentException).
+    androidResources {
+        noCompress += "tflite"
+    }
+
+    // UI (Compose activé)
+    buildFeatures { compose = true }
+    composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
 }
 
 ksp {
@@ -60,16 +66,22 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
-    // Tests (voir tâche 4d0303c8)
+    // Modération contenu adulte (100% local)
+    implementation(libs.tensorflow.lite)
+
+    // UI (Compose + Material 3)
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.material3)
+    implementation(libs.compose.ui)
+    implementation(libs.compose.ui.tooling.preview)
+    debugImplementation(libs.compose.ui.tooling)
+    implementation(libs.compose.material.icons.extended)
+    implementation(libs.coil.compose)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+
+    // Tests
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
-
-    // --- UI (commenté, activé par Théo après décision) ---
-    // implementation(platform(libs.compose.bom))
-    // implementation(libs.compose.material3)
-    // implementation(libs.compose.ui)
-    // implementation(libs.compose.ui.tooling.preview)
-    // debugImplementation(libs.compose.ui.tooling)
-    // implementation(libs.coil.compose)
-    // implementation(libs.androidx.activity.compose)
 }

@@ -64,7 +64,7 @@ agent/zoé
 - Détection contenu adulte : ARBITRÉ par l'utilisateur → A = IA locale TFLite + pré-filtre screenshots/documents. Aucun envoi externe. Label 'adulte' révisable.
 - Pré-filtre : exclure uniquement screenshots/documents/texte (ML Kit Text Recognition). PAS de colorimétrie/texture en exclusion (faux négatifs). Erreur -> passer à l'IA.
 - UI : Jetpack Compose + Material 3, mono-activity, Navigation Compose (arbitré via Théo/user).
-- WORKFLOW GIT : les merges/rebase côté dépôt sont déclenchés PAR L'UTILISATEUR (confirmé par Malo). Les agents ne peuvent pas exécuter git (commit/merge/rebase/pull/push) ; je coordonne par message uniquement. Ordre : agents committent leur branche -> utilisateur merge dans main -> agents rebase. Merge agent/léna d'abord (socle app/ requis par Théo).
+- WORKFLOW GIT (DÉCISION UTILISATEUR = B) : MALO (chef de projet) dispose d'un accès git et déclenche les merges des branches agents vers main à la place des agents. Les autres agents (dont moi) ne peuvent pas exécuter git ; je coordonne par message. Ordre : agents committent leur branche -> Malo merge dans main -> agents rebase. Merge agent/léna d'abord (socle app/ requis par Théo).
 
 ## Livrable architecture
 - a88bd00f passée TERMINÉE (doc commité sur main, validé par l'utilisateur). docs/architecture.md existe sur main mais PAS visible sur agent/zoé (pas de synchro).
@@ -72,7 +72,7 @@ agent/zoé
 ## Limites d'outil RÉCURRENTES (important)
 - Je NE PEUX PAS exécuter git. Uniquement coordonner par message.
 - write_file sur docs/ échoue (dossier non créé).
-- Messages peuvent échouer (profondeur max d'échanges atteinte) — messages à Théo et Malo parfois non délivrés.
+- Messages peuvent échouer (profondeur max d'échanges atteinte).
 
 ## État des agents
 - Léna : socle 45770063 commité/poussé sur agent/léna ; Room/ScanEngine en finalisation (StorageWalker posé, StorageRootProvider en cours, reste ScanEngine, ScannerModule, tests).

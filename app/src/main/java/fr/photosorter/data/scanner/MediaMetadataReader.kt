@@ -27,7 +27,6 @@ class MediaMetadataReader(private val contentResolver: ContentResolver) {
         var name: String? = null
         var size = -1L
         var modified = 0L
-        var mime: String? = null
 
         try {
             contentResolver.query(
@@ -46,9 +45,8 @@ class MediaMetadataReader(private val contentResolver: ContentResolver) {
             // ignore : on retombera sur les infos de fichier
         }
 
-        mime = contentResolver.getType(uri) ?: mime
+        val mime = contentResolver.getType(uri)
 
-        // Infos fichier (date modif, nom, taille de secours)
         val path = uri.path
         if (path != null) {
             val f = File(path)

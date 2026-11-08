@@ -13,8 +13,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -33,24 +33,19 @@ class GalleryViewModel @Inject constructor(
     private val sort = MutableStateFlow(SortCriteria(SortField.DATE, ascending = false))
     private val filter = MutableStateFlow(FilterState())
     private val selectedIds = MutableStateFlow<Set<Long>>(emptySet())
-
     private val imagesState = MutableStateFlow<List<ImageItem>>(emptyList())
-    private val loading = MutableStateFlow(true)
-    private val error = MutableStateFlow<String?>(null)
 
     /** Flux de la liste filtrée/triée provenant du repository. */
-    private val repositoryImages = combine3(sort, filter, selectedIds).let { _ ->
-        sort.flatMapLatest { s ->
-            filter.flatMapLatest { f ->
-                imageRepository.observeImages(s, f)
-                    .catch { e -> error.value = e.message }
-            }
+    private val repositoryImages = combine(sort, filter) { s, f -> s to f }
+        .flatMapLatest { (s, f) ->
+            imageRepository.observeImages(s, f)
+                .catch { emit(emptyList()) }
         }
-    }
 
-    val uiState: StateFlow<GalleryUiState> = combine5(
+    val uiState: StateFlow<GalleryUiState> = kotlinx.coroutines.flow.combine(
         repositoryImages, displayMode, sort, filter, selectedIds,
     ) { images, mode, s, f, sel ->
+        imagesState.value = images
         GalleryUiState(
             images = images,
             displayMode = mode,
@@ -63,10 +58,7 @@ class GalleryViewModel @Inject constructor(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = GalleryUiState(isLoading = true),
-    ).also { state ->
-        // tenue à jour de la liste courante pour les actions de masse
-        viewModelScope.launch { state.collect { imagesState.value = it.images } }
-    }
+    )
 
     fun setDisplayMode(mode: GalleryDisplayMode) { displayMode.value = mode }
 
@@ -100,20 +92,4 @@ class GalleryViewModel @Inject constructor(
             selectedIds.value = emptySet()
         }
     }
-
-    // combine génériques (kotlinx combine 5 flux n'est pas surchargé au-delà de 5 : on reste à 5).
-    private fun <T> combine3(
-        a: MutableStateFlow<T>,
-        b: MutableStateFlow<T>,
-        c: MutableStateFlow<T>,
-    ): Unit = Unit // placeholder non utilisé (voir repositoryImages)
-
-    private fun <A, B, C, D, E, R> combine5(
-        a: kotlinx.coroutines.flow.Flow<A>,
-        b: kotlinx.coroutines.flow.Flow<B>,
-        c: kotlinx.coroutines.flow.Flow<C>,
-        d: kotlinx.coroutines.flow.Flow<D>,
-        e: kotlinx.coroutines.flow.Flow<E>,
-        transform: suspend (A, B, C, D, E) -> R,
-    ): kotlinx.coroutines.flow.Flow<R> = kotlinx.coroutines.flow.combine(a, b, c, d, e, transform)
 }

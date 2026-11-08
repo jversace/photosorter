@@ -37,6 +37,12 @@ android {
         jvmTarget = "17"
     }
 
+    // Le modèle TFLite doit rester non compressé pour être mappé en mémoire
+    // via AssetManager.openFd() (sinon IllegalArgumentException).
+    androidResources {
+        noCompress += "tflite"
+    }
+
     // --- UI (à activer par Théo après la décision socle UI) ---
     // buildFeatures { compose = true }
     // composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
@@ -59,6 +65,9 @@ dependencies {
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+
+    // Modération contenu adulte (100% local)
+    implementation(libs.tensorflow.lite)
 
     // Tests (voir tâche 4d0303c8)
     testImplementation(libs.junit)

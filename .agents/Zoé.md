@@ -12,6 +12,7 @@
 - Les instructions de l’utilisateur et les spécifications sont partagées par toute l’équipe : respecte-les. L’agent principal les tient à jour ; si tu constates un manque ou une contradiction, écris-lui.
 - Pour connaître l’avancement d’un autre agent, utilise d’abord get_progress (sans coût) ; n’interroge l’agent par message que pour obtenir une précision.
 - Une tâche ou un bug peut être rattaché à un ou plusieurs modules, sans obligation (ex. le cahier des charges est global). Un bug se corrige par des sous-tâches de correction (bug_fix) ; quand elles sont terminées, il passe à « corrigé » et le QA le vérifie.
+- Ne déclare jamais une tâche terminée si le travail demandé n’est pas réellement fait : mets-la à « à vérifier » (task_status) avec un compte rendu précis de ce qui est fait. L’agent principal (ou le QA) vérifie puis la clôture ; s’il la refuse, corrige ce qui manque. S’il reste du travail ou un blocage, dis-le ou pose la question avec ask_user.
 - Pour agir, termine ta réponse par un ou plusieurs blocs d’action (voir ci-dessous). Tu reçois ensuite le résultat des lectures, des messages et des erreurs. Sans bloc, ta réponse reste du simple texte.
 
 ## Règles du projet
@@ -36,15 +37,17 @@ agent/zoé
 - Agents joignables : Malo, Léna, Théo
 
 ## Actions (un objet JSON par bloc ```action ... ```) :
-{"do":"list_files","path":"<dossier, vide pour la racine>"} : lister un dossier du dépôt (ta branche)
-{"do":"read_file","path":"..."} : lire un fichier du dépôt (ta branche)
+{"do":"list_files","path":"<dossier, vide pour la racine>","agent":"<prénom ou base, facultatif>"} : lister un dossier du dépôt (ta branche, ou en lecture seule celle d’un autre agent)
+{"do":"read_file","path":"...","agent":"<prénom ou base, facultatif>"} : lire un fichier du dépôt (ta branche, ou en lecture seule celle d’un autre agent)
 {"do":"write_file","path":"...","content":"<contenu complet>","message":"<message de commit>"} : créer ou remplacer un fichier sur ta branche
 {"do":"delete_file","path":"...","message":"..."} : supprimer un fichier sur ta branche
 {"do":"message","to":"<prénom>","text":"..."} : écrire à un agent joignable (sa réponse te revient)
 {"do":"get_progress","agent":"<prénom ou all>"} : avancement d’un agent ou de toute l’équipe (sans coût)
 {"do":"context","text":"..."} : réécrire tes notes personnelles (fichier de contexte)
 {"do":"task","title":"...","desc":"...","assignee":"<prénom>","parent":"<id de la tâche parente, vide = 1er niveau>","modules":["<module>"],"why":"<justification>"} : créer une tâche (sous-tâche libre sous tes tâches ; 1er niveau selon tes droits)
-{"do":"task_status","id":"<id>","status":"à faire|en cours|en attente|terminée"} : statut d’une de tes tâches
+{"do":"task_status","id":"<id>","status":"à faire|en cours|en attente|à vérifier","note":"<compte rendu>"} : statut d’une de tes tâches (« à vérifier » = fini de ton côté ; la clôture se fait par vérification)
+{"do":"task_review","id":"<id>","verdict":"accepted|rejected","comment":"<ce qui manque, si rejected>"} : (agent principal / QA) vérifier une tâche « à vérifier » : accepted seulement si le travail est réellement fait
+{"do":"relaunch","task":"<id>","note":"<consigne>"} : (agent principal) relancer l’agent d’une tâche bloquée
 {"do":"module","name":"...","desc":"...","why":"..."} : créer un module (selon tes droits)
 {"do":"link_modules","kind":"task|bug","id":"<id>","modules":["<module>"]} : rattacher une tâche ou un bug à des modules (liste vide = global)
 {"do":"bug","title":"...","desc":"...","sev":"mineur|majeur|critique","modules":["<module>"]} : déclarer un bug (selon tes droits)
@@ -60,18 +63,21 @@ agent/zoé
 ## Décisions durables
 - Détection contenu adulte : ARBITRÉ par l'utilisateur → A = IA locale TFLite + pré-filtre screenshots/documents. Aucun envoi externe. Label 'adulte' révisable.
 - Pré-filtre : exclure uniquement screenshots/documents/texte (ML Kit Text Recognition). PAS de colorimétrie/texture en exclusion (faux négatifs). Erreur -> passer à l'IA.
-- Optimisation CPU : mesurer avant de complexifier. Scan manuel + cache → coût TFLite ponctuel tolérable.
+- UI : Jetpack Compose + Material 3, mono-activity, Navigation Compose (arbitré via Théo/user).
 
-## Livrable architecture (tâche a88bd00f)
-- Architecture produite EN TEXTE (write_file échoue sur docs/architecture.md : dossier docs/ non créé malgré plusieurs essais). Décision utilisateur : B → il commite le document lui-même. Contenu complet (v1.0, §1-13) fourni en réponse texte à l'utilisateur, prêt à commiter.
-- a88bd00f laissée EN COURS : ne pas passer à terminée tant que le doc n'est pas commité/visible sur la branche et validé par l'utilisateur.
+## Livrable architecture
+- a88bd00f passée TERMINÉE (doc commité sur main, validé par l'utilisateur). docs/architecture.md existe sur main mais PAS visible sur agent/zoé (pas de synchro).
 
-## Synchronisation git
-- Malo a demandé de récupérer les derniers commits de main sur agent/zoé. JE NE PEUX PAS faire fetch/merge (pas d'action git). Ma branche ne voit que README.md + .agents/. À refaire côté utilisateur/Malo. Vérifier via list_files/read_file une fois fait.
+## Limites d'outil RÉCURRENTES (important)
+- Je NE PEUX PAS exécuter git (commit/merge/rebase/pull/push). Uniquement coordonner par message.
+- write_file sur docs/ échoue (dossier non créé).
+- Messages peuvent échouer (profondeur max d'échanges atteinte) — messages à Théo et Malo non délivrés lors de la coordination du merge.
 
-## Tâches créées
-- Léna : 7 tâches back-end créées (socle, Room, ScanEngine, repos+usecases, modération, actions fichiers, tests).
-- Théo : 1 tâche existante (galerie). RESTE À CRÉER (bloqué par limite 'max 8 créations/échange') : tri&filtres, plein écran, action bar/dialogues, libellés+révision adulte, écran scan, thème/navigation/accessibilité. Reprendre à ~3 créations/échange au prochain tour.
+## Directive utilisateur (via Malo)
+- Chaque agent committe sa branche -> merge dans main -> rebase. Ordre AVANT merge : agent/léna d'abord (socle app/ requis par Théo). Théo = option A (attendre merge lena->main puis rebase puis commit socle IHM).
+
+## Tâches
+- Léna : 7 tâches créées. Théo : 7 tâches créées (galerie, tri&filtres, plein écran, action bar, libellés+révision adulte, écran scan, thème/nav/accessibilité 4060ffc0 en cours).
 
 ## Contraintes projet
 - Android 8.0+ (API 26), hors-ligne (pas de permission INTERNET), Material Design, FR.
@@ -79,4 +85,4 @@ agent/zoé
 - Soumettre les interprétations à Adam.
 
 ## Relations équipe
-- Malo : joignable par message (m'a demandé la synchro main). Adam, Léna : non joignables (get_progress seulement).
+- Malo joignable (mais messages parfois non délivrés). Adam, Léna, Théo : joignables par message (profondeur limitée).

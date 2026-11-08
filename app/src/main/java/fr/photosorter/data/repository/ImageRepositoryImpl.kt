@@ -3,7 +3,6 @@ package fr.photosorter.data.repository
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import androidx.core.content.FileProvider
 import fr.photosorter.core.dispatchers.DispatchersProvider
 import fr.photosorter.core.result.AppError
 import fr.photosorter.core.result.AppResult
@@ -25,8 +24,8 @@ import javax.inject.Singleton
 /**
  * Implémentation [ImageRepository] :
  * - Lecture/tri/filtre poussés en SQL via [ImageQueryDao].
- * - Actions fichiers (delete/move/copy) via [File] sur le chemin réel de l'URI.
- * - Partage via [Intent.ACTION_SEND] (FileProvider).
+ * - Actions fichiers via [FileActions] (scoped storage + fallback).
+ * - Partage via [Intent.ACTION_SEND] et FileProvider.
  */
 @Singleton
 class ImageRepositoryImpl @Inject constructor(
@@ -34,6 +33,7 @@ class ImageRepositoryImpl @Inject constructor(
     private val imageDao: ImageDao,
     private val imageLabelDao: ImageLabelDao,
     private val imageQueryDao: ImageQueryDao,
+    private val fileActions: FileActions,
     private val dispatchers: DispatchersProvider
 ) : ImageRepository {
 
@@ -62,14 +62,9 @@ class ImageRepositoryImpl @Inject constructor(
         withContext(dispatchers.io) {
             var failure: AppError? = null
             for (item in items) {
-                val file = item.uri.toFileOrNull()
-                if (file == null || !file.exists()) {
-                    failure = AppError.NotFound("Fichier introuvable : ${item.name}")
-                    continue
-                }
-                val deleted = runCatching { file.delete() }.getOrDefault(false)
-                if (!deleted) {
-                    failure = AppError.Io("Suppression impossible : ${item.name}")
+                val err = fileActions.delete(item.uri)
+                if (err != null) {
+                    if (failure == null) failure = err
                 } else {
                     imageLabelDao.clearForImage(item.id)
                     imageDao.deleteById(item.id)
@@ -80,34 +75,16 @@ class ImageRepositoryImpl @Inject constructor(
 
     override suspend fun move(items: List<ImageItem>, destUri: String): AppResult<Unit> =
         withContext(dispatchers.io) {
-            val destDir = destUri.toFileOrNull()
+            val destDir = ensureDestDir(destUri)
                 ?: return@withContext AppResult.Failure(AppError.NotFound("Dossier destination invalide"))
-            if (!destDir.isDirectory && !destDir.mkdirs()) {
-                return@withContext AppResult.Failure(AppError.Io("Impossible de créer le dossier destination"))
-            }
-            runAction(items) { item ->
-                val src = item.uri.toFileOrNull() ?: return@runAction AppError.NotFound(item.name)
-                val target = File(destDir, src.name)
-                if (!src.renameTo(target)) {
-                    if (!copyFile(src, target)) return@runAction AppError.Io("Déplacement échoué : ${item.name}")
-                    if (!src.delete()) return@runAction AppError.Io("Suppression source échouée : ${item.name}")
-                }
-                null
-            }
+            runAction(items) { fileActions.move(it.uri, destDir) }
         }
 
     override suspend fun copy(items: List<ImageItem>, destUri: String): AppResult<Unit> =
         withContext(dispatchers.io) {
-            val destDir = destUri.toFileOrNull()
+            val destDir = ensureDestDir(destUri)
                 ?: return@withContext AppResult.Failure(AppError.NotFound("Dossier destination invalide"))
-            if (!destDir.isDirectory && !destDir.mkdirs()) {
-                return@withContext AppResult.Failure(AppError.Io("Impossible de créer le dossier destination"))
-            }
-            runAction(items) { item ->
-                val src = item.uri.toFileOrNull() ?: return@runAction AppError.NotFound(item.name)
-                val target = File(destDir, src.name)
-                if (!copyFile(src, target)) AppError.Io("Copie échouée : ${item.name}") else null
-            }
+            runAction(items) { fileActions.copy(it.uri, destDir) }
         }
 
     override suspend fun share(items: List<ImageItem>): AppResult<Unit> =
@@ -115,17 +92,8 @@ class ImageRepositoryImpl @Inject constructor(
             if (items.isEmpty()) return@withContext AppResult.Success(Unit)
             val uris = ArrayList<Uri>(items.size)
             for (item in items) {
-                val file = item.uri.toFileOrNull()
-                if (file == null || !file.exists()) {
-                    return@withContext AppResult.Failure(AppError.NotFound(item.name))
-                }
-                val uri = runCatching {
-                    FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.fileprovider",
-                        file
-                    )
-                }.getOrNull() ?: return@withContext AppResult.Failure(AppError.Io("FileProvider non configuré"))
+                val uri = fileActions.shareUri(item.uri)
+                    ?: return@withContext AppResult.Failure(AppError.NotFound("Partage impossible : ${item.name}"))
                 uris.add(uri)
             }
             val intent = if (uris.size == 1) {
@@ -150,10 +118,13 @@ class ImageRepositoryImpl @Inject constructor(
 
     // --- helpers ---
 
-    private fun runAction(
-        items: List<ImageItem>,
-        action: (ImageItem) -> AppError?
-    ): AppResult<Unit> {
+    private fun ensureDestDir(destUri: String): File? {
+        val dir = runCatching { Uri.parse(destUri).path?.let(::File) }.getOrNull() ?: return null
+        if (!dir.isDirectory && !dir.mkdirs() && !dir.isDirectory) return null
+        return dir
+    }
+
+    private fun runAction(items: List<ImageItem>, action: (ImageItem) -> AppError?): AppResult<Unit> {
         var firstError: AppError? = null
         for (item in items) {
             val err = action(item)
@@ -161,18 +132,6 @@ class ImageRepositoryImpl @Inject constructor(
         }
         return if (firstError == null) AppResult.Success(Unit) else AppResult.Failure(firstError)
     }
-
-    private fun copyFile(src: File, target: File): Boolean = runCatching {
-        src.inputStream().use { input ->
-            target.outputStream().use { output -> input.copyTo(output) }
-        }
-        true
-    }.getOrDefault(false)
-
-    private fun String.toFileOrNull(): File? = runCatching {
-        val u = Uri.parse(this)
-        u.path?.let(::File)
-    }.getOrNull()
 
     private fun matchesFilter(item: ImageItem, filter: FilterState): Boolean {
         if (!filter.includeAdult && item.isAdult) return false

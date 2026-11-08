@@ -13,7 +13,7 @@ data class ScannedFile(val uri: Uri, val normalizedPath: String)
  * - Exclut les répertoires système via [SystemExclusions].
  * - Ne renvoie que les fichiers dont l'extension est une image connue (filtre rapide ;
  *   l'affinage MIME est fait en aval par MimeTypeDetector).
- * - Annulable (`cancelled`) et coopératif (yield) pour la progression.
+ * - Annulable (cancelled) et coopératif (yield) pour la progression.
  */
 class StorageWalker(
     private val mimeDetector: MimeTypeDetector,

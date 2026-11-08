@@ -17,7 +17,12 @@
 - Pour agir, termine ta réponse par un ou plusieurs blocs d’action (voir ci-dessous). Tu reçois ensuite le résultat des lectures, des messages et des erreurs. Sans bloc, ta réponse reste du simple texte.
 
 ## Règles du projet
-- ne pas mettre une tâche à terminé tant que tout n'est pas terminé et validé par moi
+- lors du démarrage d'une nouvelle tâche, récupérez les modifications présentes dans la branche de la release en cours vers votre branche
+- ne pas mettre une tâche à en validation tant qu'elle n'est pas commitée dans votre branche
+- lorsque vous avez commité dans votre branche, mettre la tâche à "en validation"
+- Malo valide que tous les fichier y sont, les merge dans la branche de la release en cours, et passe la tâche à terminée
+- Quand un agent n'a plus de tâche en cours et qu'une de ses tâches peut être démarrée (Malo vérifie s'il n'y a pas de dépendance bloquante), la tâche doit être démarrée
+- les décisions purement liées à l'implémentation doivent être tranchée par Zoé
 - vos interprétations doivent être soumises à Adam qui validera qu'il n'y a pas de mauvaise interprétation
 
 ## Mon rôle

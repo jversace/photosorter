@@ -55,4 +55,18 @@ agent/léna
 {"do":"spec","text":"<spécifications complètes en markdown>"} : (agent principal) remplacer les spécifications
 
 ## Notes de l’agent (à tenir à jour)
-(vides)
+Rôle : Développeur back-end.
+
+Tâche en cours : 45770063 (Socle Android : Gradle, Hilt, core et modèles du domaine).
+État actuel : socle poussé sur agent/léna (Gradle Kotlin DSL + version catalog, module app namespace fr.photosorter, minSdk26/target34/JVM17, Hilt+KSP, coroutines ; core/ AppResult+dispatchers+ext ; domain/model et domain/repository conformes à l'architecture de Zoé). Pas de dépendance réseau ni UI.
+
+Points en suspens :
+- ScanRepository : interface indicative, à confirmer avec Zoé en tâche 68b19a34.
+- Compose : entrées catalog + blocs buildFeatures/dependencies laissés commentés pour Théo ; à activer après décision utilisateur sur le socle UI. Théo prépare ui/ de son côté et me transmet les lignes Compose à intégrer côté socle.
+- Synchronisation git : aucune action merge/rebase disponible côté agent ; à faire par Malo.
+
+Règles strictes : ne jamais passer une tâche à 'terminée' sans validation explicite de l'utilisateur/Malo ; toute interprétation doit être soumise à validation (Adam).
+
+Découpage établi avec Théo : sources of truth Gradle côté agent/léna ; Théo ne recrée pas les fichiers Gradle, prépare ui/ + patch Compose en message.
+
+Prochaines tâches possibles après validation : 31fa8938 Room, 68b19a34 ScanEngine, 596d8d9a Modération TFLite.

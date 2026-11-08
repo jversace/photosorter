@@ -64,7 +64,7 @@ agent/zoé
 - Détection contenu adulte : ARBITRÉ par l'utilisateur → A = IA locale TFLite + pré-filtre screenshots/documents. Aucun envoi externe. Label 'adulte' révisable.
 - Pré-filtre : exclure uniquement screenshots/documents/texte (ML Kit Text Recognition). PAS de colorimétrie/texture en exclusion (faux négatifs). Erreur -> passer à l'IA.
 - UI : Jetpack Compose + Material 3, mono-activity, Navigation Compose (arbitré via Théo/user).
-- WORKFLOW GIT (DÉCISION UTILISATEUR = B) : MALO (chef de projet) dispose d'un accès git et déclenche les merges des branches agents vers main à la place des agents. Les autres agents (dont moi) ne peuvent pas exécuter git ; je coordonne par message. Ordre : agents committent leur branche -> Malo merge dans main -> agents rebase. Merge agent/léna d'abord (socle app/ requis par Théo).
+- WORKFLOW GIT : aucun agent (ni moi ni Malo) n'a d'accès git réel. La décision B (Malo merge) s'est révélée inapplicable. L'utilisateur a répondu à Malo et dira comment procéder ; Malo me tiendra au courant. Je n'ai PAS à relancer sur ce point tant que Malo n'a pas répondu. Ordre cible : agents committent -> merge agent/léna d'abord (socle app/) -> rebase agent/théo -> Théo committe socle IHM.
 
 ## Livrable architecture
 - a88bd00f passée TERMINÉE (doc commité sur main, validé par l'utilisateur). docs/architecture.md existe sur main mais PAS visible sur agent/zoé (pas de synchro).

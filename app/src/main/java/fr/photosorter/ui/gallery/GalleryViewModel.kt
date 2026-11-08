@@ -3,6 +3,7 @@ package fr.photosorter.ui.gallery
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import fr.photosorter.core.result.AppResult
 import fr.photosorter.domain.model.FilterState
 import fr.photosorter.domain.model.ImageItem
 import fr.photosorter.domain.model.SortCriteria
@@ -21,7 +22,7 @@ import javax.inject.Inject
 
 /**
  * ViewModel de la galerie. Dépend de l'interface ImageRepository ; l'implémentation
- * concrète est fournie par Hilt (une fois fusionnée depuis agent/léna).
+ * concrète (ImageRepositoryImpl) est fournie par Hilt via RepositoryModule.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -34,31 +35,32 @@ class GalleryViewModel @Inject constructor(
     private val filter = MutableStateFlow(FilterState())
     private val selectedIds = MutableStateFlow<Set<Long>>(emptySet())
     private val imagesState = MutableStateFlow<List<ImageItem>>(emptyList())
+    private val errorMessage = MutableStateFlow<String?>(null)
 
-    /** Flux de la liste filtrée/triée provenant du repository. */
     private val repositoryImages = combine(sort, filter) { s, f -> s to f }
         .flatMapLatest { (s, f) ->
             imageRepository.observeImages(s, f)
-                .catch { emit(emptyList()) }
+                .catch { e -> errorMessage.value = e.message; emit(emptyList()) }
         }
 
-    val uiState: StateFlow<GalleryUiState> = kotlinx.coroutines.flow.combine(
-        repositoryImages, displayMode, sort, filter, selectedIds,
-    ) { images, mode, s, f, sel ->
-        imagesState.value = images
-        GalleryUiState(
-            images = images,
-            displayMode = mode,
-            sort = s,
-            filter = f,
-            selectedIds = sel.filterTo(LinkedHashSet()) { id -> images.any { it.id == id } },
-            isLoading = false,
+    val uiState: StateFlow<GalleryUiState> =
+        combine(repositoryImages, displayMode, sort, filter, selectedIds, errorMessage) {
+                images, mode, s, f, sel, err ->
+            imagesState.value = images
+            GalleryUiState(
+                images = images,
+                displayMode = mode,
+                sort = s,
+                filter = f,
+                selectedIds = sel.filterTo(LinkedHashSet()) { id -> images.any { it.id == id } },
+                isLoading = false,
+                errorMessage = err,
+            )
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = GalleryUiState(isLoading = true),
         )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = GalleryUiState(isLoading = true),
-    )
 
     fun setDisplayMode(mode: GalleryDisplayMode) { displayMode.value = mode }
 
@@ -75,8 +77,6 @@ class GalleryViewModel @Inject constructor(
         selectedIds.value = next
     }
 
-    fun selectOnly(id: Long) { selectedIds.value = setOf(id) }
-
     fun clearSelection() { selectedIds.value = emptySet() }
 
     fun toggleSelectAll() {
@@ -88,8 +88,10 @@ class GalleryViewModel @Inject constructor(
         val selected = imagesState.value.filter { it.id in selectedIds.value }
         if (selected.isEmpty()) return
         viewModelScope.launch {
-            imageRepository.delete(selected)
-            selectedIds.value = emptySet()
+            when (val result = imageRepository.delete(selected)) {
+                is AppResult.Success -> selectedIds.value = emptySet()
+                is AppResult.Failure -> errorMessage.value = result.error.message
+            }
         }
     }
 }

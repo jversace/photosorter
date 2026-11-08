@@ -64,20 +64,22 @@ agent/zoé
 - Détection contenu adulte : ARBITRÉ par l'utilisateur → A = IA locale TFLite + pré-filtre screenshots/documents. Aucun envoi externe. Label 'adulte' révisable.
 - Pré-filtre : exclure uniquement screenshots/documents/texte (ML Kit Text Recognition). PAS de colorimétrie/texture en exclusion (faux négatifs). Erreur -> passer à l'IA.
 - UI : Jetpack Compose + Material 3, mono-activity, Navigation Compose (arbitré via Théo/user).
+- WORKFLOW GIT : les merges/rebase côté dépôt sont déclenchés PAR L'UTILISATEUR (confirmé par Malo). Les agents ne peuvent pas exécuter git (commit/merge/rebase/pull/push) ; je coordonne par message uniquement. Ordre : agents committent leur branche -> utilisateur merge dans main -> agents rebase. Merge agent/léna d'abord (socle app/ requis par Théo).
 
 ## Livrable architecture
 - a88bd00f passée TERMINÉE (doc commité sur main, validé par l'utilisateur). docs/architecture.md existe sur main mais PAS visible sur agent/zoé (pas de synchro).
 
 ## Limites d'outil RÉCURRENTES (important)
-- Je NE PEUX PAS exécuter git (commit/merge/rebase/pull/push). Uniquement coordonner par message.
+- Je NE PEUX PAS exécuter git. Uniquement coordonner par message.
 - write_file sur docs/ échoue (dossier non créé).
-- Messages peuvent échouer (profondeur max d'échanges atteinte) — messages à Théo et Malo non délivrés lors de la coordination du merge.
+- Messages peuvent échouer (profondeur max d'échanges atteinte) — messages à Théo et Malo parfois non délivrés.
 
-## Directive utilisateur (via Malo)
-- Chaque agent committe sa branche -> merge dans main -> rebase. Ordre AVANT merge : agent/léna d'abord (socle app/ requis par Théo). Théo = option A (attendre merge lena->main puis rebase puis commit socle IHM).
+## État des agents
+- Léna : socle 45770063 commité/poussé sur agent/léna ; Room/ScanEngine en finalisation (StorageWalker posé, StorageRootProvider en cours, reste ScanEngine, ScannerModule, tests).
+- Théo : option A, en attente du merge agent/léna->main pour rebase + commit socle IHM (4060ffc0).
 
 ## Tâches
-- Léna : 7 tâches créées. Théo : 7 tâches créées (galerie, tri&filtres, plein écran, action bar, libellés+révision adulte, écran scan, thème/nav/accessibilité 4060ffc0 en cours).
+- Léna : 7 tâches créées. Théo : 7 tâches créées.
 
 ## Contraintes projet
 - Android 8.0+ (API 26), hors-ligne (pas de permission INTERNET), Material Design, FR.
@@ -85,4 +87,4 @@ agent/zoé
 - Soumettre les interprétations à Adam.
 
 ## Relations équipe
-- Malo joignable (mais messages parfois non délivrés). Adam, Léna, Théo : joignables par message (profondeur limitée).
+- Malo joignable (messages parfois non délivrés). Adam, Léna, Théo : joignables par message (profondeur limitée).

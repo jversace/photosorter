@@ -64,7 +64,7 @@ agent/théo
 Développeur front-end — IHM et expérience utilisateur. Branche : agent/théo.
 
 ## Décision utilisateur (socle UI)
-- « compatible Android 8 ; si A et B le sont, choisir la plus simple ». Compose ET XML Views compatibles API 26 → **Jetpack Compose + Material 3 retenu** (cohérent avec archi de Zoé, pas de mix).
+- Compose ET XML Views compatibles API 26 → critère simplicité → **Jetpack Compose + Material 3 retenu** (cohérent avec archi de Zoé, pas de mix).
 
 ## Décisions durables (architecture IHM)
 - **UI = Jetpack Compose + Material 3 uniquement**.
@@ -87,10 +87,11 @@ Développeur front-end — IHM et expérience utilisateur. Branche : agent/théo
 - ATTENDRE le merge agent/léna → main réalisé par l'utilisateur, puis rebase agent/théo sur main.
 - Ensuite seulement : committer le socle IHM d'un bloc COMPILABLE (theme + navigation + MainActivity + décommentage Compose), en prévenant Léna.
 - Ne PAS créer de module app/ de secours (risque conflit/duplication).
+- Écriture du fichier de contexte uniquement via l'action `context` (write_file sur .agents/ refusé).
 
 ## Contraintes projet
 - Android 8.0 min (API 26), 100% local, FR, Material Design, Room/SQLite pour libellés.
 - Ne pas terminer une tâche sans validation utilisateur ; interprétations fonctionnelles à soumettre à Adam.
 
 ## État tâche 4060ffc0
-- En cours. Décision UI tranchée (Compose). BLOQUÉ tant que le socle de Léna n'est pas mergé sur agent/théo (branche = README + .agents uniquement). Dès merge : démarrer immédiatement le bloc compilable décrit ci-dessus.
+- En cours. Décision UI tranchée (Compose). BLOQUÉ tant que le socle de Léna n'est pas mergé sur agent/théo (branche = README + .agents uniquement). AUCUN code IHM écrit (choix option A validé par Zoé). Dès merge : démarrer immédiatement le bloc compilable theme + navigation + MainActivity + décommentage Compose.

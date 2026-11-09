@@ -43,7 +43,7 @@ android {
         noCompress += "tflite"
     }
 
-    // UI (Compose activé par Théo)
+    // UI (Compose activé)
     buildFeatures { compose = true }
     composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
 }

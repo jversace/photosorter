@@ -83,33 +83,32 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - Zoé est l'architecte : à contacter pour les décisions techniques et l'architecture
 - Les merges des branches agents vers main sont réalisés MANUELLEMENT par l'utilisateur côté dépôt. Les agents ne peuvent pas exécuter git.
 - Zoé fusionne les MR des agents vers release/v1.0.0 dès réception.
-- Les agents n'ont PAS accès à git clone/merge --abort. Seule la plateforme peut réinitialiser leur environnement local.
+- L'utilisateur a fusionné manuellement agent/léna et agent/théo dans release/v1.0.0.
 - resolve_merge ne peut pas purger MERGE_HEAD (nécessite un conflict id actif assigné par le système).
-- L'utilisateur a fusionné manuellement agent/léna et agent/théo dans release/v1.0.0 le 09/11/2026.
 
 ## État actuel (09/11/2026)
 
-Tâches fusionnées dans release/v1.0.0 :
+Tâches terminées et fusionnées dans release/v1.0.0 :
 - 87bcaabc : Repositories + use cases ✓
 - 596d8d9a : Modération TFLite ✓
-- 4060ffc0 : Thème M3, navigation, accessibilité ✓
+- 4060ffc0 : Thème M3, navigation, accessibilité ✓ (Théo le finalise)
 - 5ee8aef7 : Écran galerie ✓
 
-Tâches en cours / à démarrer :
-- Léna : e3a1d1a6 (Actions fichiers) — débloquée, à démarrer
-- Théo : f1d46c78 (Écran scan), e93e44ff (Tri/filtres), 79906e61 (Plein écran) — débloquées, à démarrer
-- Théo : 10f2b02d (Action bar) — dépend de e3a1d1a6
-- Théo : a3be7352 (Libellés) — dépend de 596d8d9a + 5ee8aef7 (les deux fusionnées ✓)
-- Léna : 4d0303c8 (Tests back-end) — dépend de 596d8d9a + e3a1d1a6
+Tâches en cours :
+- Léna : e3a1d1a6 (Actions fichiers)
+- Théo : f1d46c78 (Écran scan)
+- Théo : e93e44ff (Tri/filtres)
+- Théo : 79906e61 (Plein écran)
+- Théo : 4060ffc0 (Thème M3 — finalisation)
+
+Tâches à démarrer :
+- Théo : a3be7352 (Libellés) — débloquée, à confirmer si démarrée
+
+Tâches bloquées en attente de e3a1d1a6 :
+- Théo : 10f2b02d (Action bar)
+- Léna : 4d0303c8 (Tests back-end)
 
 ## Dépendances des tâches
-
-### Débloquées maintenant
-- Léna : e3a1d1a6 (actions fichiers)
-- Théo : f1d46c78 (écran scan)
-- Théo : e93e44ff (tri/filtres)
-- Théo : 79906e61 (plein écran)
-- Théo : a3be7352 (libellés) — 596d8d9a + 5ee8aef7 fusionnées ✓
 
 ### Débloquées après e3a1d1a6
 - Théo : 10f2b02d (action bar)
@@ -117,7 +116,7 @@ Tâches en cours / à démarrer :
 
 ## Chemin critique
 87bcaabc ✓ → e3a1d1a6 → 10f2b02d
-596d8d9a ✓ → a3be7352 (Théo peut démarrer)
+596d8d9a ✓ → a3be7352
 5ee8aef7 ✓ → e93e44ff, 79906e61, 10f2b02d, a3be7352
 
 ## Assets modèle TFLite

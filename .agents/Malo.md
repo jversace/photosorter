@@ -85,73 +85,40 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - Zoé fusionne les MR des agents vers release/v1.0.0 dès réception.
 - Les agents n'ont PAS accès à git clone/merge --abort. Seule la plateforme peut réinitialiser leur environnement local.
 - resolve_merge ne peut pas purger MERGE_HEAD (nécessite un conflict id actif assigné par le système).
+- L'utilisateur a fusionné manuellement agent/léna et agent/théo dans release/v1.0.0 le 09/11/2026.
 
-## Blocage actuel (priorité maximale — en attente utilisateur)
+## État actuel (09/11/2026)
 
-État MERGE_HEAD persistant dans l'environnement LOCAL de la plateforme pour **agent/léna** ET **agent/théo**.
-- GitHub est propre (confirmé par l'utilisateur)
-- Les fichiers sont corrects
-- Toute tentative de merge_request échoue avec 'un conflit de fusion est déjà en cours de résolution'
-- Les agents ne peuvent pas faire git clone/merge --abort
-- resolve_merge inutilisable sans conflict id actif
-- **Action requise : réinitialisation PROFONDE de l'environnement git local de Théo sur la plateforme (suppression effective du MERGE_HEAD / reset état de fusion)**
-- Pour Léna : MR #14 soumise, contenu vérifié et valide, mais système dit 'plus en attente' — statut flou
+Tâches fusionnées dans release/v1.0.0 :
+- 87bcaabc : Repositories + use cases ✓
+- 596d8d9a : Modération TFLite ✓
+- 4060ffc0 : Thème M3, navigation, accessibilité ✓
+- 5ee8aef7 : Écran galerie ✓
 
-**MR en attente :**
-- Léna : MR #14 (87bcaabc Repositories) — contenu valide, statut système flou
-- Léna : 596d8d9a (Modération adulte) — pas encore soumise
-- Théo : 4060ffc0 (Thème M3) — bloqué MERGE_HEAD
-- Théo : 5ee8aef7 (Écran galerie) — bloqué MERGE_HEAD
-
-## Questions en attente utilisateur (boîte Décisions)
-1. Réinitialisation environnement Léna et Théo (blocage MERGE_HEAD)
-2. MR fantôme Léna — titre/id (répondu : MR #14, 87bcaabc)
-3. Réinitialisation environnement Théo (spécifique)
-4. MR #14 — encore ouverte, fusionnée ou disparue ?
+Tâches en cours / à démarrer :
+- Léna : e3a1d1a6 (Actions fichiers) — débloquée, à démarrer
+- Théo : f1d46c78 (Écran scan), e93e44ff (Tri/filtres), 79906e61 (Plein écran) — débloquées, à démarrer
+- Théo : 10f2b02d (Action bar) — dépend de e3a1d1a6
+- Théo : a3be7352 (Libellés) — dépend de 596d8d9a + 5ee8aef7 (les deux fusionnées ✓)
+- Léna : 4d0303c8 (Tests back-end) — dépend de 596d8d9a + e3a1d1a6
 
 ## Dépendances des tâches
 
-### Débloquées dès 87bcaabc fusionnée
+### Débloquées maintenant
 - Léna : e3a1d1a6 (actions fichiers)
 - Théo : f1d46c78 (écran scan)
-
-### Débloquées dès 5ee8aef7 fusionnée
 - Théo : e93e44ff (tri/filtres)
 - Théo : 79906e61 (plein écran)
+- Théo : a3be7352 (libellés) — 596d8d9a + 5ee8aef7 fusionnées ✓
 
-### Débloquées après e3a1d1a6 + 5ee8aef7
+### Débloquées après e3a1d1a6
 - Théo : 10f2b02d (action bar)
-
-### Débloquées après 596d8d9a + 5ee8aef7
-- Théo : a3be7352 (libellés)
-
-### Débloquées après 596d8d9a + e3a1d1a6
 - Léna : 4d0303c8 (tests back-end)
 
-## Tâches
-- 6jspo8e : Cahier des charges → terminée ✓
-- 45770063 : Socle Android → terminée ✓
-- 31fa8938 : Persistance Room → terminée ✓
-- 68b19a34 : ScanEngine → terminée ✓
-- 4060ffc0 : Thème M3, navigation, accessibilité → terminée ✓ (MR bloquée env. plateforme agent/théo)
-- 87bcaabc : Repositories + use cases → terminée ✓ (MR #14 soumise, contenu valide, statut système flou)
-- 596d8d9a : Modération TFLite → terminée ✓ (pas encore soumise)
-- 5ee8aef7 : Écran galerie → terminée ✓ (MR bloquée env. plateforme agent/théo)
-- e3a1d1a6 : Actions fichiers → à faire (Léna, débloquée après 87bcaabc fusionnée)
-- f1d46c78 : Écran scan → à faire (Théo, débloquée après 87bcaabc fusionnée)
-- e93e44ff : Tri et filtres → à faire (Théo, débloquée après 5ee8aef7 fusionnée)
-- 79906e61 : Plein écran → à faire (Théo, débloquée après 5ee8aef7 fusionnée)
-- 10f2b02d : Action bar → à faire (dépend de e3a1d1a6 + 5ee8aef7)
-- a3be7352 : Libellés → à faire (dépend de 596d8d9a + 5ee8aef7)
-- 4d0303c8 : Tests back-end → à faire (dépend de 596d8d9a + e3a1d1a6)
-
 ## Chemin critique
-87bcaabc → e3a1d1a6 → 10f2b02d
-         ↓
-    596d8d9a → a3be7352
-         ↓
-    4d0303c8
-5ee8aef7 → e93e44ff, 79906e61, 10f2b02d, a3be7352
+87bcaabc ✓ → e3a1d1a6 → 10f2b02d
+596d8d9a ✓ → a3be7352 (Théo peut démarrer)
+5ee8aef7 ✓ → e93e44ff, 79906e61, 10f2b02d, a3be7352
 
 ## Assets modèle TFLite
-model.tflite + labels.txt présents sur main/app/assets — à propager vers release/v1.0.0 et agent/léna après déblocage.
+model.tflite + labels.txt présents sur main/app/assets — vérifier qu'ils sont dans release/v1.0.0.

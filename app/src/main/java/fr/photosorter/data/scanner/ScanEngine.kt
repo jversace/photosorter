@@ -1,10 +1,14 @@
 package fr.photosorter.data.scanner
 
 import android.content.Context
+import android.net.Uri
 import android.os.SystemClock
 import fr.photosorter.core.dispatchers.DispatchersProvider
 import fr.photosorter.data.db.dao.ImageDao
 import fr.photosorter.data.db.entity.ImageEntity
+import fr.photosorter.data.moderation.AdultClassifier
+import fr.photosorter.data.moderation.PreFilter
+import fr.photosorter.data.moderation.PreFilterDecision
 import fr.photosorter.domain.model.ScanProgress
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,8 +23,11 @@ import javax.inject.Singleton
  * 1) Enumère les racines de stockage (interne + carte SD).
  * 2) Parcourt récursivement via [StorageWalker] (exclusions système).
  * 3) Lit les métadonnées (taille, date, format, dimensions, MIME).
- * 4) Écrit dans Room par lots (batch).
- * 5) Émet [ScanProgress] en temps réel sur un Flow.
+ * 4) Modération adulte : pré-filtre screenshots/documents puis classifieur TFLite.
+ * 5) Écrit dans Room par lots (batch).
+ * 6) Émet [ScanProgress] en temps réel sur un Flow.
+ *
+ * 100% local : aucun envoi de données à l'extérieur.
  */
 @Singleton
 class ScanEngine @Inject constructor(
@@ -29,7 +36,9 @@ class ScanEngine @Inject constructor(
     private val imageDao: ImageDao,
     private val mimeDetector: MimeTypeDetector,
     private val storageRootProvider: StorageRootProvider,
-    private val metadataReaderFactory: (Context) -> MediaMetadataReader
+    private val metadataReaderFactory: (Context) -> MediaMetadataReader,
+    private val preFilter: PreFilter,
+    private val adultClassifier: AdultClassifier
 ) {
 
     private val _progress = MutableStateFlow<ScanProgress>(ScanProgress.Idle)
@@ -55,6 +64,9 @@ class ScanEngine @Inject constructor(
         val buffer = ArrayList<ImageEntity>(BATCH_SIZE)
         var written = 0
 
+        // Initialise le classifieur (dégrade proprement si modèle absent).
+        adultClassifier.ensureInitialized()
+
         try {
             val roots = storageRootProvider.roots()
             // Passe 1 : collecter les fichiers (total connu pour la progression).
@@ -63,11 +75,14 @@ class ScanEngine @Inject constructor(
             walker.walk(roots, cancelled) { files.add(it) }
             val total = files.size
 
-            // Passe 2 : métadonnées + écriture par lots.
+            // Passe 2 : métadonnées + modération + écriture par lots.
             for ((index, file) in files.withIndex()) {
                 if (cancelled.get()) break
                 val meta = reader.read(file.uri) ?: continue
                 val format = mimeDetector.detectFormat(meta.name, meta.mimeType) ?: continue
+
+                val isAdult = detectAdult(file.uri, meta.name)
+
                 buffer.add(
                     ImageEntity(
                         uri = file.uri.toString(),
@@ -78,7 +93,7 @@ class ScanEngine @Inject constructor(
                         dateModified = meta.dateModified,
                         width = meta.width,
                         height = meta.height,
-                        isAdult = false,
+                        isAdult = isAdult,
                         thumbnailHint = null
                     )
                 )
@@ -108,11 +123,25 @@ class ScanEngine @Inject constructor(
         }
     }
 
+    /**
+     * Détermine si une image est adulte.
+     * 1) Pré-filtre : screenshots/documents → non adulte (révisable par l'utilisateur).
+     * 2) Sinon classifieur TFLite ; si indisponible, non adulte.
+     */
+    private suspend fun detectAdult(uri: Uri, name: String): Boolean {
+        return when (preFilter.decide(uri.path, name)) {
+            PreFilterDecision.SKIP -> false
+            PreFilterDecision.ANALYZE -> when (val r = adultClassifier.classify(uri)) {
+                is AdultClassifier.Result.Scored -> r.isAdult
+                AdultClassifier.Result.Unavailable -> false
+            }
+        }
+    }
+
     private suspend fun flush(buffer: MutableList<ImageEntity>): Int {
         if (buffer.isEmpty()) return 0
         val batch = ArrayList(buffer)
         buffer.clear()
-        // isAdult reste false ici : renseigné plus tard par la modération (tâche 596d8d9a).
         val ids = imageDao.insertAll(batch)
         return ids.count { it > 0 }
     }

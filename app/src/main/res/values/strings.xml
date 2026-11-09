@@ -1,4 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">PhotoSorter</string>
+
+    <!-- Titres d'écrans -->
+    <string name="screen_gallery_title">Galerie</string>
+    <string name="screen_detail_title">Photo</string>
+    <string name="screen_scan_title">Scan</string>
+    <string name="screen_labels_title">Libellés</string>
+
+    <!-- Placeholders (en attendant les vraies implémentations) -->
+    <string name="screen_gallery_placeholder">La galerie sera affichée ici.</string>
+    <string name="screen_scan_placeholder">Le scan des fichiers sera affiché ici.</string>
+    <string name="screen_labels_placeholder">La gestion des libellés sera affichée ici.</string>
+    <string name="screen_detail_image_id">Image n°%1$d</string>
+
+    <!-- Actions -->
+    <string name="action_back">Retour</string>
+    <string name="action_open_scan">Ouvrir le scan</string>
+    <string name="action_open_labels">Ouvrir les libellés</string>
+    <string name="action_open_detail">Ouvrir une photo (exemple)</string>
+
+    <!-- Galerie -->
+    <string name="gallery_title">Galerie</string>
+    <string name="gallery_empty">Aucune image à afficher. Lancez un scan pour trouver vos photos.</string>
+    <string name="gallery_selected_count">%1$d sélectionnée(s)</string>
+    <string name="action_toggle_display_mode">Basculer liste / grille</string>
+    <string name="action_sort">Trier</string>
+    <string name="action_select_all">Tout sélectionner</string>
+    <string name="action_cancel_selection">Annuler la sélection</string>
+    <string name="badge_adult">Contenu adulte</string>
+
+    <!-- Critères de tri -->
+    <string name="sort_name">Nom</string>
+    <string name="sort_date">Date</string>
+    <string name="sort_size">Taille</string>
+    <string name="sort_format">Format</string>
+    <string name="sort_label">Libellé</string>
 </resources>

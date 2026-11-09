@@ -37,7 +37,13 @@ android {
         jvmTarget = "17"
     }
 
-    // UI (Compose activé par Théo)
+    // Le modèle TFLite doit rester non compressé pour être mappé en mémoire
+    // via AssetManager.openFd() (sinon IllegalArgumentException).
+    androidResources {
+        noCompress += "tflite"
+    }
+
+    // UI (Compose activé)
     buildFeatures { compose = true }
     composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
 }
@@ -54,13 +60,14 @@ dependencies {
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.android)
 
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
 
-    // Tests
-    testImplementation(libs.junit)
+    // Modération contenu adulte (100% local)
+    implementation(libs.tensorflow.lite)
 
     // UI (Compose + Material 3)
     implementation(platform(libs.compose.bom))
@@ -73,4 +80,8 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+
+    // Tests
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

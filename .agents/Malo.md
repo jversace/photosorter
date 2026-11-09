@@ -83,13 +83,17 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - Zoé est l'architecte : à contacter pour les décisions techniques et l'architecture
 - Les merges des branches agents vers main sont réalisés MANUELLEMENT par l'utilisateur côté dépôt. Les agents ne peuvent pas exécuter git.
 - Zoé fusionne les MR des agents vers release/v1.0.0 dès réception.
+- Les agents n'ont PAS accès à git clone/merge --abort. Seule la plateforme peut réinitialiser leur environnement local.
 
 ## Blocage actuel (priorité maximale — en attente utilisateur)
 
-État MERGE_HEAD persistant sur **agent/léna** ET **agent/théo** côté plateforme git.
-- Les fichiers sont propres et corrects (Gradle fusionné TFLite+Compose, vérifié par Zoé et Léna)
+État MERGE_HEAD persistant dans l'environnement LOCAL de la plateforme pour **agent/léna** ET **agent/théo**.
+- GitHub est propre (confirmé par l'utilisateur)
+- Les fichiers sont corrects
 - Toute tentative de merge_request échoue avec 'un conflit de fusion est déjà en cours de résolution'
-- Question posée à l'utilisateur (dans Décisions) : nettoyer MERGE_HEAD sur les 2 branches + propager app/assets (model.tflite + labels.txt) depuis main vers release/v1.0.0 et agent/léna
+- Les agents ne peuvent pas faire git clone/merge --abort
+- **Action requise : réinitialiser l'environnement git local de Léna et Théo sur la plateforme (équivalent clone propre)**
+- Question posée à l'utilisateur (dans Décisions)
 
 **MR bloquées :**
 - Léna : 87bcaabc (Repositories) + 596d8d9a (Modération adulte)
@@ -97,7 +101,7 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 
 ## Dépendances des tâches
 
-### Débloquées dès nettoyage MERGE_HEAD + MR fusionnées
+### Débloquées dès nettoyage environnement + MR fusionnées
 - Léna : e3a1d1a6 (actions fichiers) — dépend de 87bcaabc
 - Théo : f1d46c78 (écran scan) — dépend de 87bcaabc
 - Théo : e93e44ff (tri/filtres) — dépend de 5ee8aef7
@@ -117,10 +121,10 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - 45770063 : Socle Android → terminée ✓
 - 31fa8938 : Persistance Room → terminée ✓
 - 68b19a34 : ScanEngine → terminée ✓
-- 4060ffc0 : Thème M3, navigation, accessibilité → terminée ✓ (MR bloquée MERGE_HEAD agent/théo)
-- 87bcaabc : Repositories + use cases → terminée ✓ (MR bloquée MERGE_HEAD agent/léna)
-- 596d8d9a : Modération TFLite → terminée ✓ (MR bloquée MERGE_HEAD agent/léna)
-- 5ee8aef7 : Écran galerie → terminée ✓ (MR bloquée MERGE_HEAD agent/théo)
+- 4060ffc0 : Thème M3, navigation, accessibilité → terminée ✓ (MR bloquée env. plateforme agent/théo)
+- 87bcaabc : Repositories + use cases → terminée ✓ (MR bloquée env. plateforme agent/léna)
+- 596d8d9a : Modération TFLite → terminée ✓ (MR bloquée env. plateforme agent/léna)
+- 5ee8aef7 : Écran galerie → terminée ✓ (MR bloquée env. plateforme agent/théo)
 - e3a1d1a6 : Actions fichiers → à faire (Léna, débloquée après 87bcaabc fusionnée)
 - f1d46c78 : Écran scan → à faire (Théo, débloquée après 87bcaabc fusionnée)
 - e93e44ff : Tri et filtres → à faire (Théo, débloquée après 5ee8aef7 fusionnée)
@@ -138,4 +142,4 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 5ee8aef7 → e93e44ff, 79906e61, 10f2b02d, a3be7352
 
 ## Assets modèle TFLite
-model.tflite + labels.txt présents sur main/app/assets — à propager vers release/v1.0.0 et agent/léna (demandé à l'utilisateur).
+model.tflite + labels.txt présents sur main/app/assets — à propager vers release/v1.0.0 et agent/léna après déblocage.

@@ -6,10 +6,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import fr.photosorter.ui.screens.GalleryPlaceholderScreen
+import fr.photosorter.ui.gallery.GalleryScreen
+import fr.photosorter.ui.screens.ImageDetailPlaceholderScreen
 import fr.photosorter.ui.screens.LabelPlaceholderScreen
 import fr.photosorter.ui.screens.ScanPlaceholderScreen
-import fr.photosorter.ui.screens.ImageDetailPlaceholderScreen
 
 @Composable
 fun PhotoSorterNavHost() {
@@ -20,7 +20,7 @@ fun PhotoSorterNavHost() {
         startDestination = Destinations.GALLERY,
     ) {
         composable(Destinations.GALLERY) {
-            GalleryPlaceholderScreen(
+            GalleryScreen(
                 onOpenDetail = { imageId ->
                     navController.navigate(Destinations.detail(imageId))
                 },

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Thème provisoire : sera remplacé/étendu par le thème Compose (Théo) -->
+    <!-- Thème de fenêtre Android. L'apparence réelle est gérée par PhotoSorterTheme (Compose M3). -->
     <style name="Theme.PhotoSorter" parent="android:Theme.Material.Light.NoActionBar" />
 </resources>

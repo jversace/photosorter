@@ -84,6 +84,7 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - Les merges des branches agents vers main sont réalisés MANUELLEMENT par l'utilisateur côté dépôt. Les agents ne peuvent pas exécuter git.
 - Zoé fusionne les MR des agents vers release/v1.0.0 dès réception.
 - Les agents n'ont PAS accès à git clone/merge --abort. Seule la plateforme peut réinitialiser leur environnement local.
+- resolve_merge ne peut pas purger MERGE_HEAD (nécessite un conflict id actif assigné par le système).
 
 ## Blocage actuel (priorité maximale — en attente utilisateur)
 
@@ -92,20 +93,31 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - Les fichiers sont corrects
 - Toute tentative de merge_request échoue avec 'un conflit de fusion est déjà en cours de résolution'
 - Les agents ne peuvent pas faire git clone/merge --abort
-- **Action requise : réinitialiser l'environnement git local de Léna et Théo sur la plateforme (équivalent clone propre)**
-- Question posée à l'utilisateur (dans Décisions)
+- resolve_merge inutilisable sans conflict id actif
+- **Action requise : réinitialisation PROFONDE de l'environnement git local de Théo sur la plateforme (suppression effective du MERGE_HEAD / reset état de fusion)**
+- Pour Léna : MR #14 soumise, contenu vérifié et valide, mais système dit 'plus en attente' — statut flou
 
-**MR bloquées :**
-- Léna : 87bcaabc (Repositories) + 596d8d9a (Modération adulte)
-- Théo : 4060ffc0 (Thème M3) + 5ee8aef7 (Écran galerie)
+**MR en attente :**
+- Léna : MR #14 (87bcaabc Repositories) — contenu valide, statut système flou
+- Léna : 596d8d9a (Modération adulte) — pas encore soumise
+- Théo : 4060ffc0 (Thème M3) — bloqué MERGE_HEAD
+- Théo : 5ee8aef7 (Écran galerie) — bloqué MERGE_HEAD
+
+## Questions en attente utilisateur (boîte Décisions)
+1. Réinitialisation environnement Léna et Théo (blocage MERGE_HEAD)
+2. MR fantôme Léna — titre/id (répondu : MR #14, 87bcaabc)
+3. Réinitialisation environnement Théo (spécifique)
+4. MR #14 — encore ouverte, fusionnée ou disparue ?
 
 ## Dépendances des tâches
 
-### Débloquées dès nettoyage environnement + MR fusionnées
-- Léna : e3a1d1a6 (actions fichiers) — dépend de 87bcaabc
-- Théo : f1d46c78 (écran scan) — dépend de 87bcaabc
-- Théo : e93e44ff (tri/filtres) — dépend de 5ee8aef7
-- Théo : 79906e61 (plein écran) — dépend de 5ee8aef7
+### Débloquées dès 87bcaabc fusionnée
+- Léna : e3a1d1a6 (actions fichiers)
+- Théo : f1d46c78 (écran scan)
+
+### Débloquées dès 5ee8aef7 fusionnée
+- Théo : e93e44ff (tri/filtres)
+- Théo : 79906e61 (plein écran)
 
 ### Débloquées après e3a1d1a6 + 5ee8aef7
 - Théo : 10f2b02d (action bar)
@@ -122,8 +134,8 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - 31fa8938 : Persistance Room → terminée ✓
 - 68b19a34 : ScanEngine → terminée ✓
 - 4060ffc0 : Thème M3, navigation, accessibilité → terminée ✓ (MR bloquée env. plateforme agent/théo)
-- 87bcaabc : Repositories + use cases → terminée ✓ (MR bloquée env. plateforme agent/léna)
-- 596d8d9a : Modération TFLite → terminée ✓ (MR bloquée env. plateforme agent/léna)
+- 87bcaabc : Repositories + use cases → terminée ✓ (MR #14 soumise, contenu valide, statut système flou)
+- 596d8d9a : Modération TFLite → terminée ✓ (pas encore soumise)
 - 5ee8aef7 : Écran galerie → terminée ✓ (MR bloquée env. plateforme agent/théo)
 - e3a1d1a6 : Actions fichiers → à faire (Léna, débloquée après 87bcaabc fusionnée)
 - f1d46c78 : Écran scan → à faire (Théo, débloquée après 87bcaabc fusionnée)

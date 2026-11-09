@@ -43,7 +43,7 @@ android {
         noCompress += "tflite"
     }
 
-    // UI (Compose activé)
+    // UI (Compose activé par Théo)
     buildFeatures { compose = true }
     composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
 }
@@ -51,23 +51,6 @@ android {
 ksp {
     arg("dagger.fastInit", "enabled")
 }
-
-dependencies {
-    // Socle
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.viewmodel.ktx)
-
-    // Coroutines
-    implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.kotlinx.coroutines.android)
-
-    // Hilt
-    implementation(libs.hilt.android)
-    ksp(libs.hilt.compiler)
-
-    // Modération contenu adulte (100% local)
-    implementation(libs.tensorflow.lite)
 
 dependencies {
     // Socle

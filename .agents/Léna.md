@@ -68,29 +68,22 @@ agent/léna
 {"do":"spec","text":"<spécifications complètes en markdown>"} : (agent principal) remplacer les spécifications
 
 ## Notes de l’agent (à tenir à jour)
-Rôle : Développeur back-end. Branche agent/léna.
+Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite + labels.txt sur main (app/assets), PAS sur agent/léna.
 
 Tâches :
 - 45770063 Socle Android : terminée.
 - 31fa8938 Persistance Room : terminée.
 - 68b19a34 ScanEngine : terminée.
-- 87bcaabc Repositories : terminée, acceptée par Malo. MR vers release/v1.0.0 À SOUMETTRE (bloquée par conflit).
-- 596d8d9a Modération adulte : terminée, passée 'à vérifier', acceptée par Malo. MR À SOUMETTRE (bloquée par conflit).
-- e3a1d1a6 Actions fichiers : à faire (dépend 87bcaabc, débloquée après fusion MR).
-- 4d0303c8 Tests unitaires : à faire (dépend 87bcaabc, 596d8d9a, e3a1d1a6).
+- 87bcaabc Repositories : terminée, acceptée. MR À SOUMETTRE (bloquée par état de fusion persistant sur agent/léna).
+- 596d8d9a Modération adulte : terminée, acceptée. MR À SOUMETTRE (idem).
+- e3a1d1a6 Actions fichiers : à faire (dépend 87bcaabc).
+- 4d0303c8 Tests unitaires : à faire.
 
-Livrables 596d8d9a (sur agent/léna) : data/moderation/PreFilter.kt ; data/moderation/AdultClassifier.kt (TFLite, labels drawings/neutral/porn/sexy, isAdult=(porn+sexy)>=0.5, dégradation propre, init lazy) ; data/scanner/ScanEngine.kt (intégration) ; libs.versions.toml (tflite=2.14.0 + lib) ; app/build.gradle.kts (impl + noCompress += "tflite").
+ÉTAT CONFIRMÉ (dernier pull + soumissions) :
+- Le pull a répondu 'ta branche est déjà à jour avec release/v1.0.0' (donc les fichiers Gradle fusionnés SONT bien sur agent/léna, contenu vérifié : TFLite tflite=2.14.0 + noCompress += "tflite" ET Compose buildFeatures.compose=true + composeOptions + libs Compose/Coil/navigation = les DEUX côtés présents, propre).
+- MAIS les merge_request échouent avec 'Un conflit de fusion est déjà en cours de résolution sur ta branche' => MERGE_HEAD persistant côté plateforme sur agent/léna (même symptôme que Théo). Le pull 'à jour' n'a pas nettoyé l'état.
+- app/assets ABSENT de agent/léna (model.tflite + labels.txt seulement sur main) => détection adulte dégradée (pas de crash) tant que non propagé.
 
-BLOQUAGE CONFIRMÉ (dernier pull = conflit sur app/build.gradle.kts + gradle/libs.versions.toml) :
-- Origine : activation Compose (Théo, côté release) vs ajouts TFLite (moi).
-- Règle : résolution confiée à Adam, MAIS Adam inactif/non joignable (get_progress=aucune tâche).
-- Malo a annoncé qu'il écrira lui-même les fichiers fusionnés sur agent/léna, puis me demandera de soumettre. MAIS dernier pull APRÈS cette annonce = toujours en conflit => fichiers fusionnés pas (encore) poussés sur ma branche.
-- Messages à Malo non délivrés (profondeur d'échange max).
+DÉBLOCAGE NÉCESSAIRE côté dépôt/utilisateur : nettoyer l'état de fusion (git merge --abort ou suppression .git/MERGE_HEAD) sur agent/léna, puis je pull et soumets les 2 MR. OU autoriser resolve_merge côté moi.
 
-CONTENU CIBLE de la fusion (à conserver des DEUX côtés, ajouts indépendants) :
-- TFLite : [versions] tflite=2.14.0 ; [libraries] tensorflow-lite = { module="org.tensorflow:tensorflow-lite", version.ref="tflite" } ; dependencies implementation(libs.tensorflow.lite) ; android { androidResources { noCompress += "tflite" } }.
-- Compose : buildFeatures.compose=true, composeOptions, libs Compose/Coil décommentées + impl.
-
-NE PAS soumettre les 2 MR tant que le pull renvoie un conflit. Dès qu'un pull passe SANS conflit (Malo a poussé la fusion) : vérifier présence app/assets/model.tflite + labels.txt sur la branche (actuellement sur main seulement), puis soumettre MR 87bcaabc puis 596d8d9a.
-
-Synchronisation git : agents poussent dans leur branche ; Zoé fusionne dans release/v1.0.0 une fois tout poussé ; les agents re-pull ensuite.
+NE PAS re-tenter des MR tant que l'état de fusion persiste (elles échouent). Contenu des fichiers Gradle déjà bon => dès que MERGE_HEAD est nettoyé, soumettre immédiatement MR 87bcaabc puis 596d8d9a.

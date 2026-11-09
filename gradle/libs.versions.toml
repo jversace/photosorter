@@ -8,8 +8,6 @@ coreKtx = "1.13.1"
 lifecycle = "2.8.4"
 activityCompose = "1.9.1"
 tflite = "2.14.0"
-
-# --- UI ---
 composeBom = "2024.06.00"
 coil = "2.7.0"
 navigationCompose = "2.7.7"
@@ -29,10 +27,10 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
 hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hilt" }
 
+junit = { module = "junit:junit", version = "4.13.2" }
+
 # Modération contenu adulte (100% local)
 tensorflow-lite = { module = "org.tensorflow:tensorflow-lite", version.ref = "tflite" }
-
-junit = { module = "junit:junit", version = "4.13.2" }
 
 # Compose (versions via BOM)
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }

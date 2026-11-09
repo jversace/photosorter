@@ -43,7 +43,7 @@ android {
         noCompress += "tflite"
     }
 
-    // UI (Compose activé par Théo)
+    // UI (Compose activé)
     buildFeatures { compose = true }
     composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
 }
@@ -69,10 +69,6 @@ dependencies {
     // Modération contenu adulte (100% local)
     implementation(libs.tensorflow.lite)
 
-    // Tests
-    testImplementation(libs.junit)
-    testImplementation(libs.kotlinx.coroutines.test)
-
     // UI (Compose + Material 3)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.material3)
@@ -84,4 +80,8 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+
+    // Tests
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

@@ -22,6 +22,9 @@ interface ImageDao {
     @Query("DELETE FROM images")
     suspend fun clear()
 
+    @Query("DELETE FROM images WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
     @Query("SELECT * FROM images WHERE id = :id")
     suspend fun getById(id: Long): ImageEntity?
 

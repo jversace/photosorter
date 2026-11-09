@@ -82,12 +82,13 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - Détection contenu adulte : pré-filtre screenshots/documents (sans IA) + modèle TFLite embarqué local. Label 'adulte' révisable par l'utilisateur. Décision validée par l'utilisateur.
 - Zoé est l'architecte : à contacter pour les décisions techniques et l'architecture
 - Les merges des branches agents vers main sont réalisés MANUELLEMENT par l'utilisateur côté dépôt. Les agents ne peuvent pas exécuter git.
+- Zoé fusionne les MR des agents vers release/v1.0.0 dès réception.
 
 ## Dépendances des tâches (analyse Zoé)
 
 ### Peuvent démarrer immédiatement
-- Léna : 596d8d9a (Modération TFLite), e3a1d1a6 (actions fichiers)
-- Théo : 5ee8aef7 (galerie), f1d46c78 (écran scan)
+- Léna : e3a1d1a6 (actions fichiers) — BLOQUÉE par conflit git sur agent/léna
+- Théo : e93e44ff (tri/filtres), 79906e61 (plein écran), f1d46c78 (écran scan) — BLOQUÉES par conflit git sur agent/théo
 
 ### Débloquées après 5ee8aef7
 - Théo : e93e44ff (tri/filtres), 79906e61 (plein écran), 10f2b02d (action bar), a3be7352 (libellés)
@@ -98,15 +99,26 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 
 ## Tâches
 - 6jspo8e : Cahier des charges → terminée ✓
-- 4060ffc0 : Thème M3, navigation, accessibilité → terminée ✓
+- 4060ffc0 : Thème M3, navigation, accessibilité → terminée ✓ (MR bloquée par conflit agent/théo)
 - 31fa8938 : Persistance Room → terminée ✓
 - 68b19a34 : ScanEngine → terminée ✓
 - 45770063 : Socle Android → terminée ✓
-- 87bcaabc : Repositories + use cases → terminée ✓ (MR #14 fusionnée)
-- 596d8d9a : Modération TFLite → lancée (Léna)
-- e3a1d1a6 : Actions fichiers → lancée (Léna)
-- 5ee8aef7 : Écran galerie → lancée (Théo)
-- f1d46c78 : Écran scan → lancée (Théo)
+- 87bcaabc : Repositories + use cases → terminée ✓ (MR bloquée par conflit agent/léna)
+- 596d8d9a : Modération TFLite → terminée ✓ (MR bloquée par conflit agent/léna)
+- 5ee8aef7 : Écran galerie → terminée ✓ (MR bloquée par conflit agent/théo)
+- e3a1d1a6 : Actions fichiers → à faire (Léna, débloquée mais MR en attente)
+- f1d46c78 : Écran scan → à faire (Théo, débloquée mais MR en attente)
+- e93e44ff : Tri et filtres → à faire (Théo, débloquée dès 5ee8aef7 fusionnée)
+- 79906e61 : Plein écran → à faire (Théo, débloquée dès 5ee8aef7 fusionnée)
+- 10f2b02d : Action bar → à faire (dépend de e3a1d1a6 + 5ee8aef7)
+- a3be7352 : Libellés → à faire (dépend de 596d8d9a + 5ee8aef7)
+- 4d0303c8 : Tests back-end → à faire (dépend de 596d8d9a + e3a1d1a6)
+
+## Blocage actuel (priorité maximale)
+Deux conflits git non résolus bloquent toutes les MR et donc toute la progression :
+1. agent/léna : app/build.gradle.kts + gradle/libs.versions.toml (TFLite vs Compose — fusion simple, deux ajouts indépendants)
+2. agent/théo : AndroidManifest.xml (FileProvider + Activity Théo vs base minimale)
+Solution documentée pour l'utilisateur : résoudre manuellement côté dépôt (option A soumise via ask_user).
 
 ## Chemin critique
 45770063 → 31fa8938 → 68b19a34 → 87bcaabc → e3a1d1a6 → 10f2b02d
@@ -115,3 +127,6 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
                                               ↓
                                          4d0303c8
 5ee8aef7 → e93e44ff, 79906e61, 10f2b02d, a3be7352
+
+## Assets modèle TFLite
+model.tflite + labels.txt sont sur main/assets — à propager vers release/v1.0.0 et agent/léna pour que l'APK embarque le modèle.

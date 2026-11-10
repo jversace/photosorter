@@ -72,7 +72,7 @@ agent/léna
 {"do":"spec","text":"<spécifications complètes en markdown>"} : (agent principal) remplacer les spécifications
 
 ## Notes de l’agent (à tenir à jour)
-Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite + labels.txt présents dans app/assets.
+Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (model.tflite ~10,3 Mo) + labels.txt présents dans app/assets. build.gradle.kts OK.
 
 Tâches :
 - 45770063 Socle Android : terminée.
@@ -80,10 +80,9 @@ Tâches :
 - 68b19a34 ScanEngine : terminée.
 - 87bcaabc Repositories : clôturée (fusionnée).
 - 596d8d9a Modération adulte : clôturée (fusionnée).
-- e3a1d1a6 Actions fichiers : RÉAFFECTÉE À ZOÉ (option C). Je ne la porte plus.
-- 3983405f correction bug 79d94669 : RÉAFFECTÉE À ZOÉ. Je ne touche plus FileActions.kt.
-- 4d0303c8 Tests unitaires : à faire (dépend de e3a1d1a6, désormais chez Zoé).
-
-Transféré à Zoé : patch complet FileActions (resolveFile via _data, delete/move/copy/shareUri + ensureDir), chemin réel app/src/main/java/fr/photosorter/data/repository/FileActions.kt, signatures publiques préservées (delete/move/copy/shareUri), FileProvider authority ${applicationId}.fileprovider + file_paths.xml (external-path/files/files-external/cache couverts).
+- e3a1d1a6 Actions fichiers : RÉAFFECTÉE À ZOÉ (option C). Je ne la porte plus. Chaîne déjà en place sur agent/léna (FileActions, ImageRepositoryImpl.delete/move/copy/share, use cases Delete/Move/Copy/ShareImages, FileProvider + file_paths.xml, permissions, FileActionsModule).
+- 3983405f correction bug 79d94669 (content://) : RÉAFFECTÉE À ZOÉ. Patch complet (resolveFile via OpenableColumns.DATA, ensureDir, shareUri robuste) transmis à Zoé. Chemin : app/src/main/java/fr/photosorter/data/repository/FileActions.kt (package fr.photosorter.data.repository). Signatures à préserver : delete/move/copy/shareUri. FileProvider authorities ${applicationId}.fileprovider, file_paths.xml couvre external/files/cache. Zoé a écrit le fix, MR #24 soumise, 3983405f à vérifier.
+- 4d0303c8 Tests unitaires : à faire (dépend de e3a1d1a6, désormais chez Zoé ; attendre que e3a1d1a6 soit terminée/fusionnée avant de démarrer).
 
 Je n'ai jamais écrit de modif sur FileActions.kt (aucun doublon).
+Ne plus toucher FileActions.kt ni e3a1d1a6 (périmètre Zoé).

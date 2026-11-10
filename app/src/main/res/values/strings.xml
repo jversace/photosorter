@@ -36,4 +36,35 @@
     <string name="sort_size">Taille</string>
     <string name="sort_format">Format</string>
     <string name="sort_label">Libellé</string>
+
+    <!-- Filtres -->
+    <string name="action_filters">Filtres</string>
+    <string name="filters_title">Filtres</string>
+    <string name="filters_formats">Formats</string>
+    <string name="filters_labels">Libellés</string>
+    <string name="filters_include_adult">Inclure le contenu adulte</string>
+    <string name="filters_apply">Appliquer</string>
+    <string name="filters_clear">Réinitialiser</string>
+    <string name="filters_date_from">Date de début</string>
+    <string name="filters_date_to">Date de fin</string>
+    <string name="filters_min_size">Taille minimale (Mo)</string>
+    <string name="filters_min_size_value">%1$d Mo</string>
+
+    <!-- Scan -->
+    <string name="action_start_scan">Lancer le scan</string>
+    <string name="scan_idle">Prêt à scanner le stockage à la recherche d\'images.</string>
+    <string name="scan_running">Scan en cours… %1$d fichier(s) traité(s)</string>
+    <string name="scan_running_with_total">Scan en cours… %1$d / %2$d</string>
+    <string name="scan_completed">Scan terminé : %1$d image(s) trouvée(s).</string>
+    <string name="scan_error">Erreur de scan : %1$s</string>
+
+    <!-- Plein écran -->
+    <string name="detail_previous">Photo précédente</string>
+    <string name="detail_next">Photo suivante</string>
+    <string name="detail_image_description">Photo %1$s</string>
+    <string name="detail_exif">Informations EXIF</string>
+    <string name="detail_no_bounds">Dimensions inconnues</string>
+    <string name="detail_format">Format : %1$s</string>
+    <string name="detail_size">Taille : %1$s</string>
+    <string name="detail_date">Date : %1$s</string>
 </resources>

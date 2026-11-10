@@ -6,21 +6,25 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.provider.OpenableColumns
-import androidx.core.content.FileProvider
 import fr.photosorter.core.result.AppError
 import java.io.File
 
 /**
- * Opérations fichier bas niveau sur une image, en tenant compte du scoped storage :
- * - DELETE : sur API >= 29, tentative ContentResolver.delete (respecte les autorisations
- *   MediaStore), fallback File.delete() sur le chemin réel.
- * - MOVE/COPY : via [File] (renameTo puis copie+suppression). Scoped storage limite les
- *   écritures hors de la zone de l'app ; en cas d'échec, on renvoie un [AppError.Io] clair.
- * - SHARE : URI FileProvider valide.
+ * Opérations fichier bas niveau sur une image, en tenant compte du scoped storage.
  *
- * La résolution d'URI se fait via [resolveFile] : pour une URI `content://` (MediaStore
- * notamment) la colonne [OpenableColumns.DATA] (`_data`) donne le chemin réel ; on ne se
- * fie plus à [Uri.getPath] qui renvoie un identifiant interne (bug 79d94669).
+ * Résolution d'URI :
+ * - [ContentResolver.SCHEME_FILE] : le chemin est directement exploitable.
+ * - [ContentResolver.SCHEME_CONTENT] : le champ [Uri.getPath] est un identifiant interne
+ *   MediaStore (ex. `images/media/1234`) et NON un chemin de fichier. On résout le chemin
+ *   réel via la colonne [OpenableColumns.DATA] (`_data`). En repli, si `_data` est absent
+ *   ou vide (typique sur API >= 29 / scoped storage), on matérialise une copie dans le
+ *   cache de l'app à partir du flux du resolver, nommée d'après [OpenableColumns.DISPLAY_NAME].
+ *
+ * Politique par opération :
+ * - DELETE : sur API >= 29, tentative ContentResolver.delete (respecte l'autorisation
+ *   MediaStore), puis repli fichier via [resolveFile].
+ * - MOVE/COPY : via [File] (renameTo, puis copie + suppression en repli).
+ * - SHARE : URI FileProvider en lecture seule.
  */
 class FileActions(private val context: Context) {
 
@@ -33,10 +37,10 @@ class FileActions(private val context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && uri.scheme == ContentResolver.SCHEME_CONTENT) {
             val deleted = runCatching { resolver.delete(uri, null, null) }.getOrDefault(0)
             if (deleted > 0) return null
-            // si 0, on tente le fichier réel (fallback)
+            // si 0, on tente le fichier réel (repli)
         }
-        // 2) Fallback fichier réel.
-        val file = resolveFile(uri, allowCacheFallback = false)
+        // 2) Repli fichier.
+        val file = resolveFile(uri, materializeIfNeeded = false)
             ?: return AppError.NotFound("URI non exploitable : $imageUri")
         if (!file.exists()) return AppError.NotFound("Fichier introuvable : ${file.name}")
         return if (runCatching { file.delete() }.getOrDefault(false)) null
@@ -44,13 +48,12 @@ class FileActions(private val context: Context) {
     }
 
     fun move(imageUri: String, destDir: File): AppError? {
-        val src = resolveFile(Uri.parse(imageUri), allowCacheFallback = false)
+        val src = resolveFile(Uri.parse(imageUri), materializeIfNeeded = false)
             ?: return AppError.NotFound("URI non exploitable : $imageUri")
         if (!src.exists()) return AppError.NotFound("Fichier introuvable : ${src.name}")
-        ensureDir(destDir)?.let { return it }
         val target = File(destDir, src.name)
         if (src.renameTo(target)) return null
-        // fallback copie + suppression
+        // repli copie + suppression
         if (!copyFile(src, target)) return AppError.Io("Déplacement échoué : ${src.name}")
         if (!runCatching { src.delete() }.getOrDefault(false)) {
             return AppError.Io("Déplacement partiel (copie ok, source non supprimée) : ${src.name}")
@@ -59,90 +62,94 @@ class FileActions(private val context: Context) {
     }
 
     fun copy(imageUri: String, destDir: File): AppError? {
-        val src = resolveFile(Uri.parse(imageUri), allowCacheFallback = true)
+        val uri = Uri.parse(imageUri)
+        val src = resolveFile(uri, materializeIfNeeded = true)
             ?: return AppError.NotFound("URI non exploitable : $imageUri")
         if (!src.exists()) return AppError.NotFound("Fichier introuvable : ${src.name}")
-        ensureDir(destDir)?.let { return it }
         val target = File(destDir, src.name)
         return if (copyFile(src, target)) null else AppError.Io("Copie échouée : ${src.name}")
     }
 
-    /** Renvoie une URI FileProvider partageable, ou null si impossible. */
+    /** URI partageable via FileProvider (autorisation en lecture seule). */
     fun shareUri(imageUri: String): Uri? {
-        val file = resolveFile(Uri.parse(imageUri), allowCacheFallback = true) ?: return null
+        val uri = Uri.parse(imageUri)
+        val file = resolveFile(uri, materializeIfNeeded = true) ?: return null
         if (!file.exists()) return null
         return runCatching {
-            FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+            androidx.core.content.FileProvider.getUriForFile(
+                context, "${context.packageName}.fileprovider", file
+            )
         }.getOrNull()
     }
-
-    // --- Résolution d'URI ---------------------------------------------------
 
     /**
-     * Résout une URI en [File] réel.
-     * - `file://` : chemin direct.
-     * - `content://` : colonne `_data` ([OpenableColumns.DATA]). Si le fichier existe, on le
-     *   renvoie. Sinon, si [allowCacheFallback] est vrai (copy/share), on matérialise une copie
-     *   dans le cache de l'app à partir du flux, nommée d'après [OpenableColumns.DISPLAY_NAME].
-     * - sinon null.
+     * Résout une URI en [File] exploitable.
+     *
+     * @param materializeIfNeeded si vrai et que le chemin réel est introuvable sur un
+     *   `content://`, copie le flux dans le cache de l'app (nom issu de DISPLAY_NAME) et
+     *   renvoie ce fichier. Utilisé par copy/share. Pour delete/move, on reste en repli
+     *   conservateur : on ne fabrique pas de copie, on renvoie null si le chemin réel est
+     *   introuvable.
      */
-    private fun resolveFile(uri: Uri, allowCacheFallback: Boolean): File? {
+    private fun resolveFile(uri: Uri, materializeIfNeeded: Boolean): File? {
         return when (uri.scheme) {
-            ContentResolver.SCHEME_FILE -> {
-                uri.path?.let { File(it) }
-            }
+            ContentResolver.SCHEME_FILE -> uri.path?.let(::File)?.takeIf { it.exists() }
+                ?: uri.path?.let(::File)
             ContentResolver.SCHEME_CONTENT -> {
-                val dataPath = queryString(uri, OpenableColumns.DATA)
-                if (dataPath != null) {
-                    val f = File(dataPath)
-                    if (f.exists()) return f
+                queryDataPath(uri)
+                    ?: if (materializeIfNeeded) materializeFromStream(uri) else null
+            }
+            else -> uri.path?.let(::File)?.takeIf { it.exists() }
+                ?: if (materializeIfNeeded) materializeFromStream(uri) else null
+        }
+    }
+
+    /** Interroge la colonne `_data` ([OpenableColumns.DATA]) d'une URI content://. */
+    private fun queryDataPath(uri: Uri): File? {
+        return runCatching {
+            resolver.query(uri, arrayOf(OpenableColumns.DATA), null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val idx = cursor.getColumnIndex(OpenableColumns.DATA)
+                    if (idx >= 0) {
+                        val path = cursor.getString(idx)
+                        if (!path.isNullOrBlank()) {
+                            val f = File(path)
+                            if (f.exists()) return@use f
+                        }
+                    }
                 }
-                if (allowCacheFallback) materializeToCache(uri) else null
+                null
             }
-            else -> null
-        }
+        }.getOrNull()
     }
 
-    /** Copie le contenu de l'URI dans le cache de l'app et renvoie le [File]. */
-    private fun materializeToCache(uri: Uri): File? {
-        val name = queryString(uri, OpenableColumns.DISPLAY_NAME)
-            ?.substringAfterLast('/')?.takeIf { it.isNotBlank() }
-            ?: "shared_${System.currentTimeMillis()}"
-        val dest = File(context.cacheDir, name)
+    /**
+     * Matérialise une URI content:// en fichier du cache de l'app, nommé d'après
+     * [OpenableColumns.DISPLAY_NAME]. La zone `cache-path` est déclarée dans file_paths.xml.
+     */
+    private fun materializeFromStream(uri: Uri): File? {
         return runCatching {
+            val name = queryDisplayName(uri) ?: "img_${System.currentTimeMillis()}"
+            val cacheDir = File(context.cacheDir, "shared").apply { mkdirs() }
+            val out = File(cacheDir, name)
             resolver.openInputStream(uri)?.use { input ->
-                dest.outputStream().use { output -> input.copyTo(output) }
+                out.outputStream().use { output -> input.copyTo(output) }
             } ?: return null
-            dest
+            if (out.exists() && out.length() > 0) out else null
         }.getOrNull()
     }
 
-    private fun queryString(uri: Uri, column: String): String? {
-        return runCatching {
-            resolver.query(uri, arrayOf(column), null, null, null)?.use { cursor ->
-                val idx = cursor.getColumnIndex(column)
-                if (idx >= 0 && cursor.moveToFirst()) {
-                    if (cursor.isNull(idx)) null else cursor.getString(idx)
-                } else null
-            }
-        }.getOrNull()
-    }
-
-    // --- Utilitaires --------------------------------------------------------
-
-    private fun ensureDir(dir: File): AppError? {
-        if (dir.exists()) {
-            return if (dir.isDirectory) null else AppError.Io("Chemin cible invalide : ${dir.name}")
+    private fun queryDisplayName(uri: Uri): String? = runCatching {
+        resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (idx >= 0) cursor.getString(idx) else null
+            } else null
         }
-        return if (dir.mkdirs()) null else AppError.Io("Création du dossier cible impossible : ${dir.name}")
-    }
+    }.getOrNull()
 
-    private fun copyFile(src: File, target: File): Boolean {
-        return runCatching {
-            src.inputStream().use { input ->
-                target.outputStream().use { output -> input.copyTo(output) }
-            }
-            true
-        }.getOrDefault(false)
-    }
+    private fun copyFile(src: File, target: File): Boolean = runCatching {
+        src.inputStream().use { input -> target.outputStream().use { input.copyTo(it) } }
+        true
+    }.getOrDefault(false)
 }

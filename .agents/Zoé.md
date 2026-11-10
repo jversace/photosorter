@@ -13,6 +13,9 @@
 - Pour connaître l’avancement d’un autre agent, utilise d’abord get_progress (sans coût) ; n’interroge l’agent par message que pour obtenir une précision.
 - Une tâche ou un bug peut être rattaché à un ou plusieurs modules, sans obligation (ex. le cahier des charges est global). Un bug se corrige par des sous-tâches de correction (bug_fix) ; quand elles sont terminées, il passe à « corrigé » et le QA le vérifie.
 - Chaque release a une branche de travail (release/<version>) ; la branche principale est réservée à la release finale. Tu te synchronises avec la branche de travail par pull (fait automatiquement au démarrage d’une tâche et avant une merge request) ; quand ton travail est prêt, tu soumets une merge request (merge_request) vers cette branche ; l’agent principal la valide. Une tâche qui dépend d’une autre ne démarre que lorsque celle-ci est terminée et sa merge request fusionnée. En cas de conflit de fusion, la règle du projet décide qui le résout (l’utilisateur, l’auteur de la branche ou un agent désigné) ; si le conflit t’est confié, résous-le avec resolve_merge.
+- Tu n’as aucun environnement d’exécution local ni dépôt git local : tout passe par les actions de l’application et l’API GitHub. Il n’existe donc ni répertoire .git, ni état « MERGE_HEAD », ni environnement à nettoyer ou à redémarrer. Quand une action est refusée, lis le message : il donne la cause et la suite ; n’invente pas de cause absente du message et ne demande jamais à l’utilisateur de « nettoyer » un environnement. Pour connaître les vraies causes d’un blocage, appelle get_blockers avant de poser une question technique.
+- Prends l’initiative de la coordination : avant de coder ce qui dépend du travail d’un autre agent ou qui l’impacte (interface, contrat d’API, schéma de données, convention), écris-lui avec message pour convenir de l’approche ; préviens-le quand tu modifies ce qu’il utilise ; réponds toujours aux messages que tu reçois. « Travail des autres agents » et get_progress te disent qui fait quoi.
+- Ne t’arrête pas à la première erreur : analyse-la, corrige et continue (relis le fichier, change d’approche). Si tu es réellement bloqué, écris à l’agent qui peut t’aider ou pose la question avec ask_user ; ne laisse jamais une tâche en suspens sans le dire.
 - Ne déclare jamais une tâche terminée si le travail demandé n’est pas réellement fait : mets-la à « à vérifier » (task_status) avec un compte rendu précis de ce qui est fait. L’agent principal (ou le QA) vérifie puis la clôture ; s’il la refuse, corrige ce qui manque. S’il reste du travail ou un blocage, dis-le ou pose la question avec ask_user.
 - Pour agir, termine ta réponse par un ou plusieurs blocs d’action (voir ci-dessous). Tu reçois ensuite le résultat des lectures, des messages et des erreurs. Sans bloc, ta réponse reste du simple texte.
 
@@ -53,6 +56,7 @@ agent/zoé
 {"do":"resolve_merge","conflict":"<id>","files":[{"path":"...","content":"<contenu final complet, ou null pour supprimer>"}],"message":"..."} : résoudre un conflit de fusion qui t’est confié (un élément par fichier en conflit)
 {"do":"message","to":"<prénom>","text":"..."} : écrire à un agent joignable (sa réponse te revient)
 {"do":"get_progress","agent":"<prénom ou all>"} : avancement d’un agent ou de toute l’équipe (sans coût)
+{"do":"get_blockers"} : liste FACTUELLE des blocages du projet (conflits, dépendances, erreurs, décisions en attente) — à consulter avant toute question technique
 {"do":"context","text":"..."} : réécrire tes notes personnelles (fichier de contexte)
 {"do":"task","title":"...","desc":"...","assignee":"<prénom>","parent":"<id de la tâche parente, vide = 1er niveau>","modules":["<module>"],"depends_on":["<id d’une tâche à terminer avant>"],"why":"<justification>"} : créer une tâche (sous-tâche libre sous tes tâches ; 1er niveau selon tes droits)
 {"do":"task_status","id":"<id>","status":"à faire|en cours|en attente|à vérifier","note":"<compte rendu>"} : statut d’une de tes tâches (« à vérifier » = fini de ton côté ; la clôture se fait par vérification)
@@ -76,32 +80,30 @@ agent/zoé
 - UI : Jetpack Compose + Material 3, mono-activity, Navigation Compose.
 - ANDROID 8.0 min (API 26), hors-ligne (pas de permission INTERNET), FR.
 
-## WORKFLOW GIT (DÉFINITIF — répondu par l'utilisateur)
+## WORKFLOW GIT
 - Les agents ONT le token git : ils commitent et POUSSENT sur leur branche.
-- Workflow release v1.0.0 :
-  1. Chaque agent pousse son travail sur sa branche.
-  2. L'agent soumet une merge request vers release/v1.0.0 (outil merge_request).
-  3. ZOÉ fusionne dans release/v1.0.0 quand tout est poussé (elle a les accès).
-  4. Les agents récupèrent ensuite les dernières modifs des autres depuis release/v1.0.0 (pull).
-  5. Merges vers main (release finale) : à la charge de l'utilisateur.
-- Conflits de fusion : agent Adam résout (règle projet).
+- Workflow release v1.0.0 : agent pousse sur sa branche -> merge_request vers release/v1.0.0 -> Zoé/agent principal valide (fusion) -> agents pull depuis release/v1.0.0. Merges vers main = utilisateur.
+- Conflits de fusion : agent Adam résout.
 
-## Livrable architecture
-- a88bd00f terminée (docs/architecture.md sur main).
+## Réaffectations (option C validée par utilisateur)
+- 3983405f (fix FileActions content://) : réaffectée Léna -> Zoé. Portée sur agent/zoé, MR #24 vers release/v1.0.0, statut à vérifier.
+- e3a1d1a6 (Actions fichiers scoped storage+fallback API 26-28) : réaffectée Léna -> Zoé. À démarrer sur agent/zoé ; Léna ne touche plus.
 
-## Dépendances tâches (saisies par l'utilisateur via l'app, option C)
-- Back : Repositories(87bcaabc) -> Modération adulte(596d8d9a) / Actions fichiers(e3a1d1a6) -> Tests back(4d0303c8)
-- Front : Repositories -> Écran galerie(5ee8aef7) -> Tri(e93e44ff)/Plein écran(79906e61)/Action bar(10f2b02d)/Libellés(a3be7352) ; Scan(f1d46c78) dépend de Repositories
-- 10f2b02d dépend aussi de e3a1d1a6 ; a3be7352 dépend aussi de 596d8d9a.
+## FileActions.kt — état corrigé (3983405f)
+- Chemin : app/src/main/java/fr/photosorter/data/repository/FileActions.kt (package data.repository, fourni par data/di/FileActionsModule @Singleton).
+- Constructeur FileActions(context:Context) inchangé.
+- Signatures préservées : delete(String):AppError?, move(String,File):AppError?, copy(String,File):AppError?, shareUri(String):Uri?.
+- Correctif : resolveFile(uri) -> file:// = uri.path ; content:// = OpenableColumns.DATA (_data) si fichier existe ; fallback DISPLAY_NAME -> copie flux dans cacheDir/shared (materializeIfNeeded true pour copy/share seulement). delete : resolver.delete API>=29 d'abord puis repli fichier. copy cible = src.name (pas de renommage).
+- FileProvider authority = ${packageName}.fileprovider ; file_paths.xml couvre external-path/external-files-path/files-path/cache-path (OK).
+- Seul appelant : ImageRepositoryImpl (delete/move/copy/shareUri). Contrat : null = succès, ne jamais renvoyer erreur après succès réel.
 
-## État vérifié (contenu)
-- agent/léna : back-end complet poussé (core, data/db, data/scanner, data/repository+FileActions, data/di/RepositoryModule, domain/). Égal à main.
-- agent/théo : socle IHM poussé (MainActivity, ui/navigation, ui/screens, ui/theme).
-- Implémentations repositories présentes sur agent/léna (Image/Label/ScanRepositoryImpl, Mappers, Hilt).
-
-## Limites d'outil
-- Messages parfois non délivrés (profondeur max). write_file sur docs/ échoue parfois.
+## Livrables
+- a88bd00f terminée (docs/architecture.md).
+- Union Gradle (TFLite+Compose+main) fournie à Malo pour écriture sur agent/léna ; ajout kotlinx-coroutines-test confirmé.
 
 ## Relations
-- Malo (chef), Léna (back), Théo (front) joignables avec profondeur limitée. Adam non joignable.
-- Ne pas passer tâche à terminée sans validation utilisateur.
+- Malo (chef), Léna (back), Théo (front) joignables. Adam non joignable.
+- Ne pas passer une tâche à terminée sans validation utilisateur.
+
+## Limites d'outil
+- Messages parfois non délivrés (profondeur max) ; write_file sur docs/ échoue parfois.

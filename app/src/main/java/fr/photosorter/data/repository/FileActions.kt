@@ -90,23 +90,26 @@ class FileActions(private val context: Context) {
 
     // --- Helpers ------------------------------------------------------------
 
-    /** Crée le dossier cible si nécessaire ; renvoie une erreur si impossible. */
+    /** Crée le dossier cible si nécessaire ; renvoie une erreur claire en cas d'échec. */
     private fun ensureDir(dir: File): AppError? {
-        if (dir.isDirectory) return null
-        val ok = runCatching { dir.mkdirs() && dir.isDirectory }.getOrDefault(false)
-        return if (ok) null else AppError.Io("Dossier de destination inaccessible : ${dir.absolutePath}")
+        if (dir.exists()) {
+            return if (dir.isDirectory) null else AppError.Io("Cible n'est pas un dossier : ${dir.name}")
+        }
+        return if (runCatching { dir.mkdirs() }.getOrDefault(false) || dir.isDirectory) null
+        else scopedIoError("Création du dossier", dir)
     }
 
     /**
-     * Construit une [AppError.Io] explicite pour un échec copie/déplacement. Sur API >= 29,
-     * la cause la plus fréquente est une cible hors de la zone autorisée de l'app (scoped
-     * storage) : on le signale pour faciliter le diagnostic côté IHM.
+     * Construit un [AppError.Io] précisant la cause probable quand la cible/source est
+     * hors de la zone de l'app sur API >= 29 (scoped storage).
      */
-    private fun scopedIoError(action: String, src: File): AppError {
-        val detail = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-            " (cible probablement hors de la zone de l'app — scoped storage)"
-        else ""
-        return AppError.Io("$action échoué : ${src.name}$detail")
+    private fun scopedIoError(action: String, f: File): AppError.Io {
+        val hint = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            " — cible probablement hors de la zone de l'app (scoped storage) ou permissions insuffisantes"
+        } else {
+            " — vérifier la permission WRITE_EXTERNAL_STORAGE"
+        }
+        return AppError.Io("$action échoué : ${f.name}$hint")
     }
 
     /**
@@ -120,8 +123,7 @@ class FileActions(private val context: Context) {
      */
     private fun resolveFile(uri: Uri, materializeIfNeeded: Boolean): File? {
         return when (uri.scheme) {
-            ContentResolver.SCHEME_FILE -> uri.path?.let(::File)?.takeIf { it.exists() }
-                ?: uri.path?.let(::File)
+            ContentResolver.SCHEME_FILE -> uri.path?.let(::File)
             ContentResolver.SCHEME_CONTENT -> {
                 queryDataPath(uri)
                     ?: if (materializeIfNeeded) materializeFromStream(uri) else null
@@ -137,7 +139,7 @@ class FileActions(private val context: Context) {
             resolver.query(uri, arrayOf(OpenableColumns.DATA), null, null, null)?.use { cursor ->
                 if (cursor.moveToFirst()) {
                     val idx = cursor.getColumnIndex(OpenableColumns.DATA)
-                    if (idx >= 0) {
+                    if (idx >= 0 && !cursor.isNull(idx)) {
                         val path = cursor.getString(idx)
                         if (!path.isNullOrBlank()) {
                             val f = File(path)
@@ -151,32 +153,39 @@ class FileActions(private val context: Context) {
     }
 
     /**
-     * Matérialise une URI content:// en fichier du cache de l'app, nommé d'après
-     * [OpenableColumns.DISPLAY_NAME]. La zone `cache-path` est déclarée dans file_paths.xml.
+     * Matérialise une copie locale du contenu `content://` dans `cacheDir/shared/`,
+     * nommée d'après [OpenableColumns.DISPLAY_NAME]. Renvoie null en cas d'échec.
      */
     private fun materializeFromStream(uri: Uri): File? {
         return runCatching {
-            val name = queryDisplayName(uri) ?: "img_${System.currentTimeMillis()}"
-            val cacheDir = File(context.cacheDir, "shared").apply { mkdirs() }
-            val out = File(cacheDir, name)
+            val name = queryString(uri, OpenableColumns.DISPLAY_NAME) ?: "shared_${System.currentTimeMillis()}"
+            val outDir = File(context.cacheDir, "shared").apply { mkdirs() }
+            val outFile = File(outDir, name)
             resolver.openInputStream(uri)?.use { input ->
-                out.outputStream().use { output -> input.copyTo(output) }
+                outFile.outputStream().use { output -> input.copyTo(output) }
             } ?: return null
-            if (out.exists() && out.length() > 0) out else null
+            outFile.takeIf { it.exists() }
         }.getOrNull()
     }
 
-    private fun queryDisplayName(uri: Uri): String? = runCatching {
-        resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
-            if (cursor.moveToFirst()) {
-                val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                if (idx >= 0) cursor.getString(idx) else null
-            } else null
-        }
-    }.getOrNull()
+    /** Lit une colonne texte (ex. DISPLAY_NAME) d'une URI content://. */
+    private fun queryString(uri: Uri, column: String): String? {
+        return runCatching {
+            resolver.query(uri, arrayOf(column), null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val idx = cursor.getColumnIndex(column)
+                    if (idx >= 0 && !cursor.isNull(idx)) cursor.getString(idx) else null
+                } else null
+            }
+        }.getOrNull()
+    }
 
+    /** Copie [src] vers [target] (flux), en garantissant le dossier parent. */
     private fun copyFile(src: File, target: File): Boolean = runCatching {
-        src.inputStream().use { input -> target.outputStream().use { input.copyTo(it) } }
+        target.parentFile?.let { if (!it.exists()) it.mkdirs() }
+        src.inputStream().use { input ->
+            target.outputStream().use { output -> input.copyTo(output) }
+        }
         true
     }.getOrDefault(false)
 }

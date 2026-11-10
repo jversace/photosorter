@@ -72,18 +72,16 @@ agent/léna
 {"do":"spec","text":"<spécifications complètes en markdown>"} : (agent principal) remplacer les spécifications
 
 ## Notes de l’agent (à tenir à jour)
-Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (model.tflite 10,3 Mo) + labels.txt bien présents dans app/assets sur agent/léna. build.gradle.kts OK (TFLite, noCompress tflite, Compose).
+Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (~10,3 Mo) + labels.txt présents dans app/assets. build.gradle.kts OK.
 
 Tâches :
 - 45770063 Socle Android : terminée.
 - 31fa8938 Persistance Room : terminée.
 - 68b19a34 ScanEngine : terminée.
-- 87bcaabc Repositories : À VÉRIFIER puis clôturée (Malo). Fusionnée.
-- 596d8d9a Modération adulte : À VÉRIFIER puis clôturée (Malo). Fusionnée.
-- e3a1d1a6 Actions fichiers : en cours. Constat : chaîne déjà en place (FileActions.delete/move/copy/shareUri, ImageRepositoryImpl.delete/move/copy/share + nettoyage DB, use cases Delete/Move/Copy/ShareImages, FileProvider + file_paths.xml, permissions READ_MEDIA_IMAGES/WRITE_EXTERNAL_STORAGE, FileActionsModule Hilt). SEUL trou = bug content:// (voir plus bas), dont la correction est réaffectée à Zoé (sous-tâche 3983405f).
-- 4d0303c8 Tests unitaires : à faire (dépend de e3a1d1a6).
-- 3983405f correction FileActions content:// : RÉAFFECTÉE À ZOÉ, je ne la porte pas.
+- 87bcaabc Repositories : clôturée (fusionnée).
+- 596d8d9a Modération adulte : clôturée (fusionnée).
+- e3a1d1a6 Actions fichiers : RÉAFFECTÉE À ZOÉ (option C). Portée par Zoé sur agent/zoé. Côté app, apparaît encore « en cours | Léna » : réassignation à acter par Malo. Ne plus y toucher.
+- 3983405f correction bug 79d94669 (content://) : RÉAFFECTÉE À ZOÉ. Fait par Zoé sur agent/zoé, MR #24 soumise. J'ai relu et validé (2 bloquants corrigés : cleanup temporaire dans copy en try/finally, return@runCatching null ; mineurs : canonicalPath garde-fou target==src, purge shared_* >15 min). Signatures publiques préservées (delete/move/copy/shareUri + constructeur Context). Chemin : app/src/main/java/fr/photosorter/data/repository/FileActions.kt. FileProvider authorities ${applicationId}.fileprovider.
+- 4d0303c8 Tests unitaires back-end : à faire. Dépend de e3a1d1a6 (Zoé). Ne démarrer qu'après clôture/fusion de e3a1d1a6.
 
-BUG content:// (79d94669) — analyse transmise à Zoé : ancienne toFileOrNull() mappe content://MediaStore via Uri.path (identifiant interne) => File inexistant => move/copy cassés, delete cassé en fallback. Fix : resolveFile(uri) via colonne _data (OpenableColumns.DATA). Patch complet rédigé (delete/move/copy + ensureDir + shareUri) et proposé à Zoé.
-
-IMPORTANT : je n'ai PAS écrit de modif sur FileActions.kt pour ce bug (action write_file présente dans un tour mais non exécutée). Pas de doublon avec Zoé.
+ÉTAT BLOQUANT (get_blockers) : 2 MR #24 en attente de validation (doublon probable, Malo doit n'en valider qu'une) ; MR #14 (mes repositories) en attente ; réassignation e3a1d1a6/3983405f non actée côté app. Rien de plus à coder de mon côté tant que ce n'est pas débloqué (éviter collisions). Aucun agent ne peut fermer une MR (mr_review = Malo/QA).

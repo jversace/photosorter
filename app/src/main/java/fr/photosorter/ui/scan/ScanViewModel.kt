@@ -37,8 +37,15 @@ class ScanViewModel @Inject constructor(
         if (_isScanning.value) return
         _isScanning.value = true
         viewModelScope.launch {
-            scanRepository.launchScan().catch { /* erreurs remontées via progress */ }.collect { /* résultats affichés par la galerie */ }
-            _isScanning.value = false
+            try {
+                // La progression est exposée séparément via `progress` ; on consomme
+                // le flux de résultat pour laisser le scan se dérouler jusqu'au bout.
+                scanRepository.launchScan().collect { /* images récupérées ensuite par la galerie */ }
+            } catch (e: Exception) {
+                // Erreur déjà reflétée par `progress` (ScanProgress.Error).
+            } finally {
+                _isScanning.value = false
+            }
         }
     }
 }

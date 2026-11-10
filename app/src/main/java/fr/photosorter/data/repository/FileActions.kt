@@ -124,7 +124,8 @@ class FileActions(private val context: Context) {
             }
             else -> uri.path?.let { path ->
                 val f = File(path)
-                if (f.exists() || materializeIfNeeded) null else ResolvedFile(f, false)
+                if (f.exists()) ResolvedFile(f, false)
+                else if (materializeIfNeeded) null else null
             }
         }
     }
@@ -148,18 +149,30 @@ class FileActions(private val context: Context) {
     /** Matérialise une copie du flux dans le cache de l'app ; le fichier est temporaire. */
     private fun materializeFromStream(uri: Uri): ResolvedFile? {
         return runCatching {
+            purgeStaleSharedCache()
             val name = queryDisplayName(uri) ?: "shared_${System.currentTimeMillis()}"
             val dir = File(context.cacheDir, "shared").apply { mkdirs() }
             val out = File(dir, name)
             resolver.openInputStream(uri)?.use { input ->
                 out.outputStream().use { output -> input.copyTo(output) }
             } ?: return@runCatching null
-            if (out.length() <= 0L && out.exists()) {
+            if (out.length() <= 0L) {
                 out.delete()
                 return@runCatching null
             }
             ResolvedFile(out, true)
         }.getOrNull()
+    }
+
+    /** Purge opportuniste des copies partagées anciennes (>15 min) laissées par shareUri. */
+    private fun purgeStaleSharedCache() {
+        runCatching {
+            val dir = File(context.cacheDir, "shared")
+            val cutoff = System.currentTimeMillis() - SHARED_CACHE_TTL_MS
+            dir.listFiles()?.forEach { f ->
+                if (f.lastModified() < cutoff) runCatching { f.delete() }
+            }
+        }
     }
 
     private fun queryDisplayName(uri: Uri): String? {
@@ -208,5 +221,10 @@ class FileActions(private val context: Context) {
             }
             true
         }.getOrDefault(false)
+    }
+
+    private companion object {
+        /** Durée de vie des copies partagées en cache avant purge opportuniste. */
+        const val SHARED_CACHE_TTL_MS = 15 * 60 * 1000L
     }
 }

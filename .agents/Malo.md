@@ -87,34 +87,47 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - Zoé est l'architecte : à contacter pour les décisions techniques et l'architecture
 - Les merges des branches agents vers main sont réalisés MANUELLEMENT par l'utilisateur côté dépôt. Les agents ne peuvent pas exécuter git.
 - Zoé fusionne les MR des agents vers release/v1.0.0 dès réception.
-- L'utilisateur a fusionné manuellement agent/léna et agent/théo dans release/v1.0.0.
 - resolve_merge ne peut pas purger MERGE_HEAD (nécessite un conflict id actif assigné par le système).
 
 ## État actuel (10/11/2026)
 
 Tâches terminées et fusionnées dans release/v1.0.0 :
-- 87bcaabc : Repositories + use cases ✓ (MR #14 en attente de validation — à approuver)
+- 87bcaabc : Repositories + use cases ✓ (MR #14 — statut flou, ask_user envoyé)
 - 596d8d9a : Modération TFLite ✓
 - 4060ffc0 : Thème M3, navigation, accessibilité ✓
 - 5ee8aef7 : Écran galerie ✓
-- 3983405f : Correction FileActions URI content:// ✓ (MR #24 fusionnée, Zoé)
+- 3983405f : Correction FileActions URI content:// ✓ (Zoé, dans MR #24)
+- e3a1d1a6 : Actions fichiers ✓ (Zoé, dans MR #24 — réassignation à Zoé à acter par l'utilisateur)
+
+Contenu livré par Zoé dans e3a1d1a6 (FileActions.kt) :
+- ensureDir
+- copy/move : nettoyage du temporaire cache en try/finally
+- shareUri : purge des shared_* >15 min, pas de nettoyage sur share
+- diagnostics scoped storage explicites
+- garde-fou samePath (canonicalPath)
+- correctifs relecture Léna (return@runCatching, branche else resolveFile)
+- permission runtime WRITE_EXTERNAL_STORAGE (API 26-28) → dialogue d'erreur = côté IHM (Théo)
+- Signatures et contrat ImageRepositoryImpl préservés
+- Relecture Léna : validée
 
 Bugs :
 - 79d94669 : corrigé (FileActions URI content://) ✓
 
 Tâches en cours :
-- Zoé : e3a1d1a6 (Actions fichiers — réassignée depuis Léna)
 - Théo : f1d46c78 (Écran scan)
 - Théo : e93e44ff (Tri/filtres)
 - Théo : 79906e61 (Plein écran)
 
-Tâches à démarrer :
-- Théo : a3be7352 (Libellés) — débloquée
-- Adam : f1d46c78, e93e44ff, 79906e61 (si Théo inactif — à confirmer)
+Tâches débloquées dès fusion MR #24 + réassignation :
+- Théo : 10f2b02d (Action bar) — dépend de e3a1d1a6
+- Léna : 4d0303c8 (Tests back-end) — dépend de e3a1d1a6
+- Théo : a3be7352 (Libellés) — débloquée depuis 596d8d9a ✓
 
-Tâches bloquées en attente de e3a1d1a6 :
-- Théo : 10f2b02d (Action bar)
-- Léna : 4d0303c8 (Tests back-end)
+## Blocages en attente utilisateur
+- MR #14 (Léna - repositories 87bcaabc) : système dit plus en attente, get_blockers dit bloquant. Fusionnée ?
+- MR #24 (Zoé) : doublon dans get_blockers, système dit plus en attente. Fusionnée ?
+- e3a1d1a6 : réassignation à Zoé à acter dans l'outil (option C validée par utilisateur)
+- ask_user envoyé, réponse en attente
 
 ## Dépendances des tâches
 
@@ -123,13 +136,12 @@ Tâches bloquées en attente de e3a1d1a6 :
 - Léna : 4d0303c8 (tests back-end)
 
 ## Chemin critique
-87bcaabc ✓ → e3a1d1a6 → 10f2b02d
+87bcaabc ✓ → e3a1d1a6 ✓ (à valider) → 10f2b02d
 596d8d9a ✓ → a3be7352
 5ee8aef7 ✓ → e93e44ff, 79906e61, 10f2b02d, a3be7352
 
 ## Assets modèle TFLite
 model.tflite + labels.txt présents sur main/app/assets — vérifier qu'ils sont dans release/v1.0.0.
 
-## MR en attente
-- MR #14 (Léna - repositories 87bcaabc) : à approuver
-- MR #24 (Zoé - fix FileActions) : semble déjà fusionnée, plus en attente selon le système
+## Note IHM scoped storage
+Permission runtime WRITE_EXTERNAL_STORAGE (API 26-28) + dialogue d'erreur = responsabilité IHM (Théo), confirmé par Zoé.

@@ -6,15 +6,19 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.provider.OpenableColumns
 import fr.photosorter.core.result.AppError
 import java.io.File
 
 /**
  * Opérations fichier bas niveau sur une image, en tenant compte du scoped storage :
  * - DELETE : sur API >= 29, tentative ContentResolver.delete (respecte les autorisations
- *   MediaStore), fallback File.delete() sur le chemin réel.
- * - MOVE/COPY : via [File] (renameTo puis copie+suppression). Scoped storage limite les
- *   écritures hors de la zone de l'app ; en cas d'échec, on renvoie un [AppError.Io] clair.
+ *   MediaStore), fallback File.delete() sur le chemin réel résolu depuis l'URI.
+ * - MOVE/COPY : via [File] (renameTo puis copie+suppression) sur le chemin réel résolu.
+ * - SHARE : URI FileProvider en lecture seule.
+ *
+ * La résolution URI content://MediaStore -> File s'appuie sur la colonne `_data`
+ * (OpenableColumns.DATA) et non sur le `path` de l'URI (qui est un identifiant interne).
  */
 class FileActions(private val context: Context) {
 
@@ -29,8 +33,8 @@ class FileActions(private val context: Context) {
             if (deleted > 0) return null
             // si 0, on tente le fichier réel (fallback)
         }
-        // 2) Fallback fichier.
-        val file = uri.toFileOrNull()
+        // 2) Fallback fichier (chemin réel résolu depuis l'URI).
+        val file = resolveFile(uri)
             ?: return AppError.NotFound("URI non exploitable : $imageUri")
         if (!file.exists()) return AppError.NotFound("Fichier introuvable : ${file.name}")
         return if (runCatching { file.delete() }.getOrDefault(false)) null
@@ -38,9 +42,10 @@ class FileActions(private val context: Context) {
     }
 
     fun move(imageUri: String, destDir: File): AppError? {
-        val src = Uri.parse(imageUri).toFileOrNull()
+        val src = resolveFile(Uri.parse(imageUri))
             ?: return AppError.NotFound("URI non exploitable : $imageUri")
         if (!src.exists()) return AppError.NotFound("Fichier introuvable : ${src.name}")
+        if (!ensureDir(destDir)) return AppError.Io("Dossier de destination inaccessible : ${destDir.name}")
         val target = File(destDir, src.name)
         if (src.renameTo(target)) return null
         // fallback copie + suppression
@@ -52,16 +57,17 @@ class FileActions(private val context: Context) {
     }
 
     fun copy(imageUri: String, destDir: File): AppError? {
-        val src = Uri.parse(imageUri).toFileOrNull()
+        val src = resolveFile(Uri.parse(imageUri))
             ?: return AppError.NotFound("URI non exploitable : $imageUri")
         if (!src.exists()) return AppError.NotFound("Fichier introuvable : ${src.name}")
+        if (!ensureDir(destDir)) return AppError.Io("Dossier de destination inaccessible : ${destDir.name}")
         val target = File(destDir, src.name)
         return if (copyFile(src, target)) null else AppError.Io("Copie échouée : ${src.name}")
     }
 
     /** URI partageable via FileProvider (autorisation en lecture seule). */
     fun shareUri(imageUri: String): Uri? {
-        val file = Uri.parse(imageUri).toFileOrNull() ?: return null
+        val file = resolveFile(Uri.parse(imageUri)) ?: return null
         if (!file.exists()) return null
         return runCatching {
             androidx.core.content.FileProvider.getUriForFile(
@@ -70,16 +76,38 @@ class FileActions(private val context: Context) {
         }.getOrNull()
     }
 
+    private fun ensureDir(dir: File): Boolean = runCatching {
+        dir.exists() || dir.mkdirs()
+    }.getOrDefault(false)
+
     private fun copyFile(src: File, target: File): Boolean = runCatching {
         src.inputStream().use { input -> target.outputStream().use { input.copyTo(it) } }
         true
     }.getOrDefault(false)
 
-    private fun Uri.toFileOrNull(): File? = runCatching {
-        when (scheme) {
-            ContentResolver.SCHEME_FILE -> path?.let(::File)
-            ContentResolver.SCHEME_CONTENT -> path?.let(::File)
-            else -> path?.let(::File)
+    /**
+     * Résout une URI (file:// ou content://) en [File].
+     * Pour content://, interroge la colonne `_data` ; échoue proprement si absente
+     * (accès par MediaStore non exposé en chemin).
+     */
+    private fun resolveFile(uri: Uri): File? {
+        when (uri.scheme) {
+            ContentResolver.SCHEME_FILE -> return uri.path?.let(::File)
+            ContentResolver.SCHEME_CONTENT -> {
+                // Colonne _data = chemin réel du média.
+                runCatching {
+                    resolver.query(uri, arrayOf(OpenableColumns.DATA), null, null, null)
+                }.getOrNull()?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val idx = cursor.getColumnIndex(OpenableColumns.DATA)
+                        if (idx >= 0 && !cursor.isNull(idx)) {
+                            return cursor.getString(idx)?.let(::File)
+                        }
+                    }
+                }
+                return null
+            }
+            else -> return uri.path?.let(::File)
         }
-    }.getOrNull()
+    }
 }

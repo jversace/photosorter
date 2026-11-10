@@ -23,8 +23,11 @@ import java.io.File
  * Politique par opération :
  * - DELETE : sur API >= 29, tentative ContentResolver.delete (respecte l'autorisation
  *   MediaStore), puis repli fichier via [resolveFile].
- * - MOVE/COPY : via [File] (renameTo, puis copie + suppression en repli).
+ * - MOVE/COPY : via [File] (renameTo, puis copie + suppression en repli). Si la cible est
+ *   hors de la zone de l'app sur API >= 29, renvoie un [AppError.Io] explicite (scoped storage).
  * - SHARE : URI FileProvider en lecture seule.
+ *
+ * La permission runtime WRITE_EXTERNAL_STORAGE (API 26-28) relève de l'IHM, pas de cette classe.
  */
 class FileActions(private val context: Context) {
 
@@ -51,10 +54,12 @@ class FileActions(private val context: Context) {
         val src = resolveFile(Uri.parse(imageUri), materializeIfNeeded = false)
             ?: return AppError.NotFound("URI non exploitable : $imageUri")
         if (!src.exists()) return AppError.NotFound("Fichier introuvable : ${src.name}")
+        ensureDir(destDir)?.let { return it }
         val target = File(destDir, src.name)
+        if (target.absolutePath == src.absolutePath) return null
         if (src.renameTo(target)) return null
         // repli copie + suppression
-        if (!copyFile(src, target)) return AppError.Io("Déplacement échoué : ${src.name}")
+        if (!copyFile(src, target)) return scopedIoError("Déplacement", src)
         if (!runCatching { src.delete() }.getOrDefault(false)) {
             return AppError.Io("Déplacement partiel (copie ok, source non supprimée) : ${src.name}")
         }
@@ -66,8 +71,9 @@ class FileActions(private val context: Context) {
         val src = resolveFile(uri, materializeIfNeeded = true)
             ?: return AppError.NotFound("URI non exploitable : $imageUri")
         if (!src.exists()) return AppError.NotFound("Fichier introuvable : ${src.name}")
+        ensureDir(destDir)?.let { return it }
         val target = File(destDir, src.name)
-        return if (copyFile(src, target)) null else AppError.Io("Copie échouée : ${src.name}")
+        return if (copyFile(src, target)) null else scopedIoError("Copie", src)
     }
 
     /** URI partageable via FileProvider (autorisation en lecture seule). */
@@ -80,6 +86,27 @@ class FileActions(private val context: Context) {
                 context, "${context.packageName}.fileprovider", file
             )
         }.getOrNull()
+    }
+
+    // --- Helpers ------------------------------------------------------------
+
+    /** Crée le dossier cible si nécessaire ; renvoie une erreur si impossible. */
+    private fun ensureDir(dir: File): AppError? {
+        if (dir.isDirectory) return null
+        val ok = runCatching { dir.mkdirs() && dir.isDirectory }.getOrDefault(false)
+        return if (ok) null else AppError.Io("Dossier de destination inaccessible : ${dir.absolutePath}")
+    }
+
+    /**
+     * Construit une [AppError.Io] explicite pour un échec copie/déplacement. Sur API >= 29,
+     * la cause la plus fréquente est une cible hors de la zone autorisée de l'app (scoped
+     * storage) : on le signale pour faciliter le diagnostic côté IHM.
+     */
+    private fun scopedIoError(action: String, src: File): AppError {
+        val detail = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+            " (cible probablement hors de la zone de l'app — scoped storage)"
+        else ""
+        return AppError.Io("$action échoué : ${src.name}$detail")
     }
 
     /**

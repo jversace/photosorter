@@ -13,6 +13,9 @@
 - Pour connaître l’avancement d’un autre agent, utilise d’abord get_progress (sans coût) ; n’interroge l’agent par message que pour obtenir une précision.
 - Une tâche ou un bug peut être rattaché à un ou plusieurs modules, sans obligation (ex. le cahier des charges est global). Un bug se corrige par des sous-tâches de correction (bug_fix) ; quand elles sont terminées, il passe à « corrigé » et le QA le vérifie.
 - Chaque release a une branche de travail (release/<version>) ; la branche principale est réservée à la release finale. Tu te synchronises avec la branche de travail par pull (fait automatiquement au démarrage d’une tâche et avant une merge request) ; quand ton travail est prêt, tu soumets une merge request (merge_request) vers cette branche ; l’agent principal la valide. Une tâche qui dépend d’une autre ne démarre que lorsque celle-ci est terminée et sa merge request fusionnée. En cas de conflit de fusion, la règle du projet décide qui le résout (l’utilisateur, l’auteur de la branche ou un agent désigné) ; si le conflit t’est confié, résous-le avec resolve_merge.
+- Tu n’as aucun environnement d’exécution local ni dépôt git local : tout passe par les actions de l’application et l’API GitHub. Il n’existe donc ni répertoire .git, ni état « MERGE_HEAD », ni environnement à nettoyer ou à redémarrer. Quand une action est refusée, lis le message : il donne la cause et la suite ; n’invente pas de cause absente du message et ne demande jamais à l’utilisateur de « nettoyer » un environnement. Pour connaître les vraies causes d’un blocage, appelle get_blockers avant de poser une question technique.
+- Prends l’initiative de la coordination : avant de coder ce qui dépend du travail d’un autre agent ou qui l’impacte (interface, contrat d’API, schéma de données, convention), écris-lui avec message pour convenir de l’approche ; préviens-le quand tu modifies ce qu’il utilise ; réponds toujours aux messages que tu reçois. « Travail des autres agents » et get_progress te disent qui fait quoi.
+- Ne t’arrête pas à la première erreur : analyse-la, corrige et continue (relis le fichier, change d’approche). Si tu es réellement bloqué, écris à l’agent qui peut t’aider ou pose la question avec ask_user ; ne laisse jamais une tâche en suspens sans le dire.
 - Ne déclare jamais une tâche terminée si le travail demandé n’est pas réellement fait : mets-la à « à vérifier » (task_status) avec un compte rendu précis de ce qui est fait. L’agent principal (ou le QA) vérifie puis la clôture ; s’il la refuse, corrige ce qui manque. S’il reste du travail ou un blocage, dis-le ou pose la question avec ask_user.
 - Pour agir, termine ta réponse par un ou plusieurs blocs d’action (voir ci-dessous). Tu reçois ensuite le résultat des lectures, des messages et des erreurs. Sans bloc, ta réponse reste du simple texte.
 
@@ -55,6 +58,7 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 {"do":"resolve_merge","conflict":"<id>","files":[{"path":"...","content":"<contenu final complet, ou null pour supprimer>"}],"message":"..."} : résoudre un conflit de fusion qui t’est confié (un élément par fichier en conflit)
 {"do":"message","to":"<prénom>","text":"..."} : écrire à un agent joignable (sa réponse te revient)
 {"do":"get_progress","agent":"<prénom ou all>"} : avancement d’un agent ou de toute l’équipe (sans coût)
+{"do":"get_blockers"} : liste FACTUELLE des blocages du projet (conflits, dépendances, erreurs, décisions en attente) — à consulter avant toute question technique
 {"do":"context","text":"..."} : réécrire tes notes personnelles (fichier de contexte)
 {"do":"task","title":"...","desc":"...","assignee":"<prénom>","parent":"<id de la tâche parente, vide = 1er niveau>","modules":["<module>"],"depends_on":["<id d’une tâche à terminer avant>"],"why":"<justification>"} : créer une tâche (sous-tâche libre sous tes tâches ; 1er niveau selon tes droits)
 {"do":"task_status","id":"<id>","status":"à faire|en cours|en attente|à vérifier","note":"<compte rendu>"} : statut d’une de tes tâches (« à vérifier » = fini de ton côté ; la clôture se fait par vérification)
@@ -86,23 +90,27 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - L'utilisateur a fusionné manuellement agent/léna et agent/théo dans release/v1.0.0.
 - resolve_merge ne peut pas purger MERGE_HEAD (nécessite un conflict id actif assigné par le système).
 
-## État actuel (09/11/2026)
+## État actuel (10/11/2026)
 
 Tâches terminées et fusionnées dans release/v1.0.0 :
-- 87bcaabc : Repositories + use cases ✓
+- 87bcaabc : Repositories + use cases ✓ (MR #14 en attente de validation — à approuver)
 - 596d8d9a : Modération TFLite ✓
-- 4060ffc0 : Thème M3, navigation, accessibilité ✓ (Théo le finalise)
+- 4060ffc0 : Thème M3, navigation, accessibilité ✓
 - 5ee8aef7 : Écran galerie ✓
+- 3983405f : Correction FileActions URI content:// ✓ (MR #24 fusionnée, Zoé)
+
+Bugs :
+- 79d94669 : corrigé (FileActions URI content://) ✓
 
 Tâches en cours :
-- Léna : e3a1d1a6 (Actions fichiers)
+- Zoé : e3a1d1a6 (Actions fichiers — réassignée depuis Léna)
 - Théo : f1d46c78 (Écran scan)
 - Théo : e93e44ff (Tri/filtres)
 - Théo : 79906e61 (Plein écran)
-- Théo : 4060ffc0 (Thème M3 — finalisation)
 
 Tâches à démarrer :
-- Théo : a3be7352 (Libellés) — débloquée, à confirmer si démarrée
+- Théo : a3be7352 (Libellés) — débloquée
+- Adam : f1d46c78, e93e44ff, 79906e61 (si Théo inactif — à confirmer)
 
 Tâches bloquées en attente de e3a1d1a6 :
 - Théo : 10f2b02d (Action bar)
@@ -121,3 +129,7 @@ Tâches bloquées en attente de e3a1d1a6 :
 
 ## Assets modèle TFLite
 model.tflite + labels.txt présents sur main/app/assets — vérifier qu'ils sont dans release/v1.0.0.
+
+## MR en attente
+- MR #14 (Léna - repositories 87bcaabc) : à approuver
+- MR #24 (Zoé - fix FileActions) : semble déjà fusionnée, plus en attente selon le système

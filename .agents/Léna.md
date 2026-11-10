@@ -72,17 +72,18 @@ agent/léna
 {"do":"spec","text":"<spécifications complètes en markdown>"} : (agent principal) remplacer les spécifications
 
 ## Notes de l’agent (à tenir à jour)
-Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (model.tflite ~10,3 Mo) + labels.txt présents dans app/assets. build.gradle.kts OK.
+Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (model.tflite 10,3 Mo) + labels.txt bien présents dans app/assets sur agent/léna. build.gradle.kts OK (TFLite, noCompress tflite, Compose).
 
 Tâches :
 - 45770063 Socle Android : terminée.
 - 31fa8938 Persistance Room : terminée.
 - 68b19a34 ScanEngine : terminée.
-- 87bcaabc Repositories : clôturée (fusionnée).
-- 596d8d9a Modération adulte : clôturée (fusionnée).
-- e3a1d1a6 Actions fichiers : RÉAFFECTÉE À ZOÉ (option C). Je ne la porte plus. Chaîne déjà en place sur agent/léna (FileActions, ImageRepositoryImpl.delete/move/copy/share, use cases Delete/Move/Copy/ShareImages, FileProvider + file_paths.xml, permissions, FileActionsModule).
-- 3983405f correction bug 79d94669 (content://) : RÉAFFECTÉE À ZOÉ. Patch complet (resolveFile via OpenableColumns.DATA, ensureDir, shareUri robuste) transmis à Zoé. Chemin : app/src/main/java/fr/photosorter/data/repository/FileActions.kt (package fr.photosorter.data.repository). Signatures à préserver : delete/move/copy/shareUri. FileProvider authorities ${applicationId}.fileprovider, file_paths.xml couvre external/files/cache. Zoé a écrit le fix, MR #24 soumise, 3983405f à vérifier.
-- 4d0303c8 Tests unitaires : à faire (dépend de e3a1d1a6, désormais chez Zoé ; attendre que e3a1d1a6 soit terminée/fusionnée avant de démarrer).
+- 87bcaabc Repositories : À VÉRIFIER puis clôturée (Malo). Fusionnée.
+- 596d8d9a Modération adulte : À VÉRIFIER puis clôturée (Malo). Fusionnée.
+- e3a1d1a6 Actions fichiers : en cours. Constat : chaîne déjà en place (FileActions.delete/move/copy/shareUri, ImageRepositoryImpl.delete/move/copy/share + nettoyage DB, use cases Delete/Move/Copy/ShareImages, FileProvider + file_paths.xml, permissions READ_MEDIA_IMAGES/WRITE_EXTERNAL_STORAGE, FileActionsModule Hilt). SEUL trou = bug content:// (voir plus bas), dont la correction est réaffectée à Zoé (sous-tâche 3983405f).
+- 4d0303c8 Tests unitaires : à faire (dépend de e3a1d1a6).
+- 3983405f correction FileActions content:// : RÉAFFECTÉE À ZOÉ, je ne la porte pas.
 
-Je n'ai jamais écrit de modif sur FileActions.kt (aucun doublon).
-Ne plus toucher FileActions.kt ni e3a1d1a6 (périmètre Zoé).
+BUG content:// (79d94669) — analyse transmise à Zoé : ancienne toFileOrNull() mappe content://MediaStore via Uri.path (identifiant interne) => File inexistant => move/copy cassés, delete cassé en fallback. Fix : resolveFile(uri) via colonne _data (OpenableColumns.DATA). Patch complet rédigé (delete/move/copy + ensureDir + shareUri) et proposé à Zoé.
+
+IMPORTANT : je n'ai PAS écrit de modif sur FileActions.kt pour ce bug (action write_file présente dans un tour mais non exécutée). Pas de doublon avec Zoé.

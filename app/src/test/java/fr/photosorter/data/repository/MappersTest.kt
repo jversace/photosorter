@@ -12,58 +12,60 @@ import org.junit.Test
 
 class MappersTest {
 
-    private fun entity(format: String = "JPEG", isAdult: Boolean = false) = ImageEntity(
-        id = 1, uri = "u/1", name = "a.jpg", format = format, sizeBytes = 42,
-        dateTaken = 10, dateModified = 20, width = 3, height = 4,
+    private fun entity(
+        format: String = "JPEG",
+        isAdult: Boolean = false
+    ) = ImageEntity(
+        id = 1, uri = "uri/1", name = "a.jpg", format = format, sizeBytes = 100,
+        dateTaken = null, dateModified = 10, width = 2, height = 3,
         isAdult = isAdult, thumbnailHint = null
     )
 
-    @Test fun mapsAllFields() {
-        val item = entity().toDomain(setOf("x"))
+    @Test
+    fun domainMappingCopiesFields() {
+        val item = entity().toDomain(emptySet())
         assertEquals(1L, item.id)
+        assertEquals("uri/1", item.uri)
         assertEquals("a.jpg", item.name)
         assertEquals(ImageFormat.JPEG, item.format)
-        assertEquals(42L, item.sizeBytes)
-        assertEquals(10L, item.dateTaken)
-        assertEquals(setOf("x"), item.labels)
-    }
-
-    @Test fun unknownFormatFallsBackToJpeg() {
-        assertEquals(ImageFormat.JPEG, entity(format = "BOGUS").toDomain(emptySet()).format)
-    }
-
-    @Test fun isAdultTrueWhenLabelPresent() {
-        val item = entity(isAdult = false).toDomain(setOf(ADULT_LABEL))
-        assertTrue(item.isAdult)
-    }
-
-    @Test fun isAdultTrueWhenColumnTrue() {
-        val item = entity(isAdult = true).toDomain(emptySet())
-        assertTrue(item.isAdult)
-    }
-
-    @Test fun isAdultFalseWhenNeither() {
-        val item = entity(isAdult = false).toDomain(setOf("x"))
+        assertEquals(100L, item.sizeBytes)
+        assertEquals(2, item.width)
+        assertEquals(3, item.height)
         assertFalse(item.isAdult)
     }
 
-    @Test fun imageWithLabelsCollectsLabelNames() {
+    @Test
+    fun unknownFormatFallsBackToJpeg() {
+        val item = entity(format = "XYZ").toDomain(emptySet())
+        assertEquals(ImageFormat.JPEG, item.format)
+    }
+
+    @Test
+    fun adultFlagFromEntityOrFromLabel() {
+        assertTrue(entity(isAdult = true).toDomain(emptySet()).isAdult)
+        assertTrue(entity(isAdult = false).toDomain(setOf(ADULT_LABEL)).isAdult)
+        assertFalse(entity(isAdult = false).toDomain(setOf("famille")).isAdult)
+    }
+
+    @Test
+    fun withLabelsMappingCollectsLabelNames() {
         val withLabels = ImageWithLabels(
-            image = entity(),
+            image = entity(isAdult = false),
             labels = listOf(
-                LabelEntity(name = "a", isSystem = false, createdAt = 0),
+                LabelEntity(name = "famille", isSystem = false, createdAt = 0),
                 LabelEntity(name = ADULT_LABEL, isSystem = true, createdAt = 0)
             )
         )
         val item = withLabels.toDomain()
-        assertEquals(setOf("a", ADULT_LABEL), item.labels)
+        assertEquals(setOf("famille", ADULT_LABEL), item.labels)
         assertTrue(item.isAdult)
     }
 
-    @Test fun labelEntityToDomain() {
-        val label = LabelEntity(name = "z", isSystem = true, createdAt = 5).toDomain()
-        assertEquals("z", label.name)
+    @Test
+    fun labelEntityMapping() {
+        val label = LabelEntity(name = "x", isSystem = true, createdAt = 42).toDomain()
+        assertEquals("x", label.name)
         assertTrue(label.isSystem)
-        assertEquals(5L, label.createdAt)
+        assertEquals(42L, label.createdAt)
     }
 }

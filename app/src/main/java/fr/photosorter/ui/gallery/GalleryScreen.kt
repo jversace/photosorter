@@ -30,13 +30,7 @@ fun GalleryRoute(
     viewModel: GalleryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    GalleryScreen(
-        state = state,
-        onOpenImage = onOpenImage,
-        onOpenScan = onOpenScan,
-        onOpenLabels = onOpenLabels,
-        viewModel = viewModel,
-    )
+    GalleryScreen(state, onOpenImage, onOpenScan, onOpenLabels, viewModel)
 }
 
 @Composable
@@ -55,8 +49,8 @@ internal fun GalleryScreen(
     var labelAssign by remember { mutableStateOf<Boolean?>(null) }
 
     state.feedback?.let { fb ->
-        val msg = stringResource(fb.messageRes)
-        LaunchedEffect(state.feedback) { snackbar.showSnackbar(msg); viewModel.consumeFeedback() }
+        val msg = stringResource(feedbackRes(fb))
+        LaunchedEffect(fb) { snackbar.showSnackbar(msg); viewModel.consumeFeedback() }
     }
 
     Scaffold(
@@ -66,7 +60,10 @@ internal fun GalleryScreen(
                 selectionMode = state.isSelectionMode,
                 selectedCount = state.selectedCount,
                 sortField = state.sort.field,
-                onToggleDisplayMode = { viewModel.setDisplayMode(state.displayMode.next()) },
+                onToggleDisplayMode = {
+                    val next = if (state.displayMode == GalleryDisplayMode.GRID) GalleryDisplayMode.LIST else GalleryDisplayMode.GRID
+                    viewModel.setDisplayMode(next)
+                },
                 onSelectAll = viewModel::toggleSelectAll,
                 onClearSelection = viewModel::clearSelection,
                 onSortSelected = viewModel::setSort,

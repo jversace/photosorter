@@ -1,5 +1,7 @@
 package fr.photosorter.ui.gallery
 
+import androidx.annotation.StringRes
+import fr.photosorter.R
 import fr.photosorter.domain.model.FilterState
 import fr.photosorter.domain.model.ImageItem
 import fr.photosorter.domain.model.SortCriteria
@@ -11,6 +13,17 @@ enum class GalleryDisplayMode { LIST, GRID }
 /** Retour utilisateur après une action fichiers/libellé (mappé en string par l'UI). */
 enum class GalleryFeedback {
     DELETED, SHARED, MOVED, COPIED, LABEL_ASSIGNED, LABEL_REMOVED,
+}
+
+/** Ressource texte associée à un retour d'action. */
+@StringRes
+internal fun feedbackRes(feedback: GalleryFeedback): Int = when (feedback) {
+    GalleryFeedback.DELETED -> R.string.feedback_deleted
+    GalleryFeedback.SHARED -> R.string.feedback_shared
+    GalleryFeedback.MOVED -> R.string.feedback_moved
+    GalleryFeedback.COPIED -> R.string.feedback_copied
+    GalleryFeedback.LABEL_ASSIGNED -> R.string.feedback_label_assigned
+    GalleryFeedback.LABEL_REMOVED -> R.string.feedback_label_removed
 }
 
 /**

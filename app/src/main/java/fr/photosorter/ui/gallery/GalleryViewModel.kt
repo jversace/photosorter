@@ -34,7 +34,7 @@ class GalleryViewModel @Inject constructor(
     private val selectedIds = MutableStateFlow<Set<Long>>(emptySet())
     private val imagesState = MutableStateFlow<List<ImageItem>>(emptyList())
     private val errorMessage = MutableStateFlow<String?>(null)
-    private val feedback = MutableStateFlow<String?>(null)
+    private val feedback = MutableStateFlow<GalleryFeedback?>(null)
     private val busy = MutableStateFlow(false)
 
     private val repositoryImages = combine(sort, filter) { s, f -> s to f }
@@ -94,39 +94,39 @@ class GalleryViewModel @Inject constructor(
         return imagesState.value.filter { it.id in sel }
     }
 
-    private fun runAction(successMsg: String, block: suspend () -> AppResult<Unit>) {
+    private fun runAction(result: GalleryFeedback, block: suspend () -> AppResult<Unit>) {
         if (busy.value) return
         viewModelScope.launch {
             busy.value = true
             when (val r = block()) {
-                is AppResult.Success -> { feedback.value = successMsg; clearSelection() }
+                is AppResult.Success -> { feedback.value = result; clearSelection() }
                 is AppResult.Failure -> errorMessage.value = r.error.message
             }
             busy.value = false
         }
     }
 
-    fun deleteSelected() = runAction("SUPPRIME_OK") {
+    fun deleteSelected() = runAction(GalleryFeedback.DELETED) {
         imageRepository.delete(selectedItems())
     }
 
-    fun shareSelected() = runAction("PARTAGE_OK") {
+    fun shareSelected() = runAction(GalleryFeedback.SHARED) {
         imageRepository.share(selectedItems())
     }
 
-    fun moveSelected(destUri: String) = runAction("DEPLACE_OK") {
+    fun moveSelected(destUri: String) = runAction(GalleryFeedback.MOVED) {
         imageRepository.move(selectedItems(), destUri)
     }
 
-    fun copySelected(destUri: String) = runAction("COPIE_OK") {
+    fun copySelected(destUri: String) = runAction(GalleryFeedback.COPIED) {
         imageRepository.copy(selectedItems(), destUri)
     }
 
-    fun assignLabel(label: String) = runAction("LIBELLE_ASSIGN_OK") {
+    fun assignLabel(label: String) = runAction(GalleryFeedback.LABEL_ASSIGNED) {
         labelRepository.assign(selectedItems(), label)
     }
 
-    fun unassignLabel(label: String) = runAction("LIBELLE_RETIRE_OK") {
+    fun unassignLabel(label: String) = runAction(GalleryFeedback.LABEL_REMOVED) {
         labelRepository.unassign(selectedItems(), label)
     }
 }

@@ -59,4 +59,20 @@
     <string name="scan_running_with_total">Scan en cours… %1$d / %2$d</string>
     <string name="scan_completed">Scan terminé : %1$d image(s) trouvée(s).</string>
     <string name="scan_error">Erreur de scan : %1$s</string>
+
+    <!-- Détail plein écran -->
+    <string name="detail_previous">Image précédente</string>
+    <string name="detail_next">Image suivante</string>
+    <string name="detail_toggle_info">Afficher / masquer les informations</string>
+    <string name="detail_exif_title">Informations</string>
+    <string name="detail_exif_name">Nom</string>
+    <string name="detail_exif_format">Format</string>
+    <string name="detail_exif_size">Taille</string>
+    <string name="detail_exif_dimensions">Dimensions</string>
+    <string name="detail_exif_date_taken">Date de prise de vue</string>
+    <string name="detail_exif_date_modified">Date de modification</string>
+    <string name="detail_exif_labels">Libellés</string>
+    <string name="detail_exif_none">—</string>
+    <string name="detail_exif_dimensions_value">%1$d × %2$d px</string>
+    <string name="detail_zoom_reset">Réinitialiser le zoom</string>
 </resources>

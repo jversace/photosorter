@@ -27,65 +27,64 @@ data class DetailUiState(
 
 @HiltViewModel
 class DetailViewModel @Inject constructor(
-    private val repository: ImageRepository,
+    repository: ImageRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
     private val startImageId: Long =
         savedStateHandle.get<Long>(ARG_IMAGE_ID) ?: -1L
 
-    private val sort = MutableStateFlow(SortCriteria(SortField.DATE, ascending = false))
-    private val filter = MutableStateFlow(FilterState())
     private val currentId = MutableStateFlow(startImageId)
 
-    val state: StateFlow<DetailUiState> = combine(
-        repository.observeImages(SortCriteria(SortField.DATE, false), FilterState()),
-        currentId,
-    ) { list, id -> toState(list, id) }
-        // simple: on utilise le tri/filtre par défaut ; navigation basée sur cet ordre
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DetailUiState())
+    private val images = repository.observeImages(
+        SortCriteria(SortField.DATE, ascending = false),
+        FilterState(),
+    )
 
-    private fun toState(list: List<ImageItem>, id: Long): DetailUiState {
-        if (list.isEmpty()) return DetailUiState()
-        val idx = list.indexOfFirst { it.id == id }.takeIf { it >= 0 } ?: 0
-        return DetailUiState(
-            current = list.getOrNull(idx),
-            hasPrevious = idx > 0,
-            hasNext = idx < list.lastIndex,
-            index = idx,
-            total = list.size,
-        )
-    }
+    val state: StateFlow<DetailUiState> = combine(images, currentId) { list, id ->
+        if (list.isEmpty()) {
+            DetailUiState()
+        } else {
+            val idx = list.indexOfFirst { it.id == id }.takeIf { it >= 0 } ?: 0
+            DetailUiState(
+                current = list.getOrNull(idx),
+                hasPrevious = idx > 0,
+                hasNext = idx < list.lastIndex,
+                index = idx,
+                total = list.size,
+            )
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DetailUiState())
 
     fun previous() {
         val s = state.value
-        if (s.hasPrevious && s.index > 0) {
-            // recalcule via la liste observée légèrement différée ; on s'appuie sur lastList
-            moveBy(-1)
-        }
+        if (s.index > 0) navigateTo(s.index - 1)
     }
 
     fun next() {
-        if (state.value.hasNext) moveBy(1)
+        val s = state.value
+        if (s.index < s.total - 1) navigateTo(s.index + 1)
     }
 
-    private var lastList: List<ImageItem> = emptyList()
-
-    private fun moveBy(delta: Int) {
-        val s = state.value
-        val target = s.index + delta
-        // met à jour currentId depuis l'état courant
-        s.current?.let { cur ->
-            val list = currentListOrEmpty()
-            val idx = list.indexOfFirst { it.id == cur.id }
-            if (idx >= 0) {
-                val t = (idx + delta).coerceIn(0, list.lastIndex)
-                currentId.value = list[t].id
-            }
+    private fun navigateTo(targetIndex: Int) {
+        val list = currentList()
+        if (targetIndex in list.indices) {
+            currentId.value = list[targetIndex].id
         }
     }
 
-    private fun currentListOrEmpty(): List<ImageItem> = lastList
+    private fun currentList(): List<ImageItem> =
+        // reconstruit à partir de l'état : on ne garde pas la liste en dur, on dérive
+        // l'id courant suffit ; pour changer d'index on s'appuie sur le flux observé
+        cachedList
+
+    private var cachedList: List<ImageItem> = emptyList()
+
+    init {
+        viewModelScope.launch {
+            images.collect { cachedList = it }
+        }
+    }
 
     companion object {
         const val ARG_IMAGE_ID = "imageId"

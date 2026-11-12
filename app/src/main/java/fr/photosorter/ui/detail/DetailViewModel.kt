@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.photosorter.domain.model.FilterState
-import fr.photosorter.domain.model.ImageItem
 import fr.photosorter.domain.model.SortCriteria
 import fr.photosorter.domain.model.SortField
 import fr.photosorter.domain.repository.ImageRepository
@@ -19,12 +18,13 @@ import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
 /**
- * ViewModel de l'écran plein écran. Il observe la liste des images (même ordre par défaut
- * que la galerie : date décroissante) et se positionne sur l'image demandée par la route.
+ * ViewModel de l'écran plein écran. Observe la liste des images (ordre par défaut de la
+ * galerie : date décroissante) et se positionne sur l'image demandée par la route. La
+ * navigation précédent/suivant parcourt cette liste.
  */
 @HiltViewModel
 class DetailViewModel @Inject constructor(
-    private val imageRepository: ImageRepository,
+    imageRepository: ImageRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -33,28 +33,23 @@ class DetailViewModel @Inject constructor(
 
     private val sort = SortCriteria(SortField.DATE, ascending = false)
 
-    private val imagesFlow = MutableStateFlow<List<ImageItem>>(emptyList())
+    /** Index de navigation explicite ; -1 tant que l'utilisateur n'a pas navigué. */
+    private val navigatedIndex = MutableStateFlow(-1)
 
     private val repositoryImages = imageRepository
         .observeImages(sort, FilterState())
-        .catch { imagesFlow.value = emptyList() }
-
-    private val currentIndex = MutableStateFlow(-1)
+        .catch { emit(emptyList()) }
 
     val uiState: StateFlow<DetailUiState> = combine(
         repositoryImages,
-        currentIndex,
+        navigatedIndex,
     ) { items, index ->
-        imagesFlow.value = items
-        val resolvedIndex = when {
-            index >= 0 && items.getOrNull(index)?.id != null -> index
+        val resolved = when {
+            items.isEmpty() -> -1
+            index in items.indices -> index
             else -> items.indexOfFirst { it.id == initialImageId }.coerceAtLeast(0)
         }
-        DetailUiState(
-            items = items,
-            currentIndex = if (items.isEmpty()) -1 else resolvedIndex,
-            isLoading = false,
-        )
+        DetailUiState(items = items, currentIndex = resolved, isLoading = false)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -63,11 +58,11 @@ class DetailViewModel @Inject constructor(
 
     fun showNext() {
         val state = uiState.value
-        if (state.hasNext) currentIndex.value = state.currentIndex + 1
+        if (state.hasNext) navigatedIndex.value = state.currentIndex + 1
     }
 
     fun showPrevious() {
         val state = uiState.value
-        if (state.hasPrevious) currentIndex.value = state.currentIndex - 1
+        if (state.hasPrevious) navigatedIndex.value = state.currentIndex - 1
     }
 }

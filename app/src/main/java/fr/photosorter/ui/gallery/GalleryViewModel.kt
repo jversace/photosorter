@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -43,22 +44,26 @@ class GalleryViewModel @Inject constructor(
                 .catch { e -> errorMessage.value = e.message; emit(emptyList()) }
         }
 
+    private val labels = labelRepository.observeLabels()
+        .map { list -> list.map { it.name } }
+        .catch { emit(emptyList()) }
+
     val uiState: StateFlow<GalleryUiState> =
-        combine(
-            repositoryImages, displayMode, sort, filter, selectedIds,
-            combine(errorMessage, feedback, busy) { e, f, b -> Triple(e, f, b) },
-        ) { images, mode, s, f, sel, extra ->
+        combine(repositoryImages, displayMode, sort, filter, selectedIds, labels) { values ->
+            @Suppress("UNCHECKED_CAST")
+            val images = values[0] as List<ImageItem>
+            val mode = values[1] as GalleryDisplayMode
+            val s = values[2] as SortCriteria
+            val f = values[3] as FilterState
+            val sel = values[4] as Set<Long>
+            val lbls = values[5] as List<String>
             imagesState.value = images
             GalleryUiState(
-                images = images,
-                displayMode = mode,
-                sort = s,
-                filter = f,
+                images = images, displayMode = mode, sort = s, filter = f,
                 selectedIds = sel.filterTo(LinkedHashSet()) { id -> images.any { it.id == id } },
-                isLoading = false,
-                errorMessage = extra.first,
-                feedback = extra.second,
-                actionsBusy = extra.third,
+                availableLabels = lbls,
+                isLoading = false, errorMessage = errorMessage.value,
+                feedback = feedback.value, actionsBusy = busy.value,
             )
         }.stateIn(
             scope = viewModelScope,

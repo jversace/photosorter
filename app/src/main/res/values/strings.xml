@@ -19,6 +19,13 @@
     <string name="action_open_scan">Ouvrir le scan</string>
     <string name="action_open_labels">Ouvrir les libellés</string>
     <string name="action_open_detail">Ouvrir une photo (exemple)</string>
+    <string name="action_share">Partager</string>
+    <string name="action_move">Déplacer</string>
+    <string name="action_copy">Copier</string>
+    <string name="action_label">Libellé</string>
+    <string name="action_delete">Supprimer</string>
+    <string name="action_cancel">Annuler</string>
+    <string name="action_validate">Valider</string>
 
     <!-- Galerie -->
     <string name="gallery_title">Galerie</string>
@@ -75,4 +82,22 @@
     <string name="detail_exif_none">—</string>
     <string name="detail_exif_dimensions_value">%1$d × %2$d px</string>
     <string name="detail_zoom_reset">Réinitialiser le zoom</string>
+
+    <!-- Dialogues d'actions galerie -->
+    <string name="dialog_delete_title">Supprimer les images</string>
+    <string name="dialog_delete_message">Supprimer %1$d image(s) définitivement ? Cette action est irréversible.</string>
+    <string name="dialog_destination_label">Dossier/URI de destination</string>
+    <string name="dialog_move_title">Déplacer vers…</string>
+    <string name="dialog_copy_title">Copier vers…</string>
+    <string name="dialog_label_assign_title">Assigner un libellé</string>
+    <string name="dialog_label_remove_title">Retirer un libellé</string>
+    <string name="dialog_label_name">Nom du libellé</string>
+
+    <!-- Feedback après action -->
+    <string name="feedback_deleted">Image(s) supprimée(s).</string>
+    <string name="feedback_shared">Partage lancé.</string>
+    <string name="feedback_moved">Image(s) déplacée(s).</string>
+    <string name="feedback_copied">Image(s) copiée(s).</string>
+    <string name="feedback_label_assigned">Libellé assigné.</string>
+    <string name="feedback_label_removed">Libellé retiré.</string>
 </resources>

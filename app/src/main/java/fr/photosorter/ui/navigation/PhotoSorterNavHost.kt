@@ -6,9 +6,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import fr.photosorter.ui.detail.DetailScreen
 import fr.photosorter.ui.gallery.GalleryScreen
 import fr.photosorter.ui.scan.ScanScreen
-import fr.photosorter.ui.screens.ImageDetailPlaceholderScreen
 import fr.photosorter.ui.screens.LabelPlaceholderScreen
 
 @Composable
@@ -32,12 +32,8 @@ fun PhotoSorterNavHost() {
         composable(
             route = Destinations.DETAIL_ROUTE,
             arguments = listOf(navArgument(Destinations.DETAIL_ARG_IMAGE_ID) { type = NavType.LongType }),
-        ) { backStackEntry ->
-            val imageId = backStackEntry.arguments?.getLong(Destinations.DETAIL_ARG_IMAGE_ID) ?: -1L
-            ImageDetailPlaceholderScreen(
-                imageId = imageId,
-                onBack = { navController.popBackStack() },
-            )
+        ) {
+            DetailScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Destinations.SCAN) {

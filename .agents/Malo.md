@@ -106,14 +106,16 @@ Tâches terminées et fusionnées dans release/v1.0.0 :
 - f1d46c78 : Écran de scan ✓
 - 3983405f : Correction FileActions URI content:// ✓ (Zoé)
 - e3a1d1a6 : Actions fichiers ✓ (Zoé)
-- 4d0303c8 : Tests unitaires back-end ✓ (Léna — MR #25 approuvée)
+
+Tâches vérifiées et acceptées, MR en attente de fusion manuelle par l'utilisateur :
+- 4d0303c8 : Tests unitaires back-end (Léna — MR #25) ✅
+- e93e44ff : Tri et filtres galerie (Théo — MR #27, doublon #26 à fermer) ✅
+- 79906e61 : Visualisation plein écran (Théo — MR à ouvrir) ✅
 
 Tâches en cours :
-- Théo : e93e44ff (Tri/filtres galerie) — REJETÉ 2x, GalleryFilterDialog.kt absent (0 commit). Théo a confirmé qu'il va créer le fichier en version courte.
-- Théo : 79906e61 (Visualisation plein écran) — démarrée
+- Théo : 10f2b02d (Action bar et dialogues) — démarrée (Théo explore les contrats)
 
 Tâches à faire :
-- Théo : 10f2b02d (Action bar et dialogues) — dépend de e3a1d1a6 ✓
 - Théo : a3be7352 (Libellés + révision adulte) — dépend de 596d8d9a ✓
 
 Bugs :
@@ -125,10 +127,9 @@ Bugs :
 - Léna : sans tâche en cours (toutes terminées)
 
 ## Chemin critique
-5ee8aef7 ✓ → e93e44ff (en cours, bloqué sur commit) → 10f2b02d
-5ee8aef7 ✓ → 79906e61 (en cours)
-e3a1d1a6 ✓ → 10f2b02d
-596d8d9a ✓ → a3be7352
+e93e44ff ✓ → 10f2b02d (en cours)
+e3a1d1a6 ✓ → 10f2b02d (en cours)
+596d8d9a ✓ → a3be7352 (à faire)
 
 ## Assets modèle TFLite
 model.tflite + labels.txt présents sur main/app/assets — vérifier qu'ils sont dans release/v1.0.0.
@@ -141,3 +142,6 @@ e3a1d1a6 : réassignation officielle à Zoé actée.
 
 ## Problème récurrent Théo
 Théo peine à committer des fichiers longs (troncature). Solution : fichiers courts, sans helpers externes, pas de scroll interne. À surveiller à chaque vérification.
+
+## Fusions en attente (utilisateur)
+MR #25 (Léna, 4d0303c8) + MR #27 (Théo, e93e44ff) → release/v1.0.0, à fusionner manuellement. MR #26 = doublon à fermer. MR 79906e61 (Théo) à ouvrir puis fusionner.

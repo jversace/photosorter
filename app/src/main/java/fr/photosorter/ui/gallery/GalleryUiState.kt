@@ -36,6 +36,7 @@ data class GalleryUiState(
     val sort: SortCriteria = SortCriteria(SortField.DATE, ascending = false),
     val filter: FilterState = FilterState(),
     val selectedIds: Set<Long> = emptySet(),
+    val availableLabels: List<String> = emptyList(),
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
     val feedback: GalleryFeedback? = null,
@@ -43,6 +44,8 @@ data class GalleryUiState(
 ) {
     /** Vrai en mode sélection multiple actif (au moins un élément sélectionné). */
     val isSelectionMode: Boolean get() = selectedIds.isNotEmpty()
+
+    val selectedCount: Int get() = selectedIds.size
 
     val allSelected: Boolean get() = images.isNotEmpty() && images.all { it.id in selectedIds }
 }

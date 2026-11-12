@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /** Position courante dans la liste observée. */
@@ -41,6 +42,8 @@ class DetailViewModel @Inject constructor(
         FilterState(),
     )
 
+    private var cachedList: List<ImageItem> = emptyList()
+
     val state: StateFlow<DetailUiState> = combine(images, currentId) { list, id ->
         if (list.isEmpty()) {
             DetailUiState()
@@ -56,6 +59,12 @@ class DetailViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DetailUiState())
 
+    init {
+        viewModelScope.launch {
+            images.collect { cachedList = it }
+        }
+    }
+
     fun previous() {
         val s = state.value
         if (s.index > 0) navigateTo(s.index - 1)
@@ -67,22 +76,9 @@ class DetailViewModel @Inject constructor(
     }
 
     private fun navigateTo(targetIndex: Int) {
-        val list = currentList()
+        val list = cachedList
         if (targetIndex in list.indices) {
             currentId.value = list[targetIndex].id
-        }
-    }
-
-    private fun currentList(): List<ImageItem> =
-        // reconstruit à partir de l'état : on ne garde pas la liste en dur, on dérive
-        // l'id courant suffit ; pour changer d'index on s'appuie sur le flux observé
-        cachedList
-
-    private var cachedList: List<ImageItem> = emptyList()
-
-    init {
-        viewModelScope.launch {
-            images.collect { cachedList = it }
         }
     }
 

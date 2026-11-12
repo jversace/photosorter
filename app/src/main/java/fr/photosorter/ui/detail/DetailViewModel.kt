@@ -5,64 +5,89 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.photosorter.domain.model.FilterState
+import fr.photosorter.domain.model.ImageItem
 import fr.photosorter.domain.model.SortCriteria
 import fr.photosorter.domain.model.SortField
 import fr.photosorter.domain.repository.ImageRepository
-import fr.photosorter.ui.navigation.Destinations
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
-/**
- * ViewModel de l'écran plein écran. Observe la liste des images (ordre par défaut de la
- * galerie : date décroissante) et se positionne sur l'image demandée par la route. La
- * navigation précédent/suivant parcourt cette liste.
- */
+/** Position courante dans la liste observée. */
+data class DetailUiState(
+    val current: ImageItem? = null,
+    val hasPrevious: Boolean = false,
+    val hasNext: Boolean = false,
+    val index: Int = 0,
+    val total: Int = 0,
+)
+
 @HiltViewModel
 class DetailViewModel @Inject constructor(
-    imageRepository: ImageRepository,
+    private val repository: ImageRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
-    private val initialImageId: Long =
-        savedStateHandle.get<Long>(Destinations.DETAIL_ARG_IMAGE_ID) ?: -1L
+    private val startImageId: Long =
+        savedStateHandle.get<Long>(ARG_IMAGE_ID) ?: -1L
 
-    private val sort = SortCriteria(SortField.DATE, ascending = false)
+    private val sort = MutableStateFlow(SortCriteria(SortField.DATE, ascending = false))
+    private val filter = MutableStateFlow(FilterState())
+    private val currentId = MutableStateFlow(startImageId)
 
-    /** Index de navigation explicite ; -1 tant que l'utilisateur n'a pas navigué. */
-    private val navigatedIndex = MutableStateFlow(-1)
+    val state: StateFlow<DetailUiState> = combine(
+        repository.observeImages(SortCriteria(SortField.DATE, false), FilterState()),
+        currentId,
+    ) { list, id -> toState(list, id) }
+        // simple: on utilise le tri/filtre par défaut ; navigation basée sur cet ordre
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DetailUiState())
 
-    private val repositoryImages = imageRepository
-        .observeImages(sort, FilterState())
-        .catch { emit(emptyList()) }
-
-    val uiState: StateFlow<DetailUiState> = combine(
-        repositoryImages,
-        navigatedIndex,
-    ) { items, index ->
-        val resolved = when {
-            items.isEmpty() -> -1
-            index in items.indices -> index
-            else -> items.indexOfFirst { it.id == initialImageId }.coerceAtLeast(0)
-        }
-        DetailUiState(items = items, currentIndex = resolved, isLoading = false)
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = DetailUiState(isLoading = true),
-    )
-
-    fun showNext() {
-        val state = uiState.value
-        if (state.hasNext) navigatedIndex.value = state.currentIndex + 1
+    private fun toState(list: List<ImageItem>, id: Long): DetailUiState {
+        if (list.isEmpty()) return DetailUiState()
+        val idx = list.indexOfFirst { it.id == id }.takeIf { it >= 0 } ?: 0
+        return DetailUiState(
+            current = list.getOrNull(idx),
+            hasPrevious = idx > 0,
+            hasNext = idx < list.lastIndex,
+            index = idx,
+            total = list.size,
+        )
     }
 
-    fun showPrevious() {
-        val state = uiState.value
-        if (state.hasPrevious) navigatedIndex.value = state.currentIndex - 1
+    fun previous() {
+        val s = state.value
+        if (s.hasPrevious && s.index > 0) {
+            // recalcule via la liste observée légèrement différée ; on s'appuie sur lastList
+            moveBy(-1)
+        }
+    }
+
+    fun next() {
+        if (state.value.hasNext) moveBy(1)
+    }
+
+    private var lastList: List<ImageItem> = emptyList()
+
+    private fun moveBy(delta: Int) {
+        val s = state.value
+        val target = s.index + delta
+        // met à jour currentId depuis l'état courant
+        s.current?.let { cur ->
+            val list = currentListOrEmpty()
+            val idx = list.indexOfFirst { it.id == cur.id }
+            if (idx >= 0) {
+                val t = (idx + delta).coerceIn(0, list.lastIndex)
+                currentId.value = list[t].id
+            }
+        }
+    }
+
+    private fun currentListOrEmpty(): List<ImageItem> = lastList
+
+    companion object {
+        const val ARG_IMAGE_ID = "imageId"
     }
 }

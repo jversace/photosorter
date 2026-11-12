@@ -7,50 +7,49 @@ class PreFilterTest {
 
     private val preFilter = PreFilter()
 
-    @Test fun screenshotPathIsSkipped() {
+    @Test
+    fun screenshotIsSkipped() {
         assertEquals(
             PreFilterDecision.SKIP,
-            preFilter.decide("/storage/emulated/0/Pictures/Screenshots/IMG_1.png", null)
+            preFilter.decide("/storage/emulated/0/DCIM/Screenshots/img.png", "img.png")
         )
     }
 
-    @Test fun screenshotInNameIsSkipped() {
+    @Test
+    fun documentIsSkipped() {
         assertEquals(
             PreFilterDecision.SKIP,
-            preFilter.decide("/storage/emulated/0/DCIM/x.png", "Screenshot_20240101.png")
+            preFilter.decide("/storage/emulated/0/Documents/scan_001.jpg", "scan_001.jpg")
         )
     }
 
-    @Test fun documentPathIsSkipped() {
+    @Test
+    fun invoiceHintIsSkipped() {
         assertEquals(
             PreFilterDecision.SKIP,
-            preFilter.decide("/storage/emulated/0/Documents/facture.jpg", null)
+            preFilter.decide("/x/facture.jpg", "facture.jpg")
         )
     }
 
-    @Test fun scanPrefixIsSkipped() {
-        assertEquals(
-            PreFilterDecision.SKIP,
-            preFilter.decide(null, "scan_2024.jpg")
-        )
-    }
-
-    @Test fun normalPhotoIsAnalyzed() {
+    @Test
+    fun regularPhotoIsAnalyzed() {
         assertEquals(
             PreFilterDecision.ANALYZE,
-            preFilter.decide("/storage/emulated/0/DCIM/Camera/IMG_20240101.jpg", "IMG_20240101.jpg")
+            preFilter.decide("/storage/emulated/0/DCIM/Camera/IMG_0001.jpg", "IMG_0001.jpg")
         )
     }
 
-    @Test fun emptyInputIsAnalyzed() {
+    @Test
+    fun blankInputIsAnalyzed() {
         assertEquals(PreFilterDecision.ANALYZE, preFilter.decide(null, null))
-        assertEquals(PreFilterDecision.ANALYZE, preFilter.decide("", "  "))
+        assertEquals(PreFilterDecision.ANALYZE, preFilter.decide("  ", ""))
     }
 
-    @Test fun caseInsensitiveMatch() {
+    @Test
+    fun caseInsensitive() {
         assertEquals(
             PreFilterDecision.SKIP,
-            preFilter.decide("/storage/SCREENSHOTS/A.PNG", "A.PNG")
+            preFilter.decide("/Screenshots/A.PNG", "SCREENSHOT_1.PNG")
         )
     }
 }

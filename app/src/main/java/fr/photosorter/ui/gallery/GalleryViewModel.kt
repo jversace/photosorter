@@ -98,7 +98,7 @@ class GalleryViewModel @Inject constructor(
         viewModelScope.launch {
             when (val r = block()) {
                 is AppResult.Success -> { feedback.value = success; selectedIds.value = emptySet() }
-                is AppResult.Error -> errorMessage.value = r.message
+                is AppResult.Failure -> errorMessage.value = r.error.message
             }
             busy.value = false
         }

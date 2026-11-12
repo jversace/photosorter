@@ -109,8 +109,8 @@ Tâches terminées et fusionnées dans release/v1.0.0 :
 - 4d0303c8 : Tests unitaires back-end ✓ (Léna — MR #25 approuvée)
 
 Tâches en cours :
-- Théo : e93e44ff (Tri/filtres galerie)
-- Théo : 79906e61 (Visualisation plein écran)
+- Théo : e93e44ff (Tri/filtres galerie) — REJETÉ 2x, GalleryFilterDialog.kt absent (0 commit). Théo a confirmé qu'il va créer le fichier en version courte.
+- Théo : 79906e61 (Visualisation plein écran) — démarrée
 
 Tâches à faire :
 - Théo : 10f2b02d (Action bar et dialogues) — dépend de e3a1d1a6 ✓
@@ -125,7 +125,7 @@ Bugs :
 - Léna : sans tâche en cours (toutes terminées)
 
 ## Chemin critique
-5ee8aef7 ✓ → e93e44ff (en cours) → 10f2b02d
+5ee8aef7 ✓ → e93e44ff (en cours, bloqué sur commit) → 10f2b02d
 5ee8aef7 ✓ → 79906e61 (en cours)
 e3a1d1a6 ✓ → 10f2b02d
 596d8d9a ✓ → a3be7352
@@ -137,4 +137,7 @@ model.tflite + labels.txt présents sur main/app/assets — vérifier qu'ils son
 Permission runtime WRITE_EXTERNAL_STORAGE (API 26-28) + dialogue d'erreur = responsabilité IHM (Théo), confirmé par Zoé.
 
 ## Note réassignation
-e3a1d1a6 : réassignation officielle à Zoé à acter dans l'outil (option C validée par utilisateur) — en attente de l'utilisateur.
+e3a1d1a6 : réassignation officielle à Zoé actée.
+
+## Problème récurrent Théo
+Théo peine à committer des fichiers longs (troncature). Solution : fichiers courts, sans helpers externes, pas de scroll interne. À surveiller à chaque vérification.

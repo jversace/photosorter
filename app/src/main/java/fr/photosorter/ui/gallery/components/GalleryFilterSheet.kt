@@ -5,21 +5,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Slider
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,131 +24,129 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.text.KeyboardOptions
 import fr.photosorter.R
 import fr.photosorter.domain.model.FilterState
 import fr.photosorter.domain.model.ImageFormat
 
+private const val BYTES_PER_MB = 1024L * 1024L
+
 /**
- * Feuille modale de filtres de la galerie. Travaille sur une copie locale de l'état de filtre,
- * appliquée uniquement via [onApply] (confirmation explicite).
+ * Dialogue de filtrage de la galerie (tâche e93e44ff).
+ *
+ * Toutes les modifications sont locales (brouillon) jusqu'à validation via [onApply].
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun GalleryFilterSheet(
-    initialFilter: FilterState,
-    availableLabels: Set<String>,
+    initial: FilterState,
+    labels: Set<String>,
     onDismiss: () -> Unit,
     onApply: (FilterState) -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    var selectedFormats by remember { mutableStateOf(initialFilter.formats) }
-    var selectedLabels by remember { mutableStateOf(initialFilter.labels) }
-    var includeAdult by remember { mutableStateOf(initialFilter.includeAdult) }
+    var formats by remember { mutableStateOf(initial.formats) }
+    var labelsSelected by remember { mutableStateOf(initial.labels) }
+    var includeAdult by remember { mutableStateOf(initial.includeAdult) }
     var minSizeMb by remember {
-        mutableStateOf(((initialFilter.minSizeBytes ?: 0L) / (1024L * 1024L)).toInt())
+        mutableStateOf(initial.minSizeBytes?.let { (it / BYTES_PER_MB).toString() } ?: "")
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Text(stringResource(R.string.filters_title), style = MaterialTheme.typography.titleLarge)
-
-            // Formats
-            Text(stringResource(R.string.filters_formats), style = MaterialTheme.typography.titleSmall)
-            androidx.compose.foundation.layout.FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.filters_title)) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                ImageFormat.entries.forEach { format ->
-                    val selected = format in selectedFormats
-                    FilterChip(
-                        selected = selected,
-                        onClick = {
-                            selectedFormats = if (selected) selectedFormats - format else selectedFormats + format
-                        },
-                        label = { Text(format.name) },
-                        leadingIcon = if (selected) {
-                            { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                        } else null,
-                    )
-                }
-            }
-
-            // Libellés
-            Text(stringResource(R.string.filters_labels), style = MaterialTheme.typography.titleSmall)
-            if (availableLabels.isEmpty()) {
                 Text(
-                    stringResource(R.string.filters_labels) + " :",
-                    style = MaterialTheme.typography.bodySmall,
+                    stringResource(R.string.filters_formats),
+                    fontWeight = FontWeight.SemiBold,
                 )
-            } else {
-                androidx.compose.foundation.layout.FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    availableLabels.forEach { label ->
-                        val selected = label in selectedLabels
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ImageFormat.entries.forEach { format ->
                         FilterChip(
-                            selected = selected,
+                            selected = format in formats,
                             onClick = {
-                                selectedLabels = if (selected) selectedLabels - label else selectedLabels + label
+                                formats = if (format in formats) formats - format else formats + format
                             },
-                            label = { Text(label) },
+                            label = { Text(format.name) },
                         )
                     }
                 }
+
+                OutlinedTextField(
+                    value = minSizeMb,
+                    onValueChange = { value ->
+                        if (value.all { it.isDigit() } && value.length <= 6) minSizeMb = value
+                    },
+                    label = { Text(stringResource(R.string.filters_min_size)) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                if (labels.isNotEmpty()) {
+                    Text(
+                        stringResource(R.string.filters_labels),
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        labels.sorted().forEach { label ->
+                            FilterChip(
+                                selected = label in labelsSelected,
+                                onClick = {
+                                    labelsSelected =
+                                        if (label in labelsSelected) labelsSelected - label
+                                        else labelsSelected + label
+                                },
+                                label = { Text(label) },
+                            )
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(stringResource(R.string.filters_include_adult))
+                    Switch(
+                        checked = includeAdult,
+                        onCheckedChange = { includeAdult = it },
+                    )
+                }
             }
-
-            // Inclure adulte
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(stringResource(R.string.filters_include_adult))
-                Switch(checked = includeAdult, onCheckedChange = { includeAdult = it })
-            }
-
-            // Taille minimale
-            Text(
-                text = stringResource(R.string.filters_min_size_value, minSizeMb),
-                style = MaterialTheme.typography.titleSmall,
-            )
-            Slider(
-                value = minSizeMb.toFloat(),
-                onValueChange = { minSizeMb = it.toInt() },
-                valueRange = 0f..50f,
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TextButton(onClick = {
-                    selectedFormats = emptySet()
-                    selectedLabels = emptySet()
-                    includeAdult = true
-                    minSizeMb = 0
-                }) { Text(stringResource(R.string.filters_clear)) }
-                TextButton(onClick = {
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
                     onApply(
-                        FilterState(
-                            formats = selectedFormats,
-                            labels = selectedLabels,
+                        initial.copy(
+                            formats = formats,
+                            labels = labelsSelected,
                             includeAdult = includeAdult,
-                            minSizeBytes = if (minSizeMb <= 0) null else minSizeMb.toLong() * 1024L * 1024L,
+                            minSizeBytes = minSizeMb.toLongOrNull()?.let { it * BYTES_PER_MB },
                         ),
                     )
-                }) { Text(stringResource(R.string.filters_apply)) }
+                },
+            ) { Text(stringResource(R.string.filters_apply)) }
+        },
+        dismissButton = {
+            Row {
+                TextButton(onClick = { onApply(initial.copy(formats = emptySet(), labels = emptySet(), minSizeBytes = null, includeAdult = true)) }) {
+                    Text(stringResource(R.string.filters_clear))
+                }
+                OutlinedButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.action_back))
+                }
             }
-        }
-    }
+        },
+    )
 }

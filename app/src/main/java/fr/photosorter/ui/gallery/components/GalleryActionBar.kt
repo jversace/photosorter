@@ -1,5 +1,9 @@
 package fr.photosorter.ui.gallery.components
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -10,7 +14,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import fr.photosorter.R
 
 /** Barre d'actions affichée en bas quand une sélection multiple est active. */
@@ -24,10 +31,11 @@ internal fun GalleryActionBar(
     onLabel: () -> Unit,
 ) {
     Surface {
-        androidx.compose.foundation.layout.Row(
-            modifier = androidx.compose.ui.Modifier
-                .fillMaxWidthCompat()
-                .paddingHorizontal(),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
         ) {
             ActionButton(Icons.Filled.Share, R.string.action_share, enabled, onShare)
             ActionButton(Icons.Filled.DriveFileMove, R.string.action_move, enabled, onMove)
@@ -40,7 +48,7 @@ internal fun GalleryActionBar(
 
 @Composable
 private fun ActionButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     labelRes: Int,
     enabled: Boolean,
     onClick: () -> Unit,
@@ -49,11 +57,3 @@ private fun ActionButton(
         Icon(icon, contentDescription = stringResource(labelRes))
     }
 }
-
-private fun androidx.compose.ui.Modifier.fillMaxWidthCompat() =
-    this.then(androidx.compose.foundation.layout.fillMaxWidth())
-
-private fun androidx.compose.ui.Modifier.paddingHorizontal() =
-    this.then(androidx.compose.foundation.layout.padding(
-        horizontal = androidx.compose.ui.unit.dp_hack(),
-    ))

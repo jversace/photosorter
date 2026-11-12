@@ -11,12 +11,16 @@ import androidx.compose.foundation.lazy.items as listItems
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fr.photosorter.domain.model.ImageItem
 import fr.photosorter.ui.gallery.components.GalleryEmpty
+import fr.photosorter.ui.gallery.components.GalleryFilterDialog
 import fr.photosorter.ui.gallery.components.GalleryGridCell
 import fr.photosorter.ui.gallery.components.GalleryListRow
 import fr.photosorter.ui.gallery.components.GalleryLoading
@@ -30,6 +34,7 @@ fun GalleryScreen(
     viewModel: GalleryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var showFilters by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -47,6 +52,7 @@ fun GalleryScreen(
                 onSelectAll = viewModel::toggleSelectAll,
                 onClearSelection = viewModel::clearSelection,
                 onSortSelected = viewModel::setSort,
+                onOpenFilters = { showFilters = true },
                 onOpenScan = onOpenScan,
                 onOpenLabels = onOpenLabels,
             )
@@ -64,6 +70,18 @@ fun GalleryScreen(
             onLongClick = { item -> viewModel.toggleSelection(item.id) },
         )
     }
+
+    if (showFilters) {
+        GalleryFilterDialog(
+            initialFilter = state.filter,
+            availableLabels = state.images.flatMap { it.labels }.distinct().sorted(),
+            onDismiss = { showFilters = false },
+            onApply = { newFilter ->
+                viewModel.setFilter(newFilter)
+                showFilters = false
+            },
+        )
+    }
 }
 
 @Composable
@@ -75,32 +93,38 @@ private fun GalleryContent(
 ) {
     when {
         state.isLoading -> GalleryLoading(modifier)
-        state.errorMessage != null -> GalleryEmpty(modifier)
-        state.images.isEmpty() -> GalleryEmpty(modifier)
-        state.displayMode == GalleryDisplayMode.GRID -> LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 96.dp),
+        state.errorMessage != null -> GalleryEmpty(
             modifier = modifier,
-            contentPadding = PaddingValues(4.dp),
-        ) {
-            gridItems(state.images, key = { it.id }) { item ->
-                GalleryGridCell(
-                    item = item,
-                    selected = item.id in state.selectedIds,
-                    selectionMode = state.isSelectionMode,
-                    onClick = { onClick(item) },
-                    onLongClick = { onLongClick(item) },
-                )
+            message = state.errorMessage,
+        )
+        state.images.isEmpty() -> GalleryEmpty(modifier = modifier)
+        else -> when (state.displayMode) {
+            GalleryDisplayMode.GRID -> LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 96.dp),
+                modifier = modifier,
+                contentPadding = PaddingValues(2.dp),
+            ) {
+                gridItems(state.images, key = { it.id }) { item ->
+                    GalleryGridCell(
+                        item = item,
+                        selected = item.id in state.selectedIds,
+                        selectionMode = state.isSelectionMode,
+                        onClick = { onClick(item) },
+                        onLongClick = { onLongClick(item) },
+                    )
+                }
             }
-        }
-        else -> LazyColumn(modifier = modifier) {
-            listItems(state.images, key = { it.id }) { item ->
-                GalleryListRow(
-                    item = item,
-                    selected = item.id in state.selectedIds,
-                    selectionMode = state.isSelectionMode,
-                    onClick = { onClick(item) },
-                    onLongClick = { onLongClick(item) },
-                )
+
+            GalleryDisplayMode.LIST -> LazyColumn(modifier = modifier) {
+                listItems(state.images, key = { it.id }) { item ->
+                    GalleryListRow(
+                        item = item,
+                        selected = item.id in state.selectedIds,
+                        selectionMode = state.isSelectionMode,
+                        onClick = { onClick(item) },
+                        onLongClick = { onLongClick(item) },
+                    )
+                }
             }
         }
     }

@@ -93,8 +93,8 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - Les merges des branches agents vers main sont réalisés MANUELLEMENT par l'utilisateur côté dépôt. Les agents ne peuvent pas exécuter git.
 - Zoé fusionne les MR des agents vers release/v1.0.0 dès réception.
 - resolve_merge ne peut pas purger MERGE_HEAD (nécessite un conflict id actif assigné par le système).
-- MR fantômes (#14, #24) : ignorées sur instruction utilisateur. Les dépendances sont réelles côté GitHub.
-- Statut 'en validation' dans les règles globales = 'à vérifier' dans l'outil (contradiction connue).
+- MR fantômes #14 et #24 : ignorées sur instruction utilisateur. Les dépendances correspondantes sont résolues côté GitHub.
+- task_status 'en validation' n'existe pas dans l'outil : utiliser 'à vérifier'.
 
 ## État actuel
 
@@ -104,24 +104,31 @@ Tâches terminées et fusionnées dans release/v1.0.0 :
 - 4060ffc0 : Thème M3, navigation, accessibilité ✓
 - 5ee8aef7 : Écran galerie ✓
 - f1d46c78 : Écran de scan ✓
-- 3983405f : Correction FileActions URI content:// ✓
+- 3983405f : Correction FileActions URI content:// ✓ (Zoé)
 - e3a1d1a6 : Actions fichiers ✓ (Zoé)
-- 4d0303c8 : Tests unitaires back-end ✓ (Léna, MR #25 fusionnée)
+- 4d0303c8 : Tests unitaires back-end ✓ (Léna — MR #25 approuvée)
 
 Tâches en cours :
-- Théo : e93e44ff (Tri et filtres de la galerie)
+- Théo : e93e44ff (Tri/filtres galerie)
 - Théo : 79906e61 (Visualisation plein écran)
 
 Tâches à faire :
-- Théo : 10f2b02d (Action bar et dialogues) — dépend de e3a1d1a6 ✓, 5ee8aef7 ✓
-- Théo : a3be7352 (Gestion des libellés + révision label adulte) — dépend de 596d8d9a ✓, 5ee8aef7 ✓
+- Théo : 10f2b02d (Action bar et dialogues) — dépend de e3a1d1a6 ✓
+- Théo : a3be7352 (Libellés + révision adulte) — dépend de 596d8d9a ✓
 
-## Bugs
+Bugs :
 - 79d94669 : corrigé (FileActions URI content://) ✓
 
-## Chemin critique restant
-e93e44ff + 79906e61 → 10f2b02d → a3be7352
-Tout dépend de Théo.
+## Agents libres
+- Zoé : sans tâche en cours
+- Adam : sans tâche en cours
+- Léna : sans tâche en cours (toutes terminées)
+
+## Chemin critique
+5ee8aef7 ✓ → e93e44ff (en cours) → 10f2b02d
+5ee8aef7 ✓ → 79906e61 (en cours)
+e3a1d1a6 ✓ → 10f2b02d
+596d8d9a ✓ → a3be7352
 
 ## Assets modèle TFLite
 model.tflite + labels.txt présents sur main/app/assets — vérifier qu'ils sont dans release/v1.0.0.
@@ -129,5 +136,5 @@ model.tflite + labels.txt présents sur main/app/assets — vérifier qu'ils son
 ## Note IHM scoped storage
 Permission runtime WRITE_EXTERNAL_STORAGE (API 26-28) + dialogue d'erreur = responsabilité IHM (Théo), confirmé par Zoé.
 
-## Zoé et Adam
-Sans tâche en cours. À solliciter si Théo a besoin d'aide ou si de nouvelles tâches émergent.
+## Note réassignation
+e3a1d1a6 : réassignation officielle à Zoé à acter dans l'outil (option C validée par utilisateur) — en attente de l'utilisateur.

@@ -147,15 +147,6 @@ fun GalleryScreen(
     }
 }
 
-private fun feedbackRes(f: GalleryFeedback): Int = when (f) {
-    GalleryFeedback.DELETED -> R.string.feedback_deleted
-    GalleryFeedback.SHARED -> R.string.feedback_shared
-    GalleryFeedback.MOVED -> R.string.feedback_moved
-    GalleryFeedback.COPIED -> R.string.feedback_copied
-    GalleryFeedback.LABEL_ASSIGNED -> R.string.feedback_label_assigned
-    GalleryFeedback.LABEL_REMOVED -> R.string.feedback_label_removed
-}
-
 @Composable
 private fun GalleryContent(
     state: GalleryUiState,

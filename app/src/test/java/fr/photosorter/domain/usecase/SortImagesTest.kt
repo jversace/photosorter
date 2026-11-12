@@ -24,57 +24,52 @@ class SortImagesTest {
         labels = labels, isAdult = false, thumbnailHint = null
     )
 
-    private fun names(items: List<ImageItem>) = items.map { it.name }
+    private val a = item(1, "b.jpg", ImageFormat.PNG, size = 300, date = 20, labels = setOf("zeta"))
+    private val b = item(2, "A.jpg", ImageFormat.JPEG, size = 100, date = 10, labels = setOf("alpha"))
+    private val c = item(3, "c.jpg", ImageFormat.JPEG, size = 200, date = 30, labels = emptySet())
+
+    private fun ids(items: List<ImageItem>) = items.map { it.id }
 
     @Test
     fun byNameAscendingIsCaseInsensitive() {
-        val input = listOf(item(1, "b.jpg"), item(2, "A.jpg"), item(3, "c.jpg"))
-        val out = sort(input, SortCriteria(SortField.NAME, ascending = true))
-        assertEquals(listOf("A.jpg", "b.jpg", "c.jpg"), names(out))
+        val result = sort(listOf(a, b, c), SortCriteria(SortField.NAME, ascending = true))
+        assertEquals(listOf(2L, 1L, 3L), ids(result)) // A.jpg, b.jpg, c.jpg
     }
 
     @Test
-    fun bySizeDescending() {
-        val input = listOf(item(1, "small", size = 10), item(2, "big", size = 900))
-        val out = sort(input, SortCriteria(SortField.SIZE, ascending = false))
-        assertEquals(listOf("big", "small"), names(out))
+    fun byNameDescending() {
+        val result = sort(listOf(a, b, c), SortCriteria(SortField.NAME, ascending = false))
+        assertEquals(listOf(3L, 1L, 2L), ids(result))
     }
 
     @Test
-    fun byDateUsesModifiedWhenTakenNull() {
-        val input = listOf(item(1, "recent", date = 200), item(2, "old", date = 100))
-        val out = sort(input, SortCriteria(SortField.DATE, ascending = true))
-        assertEquals(listOf("old", "recent"), names(out))
+    fun bySizeAscending() {
+        val result = sort(listOf(a, b, c), SortCriteria(SortField.SIZE, ascending = true))
+        assertEquals(listOf(2L, 3L, 1L), ids(result))
+    }
+
+    @Test
+    fun byDateDescending() {
+        val result = sort(listOf(a, b, c), SortCriteria(SortField.DATE, ascending = false))
+        assertEquals(listOf(3L, 1L, 2L), ids(result))
     }
 
     @Test
     fun byFormatThenName() {
-        val input = listOf(
-            item(1, "z.png", format = ImageFormat.PNG),
-            item(2, "a.jpg", format = ImageFormat.JPEG),
-            item(3, "b.png", format = ImageFormat.PNG)
-        )
-        val out = sort(input, SortCriteria(SortField.FORMAT, ascending = true))
-        // JPEG < PNG (ordre enum), puis nom ascendant dans PNG
-        assertEquals(listOf("a.jpg", "b.png", "z.png"), names(out))
+        val result = sort(listOf(a, b, c), SortCriteria(SortField.FORMAT, ascending = true))
+        // JPEG (b, c triés par nom -> A.jpg=b, c.jpg=c) puis PNG (a)
+        assertEquals(listOf(2L, 3L, 1L), ids(result))
     }
 
     @Test
-    fun byLabelUsesFirstSortedLabel() {
-        val input = listOf(
-            item(1, "noLabel"),
-            item(2, "famille", labels = setOf("famille")),
-            item(3, "travail", labels = setOf("travail"))
-        )
-        val out = sort(input, SortCriteria(SortField.LABEL, ascending = true))
-        // vide < "famille" < "travail"
-        assertEquals(listOf("noLabel", "famille", "travail"), names(out))
+    fun byLabelUsesFirstSortedLabelEmptyFirst() {
+        val result = sort(listOf(a, b, c), SortCriteria(SortField.LABEL, ascending = true))
+        // c (pas de label -> ""), b (alpha), a (zeta)
+        assertEquals(listOf(3L, 2L, 1L), ids(result))
     }
 
     @Test
-    fun descendingReversesNameOrder() {
-        val input = listOf(item(1, "a"), item(2, "b"), item(3, "c"))
-        val out = sort(input, SortCriteria(SortField.NAME, ascending = false))
-        assertEquals(listOf("c", "b", "a"), names(out))
+    fun emptyListStaysEmpty() {
+        assertEquals(emptyList<ImageItem>(), sort(emptyList(), SortCriteria(SortField.NAME, true)))
     }
 }

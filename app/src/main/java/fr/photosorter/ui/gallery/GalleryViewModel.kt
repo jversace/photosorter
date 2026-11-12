@@ -66,11 +66,14 @@ class GalleryViewModel @Inject constructor(
             initialValue = GalleryUiState(isLoading = true),
         )
 
+    private fun selectedItems(): List<ImageItem> =
+        imagesState.value.filter { it.id in selectedIds.value }
+
     fun setDisplayMode(mode: GalleryDisplayMode) { displayMode.value = mode }
 
     fun setSort(field: SortField) {
-        val current = sort.value
-        sort.value = SortCriteria(field, if (current.field == field) !current.ascending else true)
+        sort.value = if (sort.value.field == field) sort.value.copy(ascending = !sort.value.ascending)
+        else SortCriteria(field, ascending = true)
     }
 
     fun setFilter(newFilter: FilterState) { filter.value = newFilter }
@@ -79,54 +82,36 @@ class GalleryViewModel @Inject constructor(
         selectedIds.value = selectedIds.value.let { if (id in it) it - id else it + id }
     }
 
-    fun toggleSelectAll() {
-        val all = imagesState.value.map { it.id }.toSet()
-        val cur = selectedIds.value
-        selectedIds.value = if (cur.containsAll(all) && all.isNotEmpty()) emptySet() else all
-    }
-
     fun clearSelection() { selectedIds.value = emptySet() }
+
+    fun toggleSelectAll() {
+        selectedIds.value = if (uiState.value.allSelected) emptySet()
+        else imagesState.value.mapTo(LinkedHashSet()) { it.id }
+    }
 
     fun consumeFeedback() { feedback.value = null }
 
-    private fun selectedItems(): List<ImageItem> {
-        val sel = selectedIds.value
-        return imagesState.value.filter { it.id in sel }
-    }
-
-    private fun runAction(result: GalleryFeedback, block: suspend () -> AppResult<Unit>) {
-        if (busy.value) return
+    private fun runAction(success: GalleryFeedback, block: suspend () -> AppResult<Unit>) {
+        val items = selectedItems()
+        if (items.isEmpty()) return
+        busy.value = true
         viewModelScope.launch {
-            busy.value = true
             when (val r = block()) {
-                is AppResult.Success -> { feedback.value = result; clearSelection() }
-                is AppResult.Failure -> errorMessage.value = r.error.message
+                is AppResult.Success -> { feedback.value = success; selectedIds.value = emptySet() }
+                is AppResult.Error -> errorMessage.value = r.message
             }
             busy.value = false
         }
     }
 
-    fun deleteSelected() = runAction(GalleryFeedback.DELETED) {
-        imageRepository.delete(selectedItems())
-    }
+    fun deleteSelected() = runAction(GalleryFeedback.DELETED) { imageRepository.delete(selectedItems()) }
+    fun shareSelected() = runAction(GalleryFeedback.SHARED) { imageRepository.share(selectedItems()) }
+    fun moveSelected(destUri: String) = runAction(GalleryFeedback.MOVED) { imageRepository.move(selectedItems(), destUri) }
+    fun copySelected(destUri: String) = runAction(GalleryFeedback.COPIED) { imageRepository.copy(selectedItems(), destUri) }
 
-    fun shareSelected() = runAction(GalleryFeedback.SHARED) {
-        imageRepository.share(selectedItems())
-    }
+    fun assignLabel(label: String) =
+        runAction(GalleryFeedback.LABEL_ASSIGNED) { labelRepository.assign(selectedItems(), label) }
 
-    fun moveSelected(destUri: String) = runAction(GalleryFeedback.MOVED) {
-        imageRepository.move(selectedItems(), destUri)
-    }
-
-    fun copySelected(destUri: String) = runAction(GalleryFeedback.COPIED) {
-        imageRepository.copy(selectedItems(), destUri)
-    }
-
-    fun assignLabel(label: String) = runAction(GalleryFeedback.LABEL_ASSIGNED) {
-        labelRepository.assign(selectedItems(), label)
-    }
-
-    fun unassignLabel(label: String) = runAction(GalleryFeedback.LABEL_REMOVED) {
-        labelRepository.unassign(selectedItems(), label)
-    }
+    fun unassignLabel(label: String) =
+        runAction(GalleryFeedback.LABEL_REMOVED) { labelRepository.unassign(selectedItems(), label) }
 }

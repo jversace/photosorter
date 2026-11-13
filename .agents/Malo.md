@@ -111,12 +111,10 @@ Tâches vérifiées et acceptées, MR en attente de fusion manuelle par l'utilis
 - 4d0303c8 : Tests unitaires back-end (Léna — MR #25) ✅
 - e93e44ff : Tri et filtres galerie (Théo — MR #27, doublon #26 à fermer) ✅
 - 79906e61 : Visualisation plein écran (Théo — MR à ouvrir) ✅
+- 10f2b02d : Action bar et dialogues (Théo — MR à ouvrir) ✅
 
 Tâches en cours :
-- Théo : 10f2b02d (Action bar et dialogues) — démarrée (Théo explore les contrats)
-
-Tâches à faire :
-- Théo : a3be7352 (Libellés + révision adulte) — dépend de 596d8d9a ✓
+- Théo : a3be7352 (Gestion des libellés + révision adulte) — démarrée
 
 Bugs :
 - 79d94669 : corrigé (FileActions URI content://) ✓
@@ -127,9 +125,7 @@ Bugs :
 - Léna : sans tâche en cours (toutes terminées)
 
 ## Chemin critique
-e93e44ff ✓ → 10f2b02d (en cours)
-e3a1d1a6 ✓ → 10f2b02d (en cours)
-596d8d9a ✓ → a3be7352 (à faire)
+a3be7352 (en cours) → toutes dépendances satisfaites
 
 ## Assets modèle TFLite
 model.tflite + labels.txt présents sur main/app/assets — vérifier qu'ils sont dans release/v1.0.0.
@@ -144,4 +140,10 @@ e3a1d1a6 : réassignation officielle à Zoé actée.
 Théo peine à committer des fichiers longs (troncature). Solution : fichiers courts, sans helpers externes, pas de scroll interne. À surveiller à chaque vérification.
 
 ## Fusions en attente (utilisateur)
-MR #25 (Léna, 4d0303c8) + MR #27 (Théo, e93e44ff) → release/v1.0.0, à fusionner manuellement. MR #26 = doublon à fermer. MR 79906e61 (Théo) à ouvrir puis fusionner.
+MR #25 (Léna, 4d0303c8) + MR #27 (Théo, e93e44ff) → release/v1.0.0, à fusionner manuellement. MR #26 = doublon à fermer.
+MR 79906e61 (Théo, visualisation plein écran) + MR 10f2b02d (Théo, action bar) → à ouvrir par Théo puis fusionner.
+
+## Modèle Label (confirmé par Théo)
+- Label : name, isSystem, createdAt
+- Constante : ADULT_LABEL = "adulte"
+- Libellés système (dont adulte) : non supprimables, révisables sur une image

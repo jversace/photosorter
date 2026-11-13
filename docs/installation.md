@@ -39,9 +39,9 @@ L'AAB ne s'installe pas directement en sideloading.
 
 ## 6. Verifier la signature
 
-apksigner verify --verbose app-release.apk
-aar dump badging app-release.apk | grep -E "package|versionCode|versionName|minSdk"
-aapt dump permissions app-release.apk | grep INTERNET
+$ANDROID_SDK/build-tools/34.0.0/apksigner verify --verbose app-release.apk
+$ANDROID_SDK/build-tools/34.0.0/aapt dump badging app-release.apk | grep -E "package|versionCode|versionName|minSdk"
+$ANDROID_SDK/build-tools/34.0.0/aapt dump permissions app-release.apk | grep INTERNET
 unzip -l app-release.apk | grep tflite
 
 Resultats attendus :

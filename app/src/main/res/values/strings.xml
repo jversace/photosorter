@@ -19,6 +19,13 @@
     <string name="action_open_scan">Ouvrir le scan</string>
     <string name="action_open_labels">Ouvrir les libellés</string>
     <string name="action_open_detail">Ouvrir une photo (exemple)</string>
+    <string name="action_share">Partager</string>
+    <string name="action_move">Déplacer</string>
+    <string name="action_copy">Copier</string>
+    <string name="action_label">Libellé</string>
+    <string name="action_delete">Supprimer</string>
+    <string name="action_cancel">Annuler</string>
+    <string name="action_validate">Valider</string>
 
     <!-- Galerie -->
     <string name="gallery_title">Galerie</string>
@@ -29,6 +36,8 @@
     <string name="action_select_all">Tout sélectionner</string>
     <string name="action_cancel_selection">Annuler la sélection</string>
     <string name="badge_adult">Contenu adulte</string>
+    <string name="sort_ascending">Croissant</string>
+    <string name="sort_descending">Décroissant</string>
 
     <!-- Critères de tri -->
     <string name="sort_name">Nom</string>
@@ -36,4 +45,59 @@
     <string name="sort_size">Taille</string>
     <string name="sort_format">Format</string>
     <string name="sort_label">Libellé</string>
+
+    <!-- Filtres -->
+    <string name="action_filters">Filtres</string>
+    <string name="filters_title">Filtres</string>
+    <string name="filters_formats">Formats</string>
+    <string name="filters_labels">Libellés</string>
+    <string name="filters_include_adult">Inclure le contenu adulte</string>
+    <string name="filters_apply">Appliquer</string>
+    <string name="filters_clear">Réinitialiser</string>
+    <string name="filters_date_from">Date de début</string>
+    <string name="filters_date_to">Date de fin</string>
+    <string name="filters_min_size">Taille minimale (Mo)</string>
+    <string name="filters_min_size_value">%1$d Mo</string>
+
+    <!-- Scan -->
+    <string name="action_start_scan">Lancer le scan</string>
+    <string name="scan_idle">Prêt à scanner le stockage à la recherche d\'images.</string>
+    <string name="scan_running">Scan en cours… %1$d fichier(s) traité(s)</string>
+    <string name="scan_running_with_total">Scan en cours… %1$d / %2$d</string>
+    <string name="scan_completed">Scan terminé : %1$d image(s) trouvée(s).</string>
+    <string name="scan_error">Erreur de scan : %1$s</string>
+
+    <!-- Détail plein écran -->
+    <string name="detail_previous">Image précédente</string>
+    <string name="detail_next">Image suivante</string>
+    <string name="detail_toggle_info">Afficher / masquer les informations</string>
+    <string name="detail_exif_title">Informations</string>
+    <string name="detail_exif_name">Nom</string>
+    <string name="detail_exif_format">Format</string>
+    <string name="detail_exif_size">Taille</string>
+    <string name="detail_exif_dimensions">Dimensions</string>
+    <string name="detail_exif_date_taken">Date de prise de vue</string>
+    <string name="detail_exif_date_modified">Date de modification</string>
+    <string name="detail_exif_labels">Libellés</string>
+    <string name="detail_exif_none">—</string>
+    <string name="detail_exif_dimensions_value">%1$d × %2$d px</string>
+    <string name="detail_zoom_reset">Réinitialiser le zoom</string>
+
+    <!-- Dialogues d'actions galerie -->
+    <string name="dialog_delete_title">Supprimer les images</string>
+    <string name="dialog_delete_message">Supprimer %1$d image(s) définitivement ? Cette action est irréversible.</string>
+    <string name="dialog_destination_label">Dossier/URI de destination</string>
+    <string name="dialog_move_title">Déplacer vers…</string>
+    <string name="dialog_copy_title">Copier vers…</string>
+    <string name="dialog_label_assign_title">Assigner un libellé</string>
+    <string name="dialog_label_remove_title">Retirer un libellé</string>
+    <string name="dialog_label_name">Nom du libellé</string>
+
+    <!-- Feedback après action -->
+    <string name="feedback_deleted">Image(s) supprimée(s).</string>
+    <string name="feedback_shared">Partage lancé.</string>
+    <string name="feedback_moved">Image(s) déplacée(s).</string>
+    <string name="feedback_copied">Image(s) copiée(s).</string>
+    <string name="feedback_label_assigned">Libellé assigné.</string>
+    <string name="feedback_label_removed">Libellé retiré.</string>
 </resources>

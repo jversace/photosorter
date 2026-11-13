@@ -3,6 +3,7 @@ package fr.photosorter.ui.gallery.components
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.ViewList
@@ -34,6 +35,7 @@ internal fun GalleryTopBar(
     onSelectAll: () -> Unit,
     onClearSelection: () -> Unit,
     onSortSelected: (SortField) -> Unit,
+    onOpenFilters: () -> Unit,
     onOpenScan: () -> Unit,
     onOpenLabels: () -> Unit,
 ) {
@@ -62,6 +64,9 @@ internal fun GalleryTopBar(
                         else Icons.Filled.GridView,
                         contentDescription = stringResource(R.string.action_toggle_display_mode),
                     )
+                }
+                IconButton(onClick = onOpenFilters) {
+                    Icon(Icons.Filled.FilterList, stringResource(R.string.action_filters))
                 }
                 IconButton(onClick = { sortMenuOpen = true }) {
                     Icon(Icons.AutoMirrored.Filled.Sort, stringResource(R.string.action_sort))

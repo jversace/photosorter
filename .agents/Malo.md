@@ -96,61 +96,36 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - MR fantômes #14 et #24 : ignorées sur instruction utilisateur. Les dépendances correspondantes sont résolues côté GitHub.
 - task_status 'en validation' n'existe pas dans l'outil : utiliser 'à vérifier'.
 
-## État actuel
+## État actuel — RELEASE PRÊTE
 
-Tâches terminées et fusionnées dans release/v1.0.0 :
-- 87bcaabc : Repositories + use cases ✓
-- 596d8d9a : Modération TFLite ✓
-- 4060ffc0 : Thème M3, navigation, accessibilité ✓
-- 5ee8aef7 : Écran galerie ✓
-- f1d46c78 : Écran de scan ✓
-- 3983405f : Correction FileActions URI content:// ✓ (Zoé)
-- e3a1d1a6 : Actions fichiers ✓ (Zoé)
+Toutes les tâches terminées et fusionnées dans release/v1.0.0 :
+- Malo : 1 tâche ✓
+- Zoé : 3 tâches ✓
+- Léna : 6 tâches ✓
+- Théo : 7 tâches ✓
+Total : 17 tâches, 0 en cours.
 
-Tâches vérifiées et acceptées, MR en attente de fusion manuelle par l'utilisateur :
-- 4d0303c8 : Tests unitaires back-end (Léna — MR #25) ✅
-- e93e44ff : Tri et filtres galerie (Théo — MR #27, doublon #26 à fermer) ✅
-- 79906e61 : Visualisation plein écran (Théo — MR à ouvrir) ✅
-- 10f2b02d : Action bar et dialogues (Théo — MR à ouvrir) ✅
-- a3be7352 : Gestion des libellés + révision adulte (Théo — MR à ouvrir) ✅
+En attente de l'utilisateur :
+- Fusionner release/v1.0.0 → main
+- Poser le tag v1.0.0 sur main
 
-Tâches en correction/correction:
-- 1c5cab0a : Corrections Scanneur (à faire, sans assignee)
-- 7445b925 : Corrections IHM (à faire, sans assignee)
+Tâches sans assignee (hors périmètre v1.0.0) :
+- 1c5cab0a : Corrections Scanneur (à faire)
+- 7445b925 : Corrections IHM (à faire)
 
 Bugs :
 - 79d94669 : corrigé (FileActions URI content://) ✓
 
-## Agents libres
-- Zoé : sans tâche en cours
-- Adam : sans tâche en cours
-- Léna : sans tâche en cours (toutes terminées)
-- Théo : toutes tâches terminées, MR à ouvrir
-
-## Chemin critique
-Toutes les tâches fonctionnelles sont terminées et vérifiées.
-Il reste : fusion des MR vers release/v1.0.0, puis release finale (merge main + tag v1.0.0) par l'utilisateur.
-
-## MR en attente (utilisateur à fusionner)
-- MR #25 : Léna, 4d0303c8 (tests unitaires back-end)
-- MR #27 : Théo, e93e44ff (tri et filtres galerie) — doublon #26 à fermer
-- MR 79906e61 : Théo, visualisation plein écran (à ouvrir par Théo)
-- MR 10f2b02d : Théo, action bar et dialogues (à ouvrir par Théo)
-- MR a3be7352 : Théo, gestion libellés + révision adulte (à ouvrir par Théo)
-
-## Modèle Label (confirmé par Théo)
+## Modèle Label (confirmé)
 - Label : name, isSystem, createdAt
 - Constante : ADULT_LABEL = "adulte"
 - Libellés système (dont adulte) : non supprimables, révisables sur une image
 
 ## Assets modèle TFLite
-model.tflite + labels.txt présents sur main/app/assets — vérifier qu'ils sont dans release/v1.0.0.
-
-## Note IHM scoped storage
-Permission runtime WRITE_EXTERNAL_STORAGE (API 26-28) + dialogue d'erreur = responsabilité IHM (Théo), confirmé par Zoé.
+model.tflite + labels.txt présents sur main/app/assets — à vérifier dans release/v1.0.0.
 
 ## Problème récurrent Théo
-Théo peine parfois à exécuter ses actions (boucle de messages). Solution : fichiers courts, sans helpers externes. Résolu sur a3be7352 après relance manuelle.
+Théo peine parfois à exécuter ses actions (boucle de messages). Solution : fichiers courts, sans helpers externes.
 
 ## Prochaine étape
-Fusion de toutes les MR en attente → release/v1.0.0, puis release finale (merge main + tag v1.0.0) déclenchée par l'utilisateur.
+Release finale déclenchée par l'utilisateur : merge release/v1.0.0 → main + tag v1.0.0.

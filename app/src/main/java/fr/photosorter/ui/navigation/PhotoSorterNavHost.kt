@@ -8,8 +8,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import fr.photosorter.ui.detail.DetailScreen
 import fr.photosorter.ui.gallery.GalleryScreen
+import fr.photosorter.ui.labels.LabelScreen
 import fr.photosorter.ui.scan.ScanScreen
-import fr.photosorter.ui.screens.LabelPlaceholderScreen
 
 @Composable
 fun PhotoSorterNavHost() {
@@ -41,7 +41,7 @@ fun PhotoSorterNavHost() {
         }
 
         composable(Destinations.LABELS) {
-            LabelPlaceholderScreen(onBack = { navController.popBackStack() })
+            LabelScreen(onBack = { navController.popBackStack() })
         }
     }
 }

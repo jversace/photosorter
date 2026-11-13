@@ -41,9 +41,8 @@ android {
 
     buildTypes {
         release {
-            // R8/ProGuard désactivé pour v1.0.0 : règles ProGuard non validées
-            // pour Room, Hilt, TFLite et coroutines. À activer en v1.1+ après
-            // test d'un APK release signé sur appareil.
+            // Minification désactivée pour v1.0.0 : règles ProGuard non validées
+            // pour Room/Hilt/TFLite/coroutines. À activer avec règles testées en v1.1+.
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

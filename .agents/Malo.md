@@ -96,23 +96,23 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - MR fantômes #14 et #24 : ignorées sur instruction utilisateur.
 - task_status 'en validation' n'existe pas dans l'outil : utiliser 'à vérifier'.
 - mr_review renvoie souvent 'cette merge request n'est pas en attente de validation' même quand get_blockers la liste : toujours demander une fusion manuelle à l'utilisateur dans ce cas.
+- isMinifyEnabled=false pour v1.0.0. R8/ProGuard à réactiver en v1.1+ après test d'un APK release signé sur appareil physique avec règles ProGuard adaptées (Room/Hilt/TFLite/coroutines).
 
-## État actuel — RELEASE EN COURS DE FINALISATION
+## État actuel — PACKAGING EN COURS DE FUSION
 
 Toutes les tâches terminées et fusionnées dans release/v1.0.0 :
 - Malo : 1 tâche ✓
 - Zoé : 3 tâches ✓
 - Léna : 6 tâches ✓
 - Théo : 7 tâches ✓
-Total : 17 tâches, 0 en cours.
+Total : 17 tâches développement, 0 en cours.
 
-MR #30 (Zoé, .agents/Zoé.md) : fusionnée manuellement ✓
-MR #32 (Zoé, libs.versions.toml + build.gradle.kts) : fusion manuelle en cours
+Tâche 8118fe45 (packaging) : acceptée par Zoé, MR #35 soumise vers release/v1.0.0.
+Zoé validera la MR #35 dès qu'elle est en attente.
 
-En attente de l'utilisateur :
-1. Fusion manuelle MR #32 (en cours)
-2. Fusionner release/v1.0.0 → main (MR #29)
-3. Poser le tag v1.0.0 sur main
+Après fusion MR #35 :
+1. Fusionner release/v1.0.0 → main (utilisateur)
+2. Poser le tag v1.0.0 sur main (utilisateur)
 
 Tâches sans assignee (hors périmètre v1.0.0) :
 - 1c5cab0a : Corrections Scanneur (à faire)
@@ -130,4 +130,4 @@ Bugs :
 model.tflite + labels.txt présents sur main/app/assets — à vérifier dans release/v1.0.0.
 
 ## Prochaine étape
-Release finale : merge release/v1.0.0 → main + tag v1.0.0 (déclenché par l'utilisateur).
+MR #35 (packaging) → fusion par Zoé → puis release finale : merge release/v1.0.0 → main + tag v1.0.0 (déclenché par l'utilisateur).

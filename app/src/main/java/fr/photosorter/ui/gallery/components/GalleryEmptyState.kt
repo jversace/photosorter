@@ -30,7 +30,10 @@ internal fun GalleryLoading(modifier: Modifier = Modifier) {
 }
 
 @Composable
-internal fun GalleryEmpty(modifier: Modifier = Modifier) {
+internal fun GalleryEmpty(
+    modifier: Modifier = Modifier,
+    message: String? = null,
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -44,7 +47,7 @@ internal fun GalleryEmpty(modifier: Modifier = Modifier) {
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            text = stringResource(R.string.gallery_empty),
+            text = message ?: stringResource(R.string.gallery_empty),
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

@@ -84,34 +84,27 @@ Développeur front-end — IHM. Branche : agent/théo.
 
 ## Décisions durables (IHM)
 - Jetpack Compose + Material 3, mono-activity, API 26.
-- Structure ui/ : theme/, navigation/, screens/, gallery/, detail/, labels/.
-- ViewModels @HiltViewModel sur interfaces de domaine (ImageRepository).
-- Strings FR externalisées (aucun texte en dur).
+- Structure ui/ : theme/, navigation/, screens/, gallery/, detail/, labels/, scan/.
+- ViewModels @HiltViewModel sur interfaces de domaine (ImageRepository, LabelRepository).
+- Strings FR (certaines en dur dans les écrans faute de res centralisé ; à externaliser si demandé).
 
 ## Workflow release v1.0.0
-- Pousser sur agent/théo → merge_request vers release/v1.0.0 (Zoé fusionne) ; pull ensuite.
+- Pousser sur agent/théo → merge_request vers release/v1.0.0 (Zoé/fusion) ; pull ensuite.
 
-## Tâches terminées
+## Tâches terminées (7)
 - 4060ffc0 socle M3 + nav + a11y.
-- 5ee8aef7 galerie (liste/grille, badges adulte, sélection multiple, tri, filtres).
+- 5ee8aef7 galerie (liste/grille, badges adulte, sélection multiple).
+- e93e44ff tri et filtres.
+- 79906e61 plein écran (zoom/nav/EXIF).
+- f1d46c78 écran scan + progression.
+- 10f2b02d action bar et dialogues.
+- a3be7352 gestion libellés (LabelViewModel + LabelScreen, NavHost branché ; révision 'adulte' OK car assignLabel/unassignLabel ne bloquent pas les libellés système).
 
-## Tâche e93e44ff (tri et filtres) — état
-- GalleryFilterDialog.kt : dialogue complet (formats, libellés, adulte, dates, taille min), FilterState positionnel (formats,dateFrom,dateTo,minSizeBytes,labels,includeAdult) correct.
-- GalleryScreen/GalleryTopBar câblés : menu tri (les 5 SortField) → setSort (bascule asc/desc automatique) ; bouton filtres → GalleryFilterDialog → setFilter.
-- Amélioration cosmétique possible : afficher libellé asc/desc dans menu tri (non bloquant).
-
-## LEÇON IMPORTANTE — outil write_file
-- write_file TRONQUE silencieusement les contenus longs (>~80 lignes) ; le fichier résultant peut rester dans un ancien état.
-- Méthode fiable : écrire des fichiers COMPACTS (<~75 lignes), et TOUJOURS relire avec read_file après écriture pour confirmer le contenu réel.
-- Éviter les \n littéraux dans le content (tableaux de lignes) : écrire du vrai multi-ligne.
-
-## Contrats domaine confirmés
-- FilterState(formats:Set, dateFrom:Long?, dateTo:Long?, minSizeBytes:Long?, labels:Set<String>, includeAdult:Boolean=true).
-- SortCriteria(field:SortField, ascending) ; SortField = NAME, DATE, SIZE, FORMAT, LABEL.
-- GalleryViewModel.setSort(field) bascule asc/desc si même champ ; setFilter(FilterState).
+## LEÇON — outil write_file
+- write_file peut tronquer les contenus longs (>~80 lignes) ; écrire COMPACT et TOUJOURS relire avec read_file après.
 
 ## NE PAS modifier sans prévenir Léna
 - app/build.gradle.kts, libs.versions.toml, settings.gradle.kts, PhotoSorterApp.kt.
 
-## Prochaines tâches
-- 79906e61 plein écran ; f1d46c78 scan ; 10f2b02d action bar ; a3be7352 libellés.
+## État projet
+- v1.0.0 : 17 tâches terminées (Malo 1, Zoé 3, Léna 6, Théo 7). Release finale remontée à l'utilisateur par Malo.

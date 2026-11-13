@@ -81,41 +81,26 @@ agent/zoé
 
 ## Décisions durables
 - Détection contenu adulte : A = IA locale TFLite + pré-filtre screenshots/documents. Aucun envoi externe. Label 'adulte' révisable.
-- Pré-filtre : exclure uniquement screenshots/documents/texte (ML Kit Text Recognition). Pas de colorimétrie/texture en exclusion. Erreur -> passer à l'IA.
+- Pré-filtre : exclure uniquement screenshots/documents/texte (ML Kit Text Recognition). Erreur -> passer à l'IA.
 - UI : Jetpack Compose + Material 3, mono-activity, Navigation Compose.
 - ANDROID 8.0 min (API 26), hors-ligne (pas de permission INTERNET), FR.
+- Packaging v1.0.0 : isMinifyEnabled=false (R8/ProGuard DÉSACTIVÉ). R8 à réactiver en v1.1+ uniquement après rules ProGuard pour Room/Hilt/TFLite/coroutines ET test d'un APK release signé sur appareil. Signature release via keystore.properties non versionné (lecture conditionnelle -> APK non signé si absent, sans erreur).
 
 ## WORKFLOW GIT
-- Les agents ONT le token git : ils commitent et POUSSENT sur leur branche.
-- Workflow release v1.0.0 : agent pousse sur sa branche -> merge_request vers release/v1.0.0 -> Zoé/agent principal valide (fusion) -> agents pull depuis release/v1.0.0. Merges vers main = utilisateur.
-- Conflits de fusion : agent Adam résout (non joignable ; peut être réassigné à Zoé).
-
-## Réaffectations (option C validée par utilisateur)
-- 3983405f (fix FileActions content://) : réaffectée Léna -> Zoé. Portée sur agent/zoé, MR #24 vers release/v1.0.0, statut à vérifier.
-- e3a1d1a6 (Actions fichiers scoped storage+fallback API 26-28) : réaffectée Léna -> Zoé. À démarrer sur agent/zoé ; Léna ne touche plus.
-
-## FileActions.kt — état corrigé (3983405f)
-- Chemin : app/src/main/java/fr/photosorter/data/repository/FileActions.kt (package data.repository, fourni par data/di/FileActionsModule @Singleton).
-- Constructeur FileActions(context:Context) inchangé.
-- Signatures préservées : delete(String):AppError?, move(String,File):AppError?, copy(String,File):AppError?, shareUri(String):Uri?.
-- Correctif : resolveFile(uri) -> file:// = uri.path ; content:// = OpenableColumns.DATA (_data) si fichier existe ; fallback DISPLAY_NAME -> copie flux dans cacheDir/shared (materializeIfNeeded true pour copy/share seulement). delete : resolver.delete API>=29 d'abord puis repli fichier. copy cible = src.name (pas de renommage).
-- FileProvider authority = ${packageName}.fileprovider ; file_paths.xml couvre external-path/external-files-path/files-path/cache-path (OK).
-- Seul appelant : ImageRepositoryImpl (delete/move/copy/shareUri). Contrat : null = succès, ne jamais renvoyer erreur après succès réel.
-
-## Livrables
-- a88bd00f terminée (docs/architecture.md).
-- Union Gradle (TFLite+Compose+main) fournie à Malo pour écriture sur agent/léna ; ajout kotlinx-coroutines-test confirmé.
-- État réel post-pull release/v1.0.0 (13/11) : gradle/libs.versions.toml et app/build.gradle.kts contiennent DÉJÀ la version fusionnée complète (Room, Robolectric, Turbine, Mockito, tests, TFLite, Compose M3, Hilt, navigation, coroutines-test). Aucun conflit résiduel sur ces 2 fichiers.
+- Les agents ONT le token git : commit + push sur leur branche.
+- Workflow release v1.0.0 : agent pousse -> merge_request vers release/v1.0.0 -> agent principal valide -> agents pull release. Merges vers main = utilisateur.
+- Conflits de fusion : agent Adam (non joignable), peut être réassigné à Zoé.
 
 ## Release finale v1.0.0 (en cours)
-- MR #26 annulée par l'utilisateur (doublon de #27).
-- Résolution de conflit MR #29 (release/v1.0.0 -> main) : 3 fichiers signalés (gradle/libs.versions.toml, app/build.gradle.kts, .agents/Zoé.md). Stratégie validée : Zoé résout sur agent/zoé + pousse, puis l'utilisateur refait une MR release/v1.0.0 -> main sans conflit.
-- Les 2 fichiers Gradle étant déjà fusionnés sur agent/zoé, seul .agents/Zoé.md nécessite une fusion (union des notes main + branche).
+- Fichiers Gradle sur agent/zoé déjà en version finale fusionnée (sur-ensemble de main : room, libs de test, hilt-navigation-compose). MR #32 soumise.
+- Si conflit release/v1.0.0 -> main sur les 3 fichiers (libs.versions.toml, build.gradle.kts, .agents/Zoé.md) : garder la version release/v1.0.0 (contient room/robolectric/mockito/turbine/tensorflow + notes récentes).
+- Packaging (tâche 8118fe45, Malo, module exécutable) : ré-acceptée. Docs installation.md/keystore.properties.example/.gitignore OK. MR #34 traitée ; nouvelle MR soumise par Malo suite au correctif isMinifyEnabled=false + coquille aapt.
 
-## Relations
-- Malo (chef), Léna (back), Théo (front) joignables. Adam non joignable.
-- Ne pas passer une tâche à terminée sans validation utilisateur.
+## FileActions.kt — état corrigé (3983405f)
+- Chemin : app/src/main/java/fr/photosorter/data/repository/FileActions.kt (package data.repository, data/di/FileActionsModule @Singleton).
+- Correctif content:// via OpenableColumns.DATA + fallback DISPLAY_NAME cache ; contrat null=succès.
 
 ## Limites d'outil
-- Messages parfois non délivrés (profondeur max) ; write_file sur docs/ échoue parfois.
-- list_files/read_file sur agent 'release/v1.0.0' refusé ('Agent inconnu') : passer par pull puis lire sa propre branche.
+- Messages parfois non délivrés ; write_file sur docs/ échoue parfois.
+- list_files/read_file sur 'release/v1.0.0' refusé : passer par pull puis lire sa branche.
+- mr_review échoue si la MR n'est plus 'en attente de validation'.

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+    <!-- Écran plein écran -->
+    <string name="detail_prev">Image précédente</string>
+    <string name="detail_next">Image suivante</string>
+    <string name="detail_close">Fermer</string>
+    <string name="detail_info">Métadonnées</string>
+    <string name="detail_hide_info">Masquer les métadonnées</string>
+    <string name="detail_loading">Chargement…</string>
+    <string name="detail_error">Impossible de charger cette image.</string>
+
+    <!-- Métadonnées EXIF -->
+    <string name="exif_title">Informations</string>
+    <string name="exif_name">Nom</string>
+    <string name="exif_format">Format</string>
+    <string name="exif_dimensions">Dimensions</string>
+    <string name="exif_dimensions_value">%1$d × %2$d px</string>
+    <string name="exif_size">Taille</string>
+    <string name="exif_date_taken">Date de prise de vue</string>
+    <string name="exif_date_modified">Date de modification</string>
+    <string name="exif_labels">Libellés</string>
+    <string name="exif_no_labels">Aucun</string>
+</resources>

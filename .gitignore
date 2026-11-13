@@ -1,0 +1,27 @@
+# Android
+*.iml
+.gradle/
+.idea/
+local.properties
+*.DS_Store
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Kotlin
+*.class
+*.jar
+*.dex
+
+# Signature release — NE JAMAIS VERSIONNER
+keystore.properties
+*.keystore
+*.jks
+
+# Fichiers APK/AAB générés
+*.apk
+*.aab
+
+# Logs
+*.log

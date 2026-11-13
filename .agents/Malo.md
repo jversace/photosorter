@@ -112,9 +112,11 @@ Tâches vérifiées et acceptées, MR en attente de fusion manuelle par l'utilis
 - e93e44ff : Tri et filtres galerie (Théo — MR #27, doublon #26 à fermer) ✅
 - 79906e61 : Visualisation plein écran (Théo — MR à ouvrir) ✅
 - 10f2b02d : Action bar et dialogues (Théo — MR à ouvrir) ✅
+- a3be7352 : Gestion des libellés + révision adulte (Théo — MR à ouvrir) ✅
 
-Tâches en cours :
-- Théo : a3be7352 (Gestion des libellés + révision adulte) — démarrée
+Tâches en correction/correction:
+- 1c5cab0a : Corrections Scanneur (à faire, sans assignee)
+- 7445b925 : Corrections IHM (à faire, sans assignee)
 
 Bugs :
 - 79d94669 : corrigé (FileActions URI content://) ✓
@@ -123,9 +125,23 @@ Bugs :
 - Zoé : sans tâche en cours
 - Adam : sans tâche en cours
 - Léna : sans tâche en cours (toutes terminées)
+- Théo : toutes tâches terminées, MR à ouvrir
 
 ## Chemin critique
-a3be7352 (en cours) → toutes dépendances satisfaites
+Toutes les tâches fonctionnelles sont terminées et vérifiées.
+Il reste : fusion des MR vers release/v1.0.0, puis release finale (merge main + tag v1.0.0) par l'utilisateur.
+
+## MR en attente (utilisateur à fusionner)
+- MR #25 : Léna, 4d0303c8 (tests unitaires back-end)
+- MR #27 : Théo, e93e44ff (tri et filtres galerie) — doublon #26 à fermer
+- MR 79906e61 : Théo, visualisation plein écran (à ouvrir par Théo)
+- MR 10f2b02d : Théo, action bar et dialogues (à ouvrir par Théo)
+- MR a3be7352 : Théo, gestion libellés + révision adulte (à ouvrir par Théo)
+
+## Modèle Label (confirmé par Théo)
+- Label : name, isSystem, createdAt
+- Constante : ADULT_LABEL = "adulte"
+- Libellés système (dont adulte) : non supprimables, révisables sur une image
 
 ## Assets modèle TFLite
 model.tflite + labels.txt présents sur main/app/assets — vérifier qu'ils sont dans release/v1.0.0.
@@ -133,17 +149,8 @@ model.tflite + labels.txt présents sur main/app/assets — vérifier qu'ils son
 ## Note IHM scoped storage
 Permission runtime WRITE_EXTERNAL_STORAGE (API 26-28) + dialogue d'erreur = responsabilité IHM (Théo), confirmé par Zoé.
 
-## Note réassignation
-e3a1d1a6 : réassignation officielle à Zoé actée.
-
 ## Problème récurrent Théo
-Théo peine à committer des fichiers longs (troncature). Solution : fichiers courts, sans helpers externes, pas de scroll interne. À surveiller à chaque vérification.
+Théo peine parfois à exécuter ses actions (boucle de messages). Solution : fichiers courts, sans helpers externes. Résolu sur a3be7352 après relance manuelle.
 
-## Fusions en attente (utilisateur)
-MR #25 (Léna, 4d0303c8) + MR #27 (Théo, e93e44ff) → release/v1.0.0, à fusionner manuellement. MR #26 = doublon à fermer.
-MR 79906e61 (Théo, visualisation plein écran) + MR 10f2b02d (Théo, action bar) → à ouvrir par Théo puis fusionner.
-
-## Modèle Label (confirmé par Théo)
-- Label : name, isSystem, createdAt
-- Constante : ADULT_LABEL = "adulte"
-- Libellés système (dont adulte) : non supprimables, révisables sur une image
+## Prochaine étape
+Fusion de toutes les MR en attente → release/v1.0.0, puis release finale (merge main + tag v1.0.0) déclenchée par l'utilisateur.

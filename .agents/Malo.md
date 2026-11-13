@@ -74,7 +74,7 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 {"do":"bug","title":"...","desc":"...","sev":"mineur|majeur|critique","modules":["<module>"]} : déclarer un bug (selon tes droits)
 {"do":"bug_fix","bug":"<id>","title":"...","desc":"...","assignee":"<prénom>"} : créer une sous-tâche de correction d’un bug
 {"do":"bug_status","id":"<id>","status":"en correction|corrigé|vérifié|rouvert"} : faire évoluer un bug (vérifié/rouvert : droit de vérification)
-{"do":"ask_user","question":"...","options":["A","B"],"recommendation":"...","impact":"...","structural":true,"task":"<id de la tâche bloquée, ou vide>"} : poser une question à l’utilisateur (ambiguïté, décision structurante)
+{"do":"ask_user","question":"...","options":["A","B"],"recommendation":"...","impact":"...","structural":true,"task":"<id de la tâche bloquée, ou vide>","replaces":[<n° des décisions en attente auxquelles cette question répond aussi>]} : poser une question à l’utilisateur (ambiguïté, décision structurante) ; si elle répond aussi à une question déjà en attente, indique son numéro dans replaces : l’ancienne est annulée et remplacée
 {"do":"instruction","text":"...","scope":"global|role:<rôle>|agent:<prénom>|module:<module>"} : (agent principal) enregistrer une nouvelle instruction de l’utilisateur
 {"do":"spec","text":"<spécifications complètes en markdown>"} : (agent principal) remplacer les spécifications
 
@@ -95,31 +95,28 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - resolve_merge ne peut pas purger MERGE_HEAD (nécessite un conflict id actif assigné par le système).
 - MR fantômes #14 et #24 : ignorées sur instruction utilisateur.
 - task_status 'en validation' n'existe pas dans l'outil : utiliser 'à vérifier'.
-- mr_review renvoie souvent 'cette merge request n'est pas en attente de validation' même quand get_blockers la liste : toujours demander une fusion manuelle à l'utilisateur dans ce cas.
+- mr_review et task_review renvoient souvent 'pas en attente' même quand get_blockers les liste : toujours demander une fusion/clôture manuelle à l'utilisateur dans ce cas (ask_user). Ne pas réessayer indéfiniment.
 - isMinifyEnabled=false pour v1.0.0. R8/ProGuard à réactiver en v1.1+ après test d'un APK release signé sur appareil physique avec règles ProGuard adaptées (Room/Hilt/TFLite/coroutines).
 
-## État actuel — PACKAGING EN COURS DE FUSION
+## État actuel — EN ATTENTE DE L'UTILISATEUR
 
 Toutes les tâches terminées et fusionnées dans release/v1.0.0 :
 - Malo : 1 tâche ✓
 - Zoé : 3 tâches ✓
-- Léna : 6 tâches ✓
+- Léna : 6 tâches + c09d3de2 (corrections exécutable) ✓
 - Théo : 7 tâches ✓
-Total : 17 tâches développement, 0 en cours.
 
-Tâche 8118fe45 (packaging) : acceptée par Zoé, MR #35 soumise vers release/v1.0.0.
-Zoé validera la MR #35 dès qu'elle est en attente.
+Bug 2086c768 (wrapper Gradle absent) : corrigé par Léna, MR #36 fusionnée dans release/v1.0.0.
 
-Après fusion MR #35 :
-1. Fusionner release/v1.0.0 → main (utilisateur)
+Bloqué (décision en attente dans onglet Décisions) :
+- MR #38 (Léna — .agents/Léna.md) : mr_review dit 'pas en attente' mais get_blockers la liste
+- Tâche c09d3de2 : task_review dit 'pas en attente' mais get_blockers la liste
+- Demande posée à l'utilisateur : fusionner MR #38 manuellement et clore c09d3de2
+
+Après résolution :
+1. Merger release/v1.0.0 → main (utilisateur)
 2. Poser le tag v1.0.0 sur main (utilisateur)
-
-Tâches sans assignee (hors périmètre v1.0.0) :
-- 1c5cab0a : Corrections Scanneur (à faire)
-- 7445b925 : Corrections IHM (à faire)
-
-Bugs :
-- 79d94669 : corrigé (FileActions URI content://) ✓
+3. Release finale ✓
 
 ## Modèle Label (confirmé)
 - Label : name, isSystem, createdAt
@@ -127,7 +124,17 @@ Bugs :
 - Libellés système (dont adulte) : non supprimables, révisables sur une image
 
 ## Assets modèle TFLite
-model.tflite + labels.txt présents sur main/app/assets — à vérifier dans release/v1.0.0.
+model.tflite + labels.txt présents sur main/app/assets — vérifiés dans release/v1.0.0.
 
-## Prochaine étape
-MR #35 (packaging) → fusion par Zoé → puis release finale : merge release/v1.0.0 → main + tag v1.0.0 (déclenché par l'utilisateur).
+## Packaging (tâche 8118fe45 — terminée)
+- app/build.gradle.kts : signingConfigs release, isMinifyEnabled=false
+- keystore.properties.example fourni, keystore.properties dans .gitignore
+- docs/installation.md : guide complet sideloading + ADB
+- MR #34 fusionnée dans release/v1.0.0 ✓
+
+## Wrapper Gradle (bug 2086c768 — corrigé)
+- gradlew, gradlew.bat, gradle/wrapper/gradle-wrapper.properties (Gradle 8.9) dans release/v1.0.0
+- .gitignore : exception gradle-wrapper.jar, exclusions keystore/APK/AAB
+- docs/installation.md : section 1bis + dépannage ClassNotFoundException
+- Réserve : gradle-wrapper.jar (~60 Ko binaire) à générer depuis un poste Gradle
+- MR #36 fusionnée dans release/v1.0.0 ✓

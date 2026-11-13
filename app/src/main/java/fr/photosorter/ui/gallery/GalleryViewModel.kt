@@ -9,6 +9,7 @@ import fr.photosorter.domain.model.ImageItem
 import fr.photosorter.domain.model.SortCriteria
 import fr.photosorter.domain.model.SortField
 import fr.photosorter.domain.repository.ImageRepository
+import fr.photosorter.domain.repository.LabelRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,82 +17,71 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * ViewModel de la galerie. Dépend de l'interface ImageRepository ; l'implémentation
- * concrète (ImageRepositoryImpl) est fournie par Hilt via RepositoryModule.
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class GalleryViewModel @Inject constructor(
     private val imageRepository: ImageRepository,
+    private val labelRepository: LabelRepository,
 ) : ViewModel() {
 
     private val displayMode = MutableStateFlow(GalleryDisplayMode.GRID)
-    private val sort = MutableStateFlow(SortCriteria(SortField.DATE, ascending = false))
+    private val sort = MutableStateFlow(SortCriteria(SortField.DATE, false))
     private val filter = MutableStateFlow(FilterState())
     private val selectedIds = MutableStateFlow<Set<Long>>(emptySet())
     private val imagesState = MutableStateFlow<List<ImageItem>>(emptyList())
     private val errorMessage = MutableStateFlow<String?>(null)
+    private val feedback = MutableStateFlow<GalleryFeedback?>(null)
+    private val busy = MutableStateFlow(false)
 
-    private val repositoryImages = combine(sort, filter) { s, f -> s to f }
-        .flatMapLatest { (s, f) ->
-            imageRepository.observeImages(s, f)
-                .catch { e -> errorMessage.value = e.message; emit(emptyList()) }
-        }
+    private val images = combine(sort, filter) { s, f -> s to f }
+        .flatMapLatest { (s, f) -> imageRepository.observeImages(s, f).catch { e -> errorMessage.value = e.message; emit(emptyList()) } }
 
-    val uiState: StateFlow<GalleryUiState> =
-        combine(repositoryImages, displayMode, sort, filter, selectedIds, errorMessage) {
-                images, mode, s, f, sel, err ->
-            imagesState.value = images
-            GalleryUiState(
-                images = images,
-                displayMode = mode,
-                sort = s,
-                filter = f,
-                selectedIds = sel.filterTo(LinkedHashSet()) { id -> images.any { it.id == id } },
-                isLoading = false,
-                errorMessage = err,
-            )
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = GalleryUiState(isLoading = true),
+    private val labels = labelRepository.observeLabels().map { l -> l.map { it.name } }.catch { emit(emptyList()) }
+
+    val uiState: StateFlow<GalleryUiState> = combine(images, displayMode, sort, filter, selectedIds, labels) { v ->
+        @Suppress("UNCHECKED_CAST")
+        val imgs = v[0] as List<ImageItem>
+        imagesState.value = imgs
+        GalleryUiState(
+            images = imgs, displayMode = v[1] as GalleryDisplayMode, sort = v[2] as SortCriteria,
+            filter = v[3] as FilterState,
+            selectedIds = (v[4] as Set<Long>).filterTo(LinkedHashSet()) { id -> imgs.any { it.id == id } },
+            availableLabels = v[5] as List<String>, isLoading = false,
+            errorMessage = errorMessage.value, feedback = feedback.value, actionsBusy = busy.value,
         )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GalleryUiState(isLoading = true))
 
-    fun setDisplayMode(mode: GalleryDisplayMode) { displayMode.value = mode }
+    private fun items(): List<ImageItem> = imagesState.value.filter { it.id in selectedIds.value }
 
-    fun setSort(field: SortField) {
-        val current = sort.value
-        sort.value = SortCriteria(field, if (current.field == field) !current.ascending else true)
-    }
-
-    fun setFilter(next: FilterState) { filter.value = next }
-
-    fun toggleSelection(id: Long) {
-        val next = selectedIds.value.toMutableSet()
-        if (!next.add(id)) next.remove(id)
-        selectedIds.value = next
-    }
-
+    fun setDisplayMode(m: GalleryDisplayMode) { displayMode.value = m }
+    fun setSort(f: SortField) { sort.value = if (sort.value.field == f) sort.value.copy(ascending = !sort.value.ascending) else SortCriteria(f, true) }
+    fun setFilter(f: FilterState) { filter.value = f }
+    fun toggleSelection(id: Long) { selectedIds.value = selectedIds.value.let { if (id in it) it - id else it + id } }
     fun clearSelection() { selectedIds.value = emptySet() }
+    fun toggleSelectAll() { selectedIds.value = if (uiState.value.allSelected) emptySet() else imagesState.value.mapTo(LinkedHashSet()) { it.id } }
+    fun consumeFeedback() { feedback.value = null }
 
-    fun toggleSelectAll() {
-        val all = imagesState.value.map { it.id }.toSet()
-        selectedIds.value = if (selectedIds.value == all) emptySet() else all
-    }
-
-    fun deleteSelected() {
-        val selected = imagesState.value.filter { it.id in selectedIds.value }
-        if (selected.isEmpty()) return
+    private fun run(fb: GalleryFeedback, block: suspend (List<ImageItem>) -> AppResult<Unit>) {
+        val its = items(); if (its.isEmpty()) return
+        busy.value = true
         viewModelScope.launch {
-            when (val result = imageRepository.delete(selected)) {
-                is AppResult.Success -> selectedIds.value = emptySet()
-                is AppResult.Failure -> errorMessage.value = result.error.message
+            when (val r = block(its)) {
+                is AppResult.Success -> { feedback.value = fb; selectedIds.value = emptySet() }
+                is AppResult.Failure -> errorMessage.value = r.error.message
             }
+            busy.value = false
         }
     }
+
+    fun deleteSelected() = run(GalleryFeedback.DELETED) { imageRepository.delete(it) }
+    fun shareSelected() = run(GalleryFeedback.SHARED) { imageRepository.share(it) }
+    fun moveSelected(dest: String) = run(GalleryFeedback.MOVED) { imageRepository.move(it, dest) }
+    fun copySelected(dest: String) = run(GalleryFeedback.COPIED) { imageRepository.copy(it, dest) }
+    fun assignLabel(name: String) = run(GalleryFeedback.LABEL_ASSIGNED) { labelRepository.assign(it, name) }
+    fun unassignLabel(name: String) = run(GalleryFeedback.LABEL_REMOVED) { labelRepository.unassign(it, name) }
 }

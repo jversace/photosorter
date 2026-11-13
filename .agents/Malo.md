@@ -95,7 +95,7 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - resolve_merge ne peut pas purger MERGE_HEAD (nécessite un conflict id actif assigné par le système).
 - MR fantômes #14 et #24 : ignorées sur instruction utilisateur.
 - task_status 'en validation' n'existe pas dans l'outil : utiliser 'à vérifier'.
-- mr_review peut renvoyer une erreur transitoire même quand get_blockers liste la MR : signaler à l'utilisateur pour fusion manuelle.
+- mr_review renvoie souvent 'cette merge request n'est pas en attente de validation' même quand get_blockers la liste : toujours demander une fusion manuelle à l'utilisateur dans ce cas.
 
 ## État actuel — RELEASE EN COURS DE FINALISATION
 
@@ -106,18 +106,13 @@ Toutes les tâches terminées et fusionnées dans release/v1.0.0 :
 - Théo : 7 tâches ✓
 Total : 17 tâches, 0 en cours.
 
-MR #30 (Zoé, .agents/Zoé.md + Gradle) : fusion manuelle demandée à l'utilisateur.
-
-Conflits MR #29 (release/v1.0.0 → main) :
-- gradle/libs.versions.toml : résolu (contenu fusionné fourni)
-- app/build.gradle.kts : résolu (contenu fusionné fourni)
-- .agents/Zoé.md : résolu (contenu fusionné fourni via MR #30)
+MR #30 (Zoé, .agents/Zoé.md) : fusionnée manuellement ✓
+MR #32 (Zoé, libs.versions.toml + build.gradle.kts) : fusion manuelle en cours
 
 En attente de l'utilisateur :
-1. Fusion manuelle MR #30 ✓ (en cours)
-2. Appliquer les 3 fichiers résolus sur MR #29
-3. Fusionner release/v1.0.0 → main
-4. Poser le tag v1.0.0 sur main
+1. Fusion manuelle MR #32 (en cours)
+2. Fusionner release/v1.0.0 → main (MR #29)
+3. Poser le tag v1.0.0 sur main
 
 Tâches sans assignee (hors périmètre v1.0.0) :
 - 1c5cab0a : Corrections Scanneur (à faire)

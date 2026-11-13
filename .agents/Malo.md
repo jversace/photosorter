@@ -93,10 +93,11 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - Les merges des branches agents vers main sont réalisés MANUELLEMENT par l'utilisateur côté dépôt. Les agents ne peuvent pas exécuter git.
 - Zoé fusionne les MR des agents vers release/v1.0.0 dès réception.
 - resolve_merge ne peut pas purger MERGE_HEAD (nécessite un conflict id actif assigné par le système).
-- MR fantômes #14 et #24 : ignorées sur instruction utilisateur. Les dépendances correspondantes sont résolues côté GitHub.
+- MR fantômes #14 et #24 : ignorées sur instruction utilisateur.
 - task_status 'en validation' n'existe pas dans l'outil : utiliser 'à vérifier'.
+- mr_review peut renvoyer une erreur transitoire même quand get_blockers liste la MR : signaler à l'utilisateur pour fusion manuelle.
 
-## État actuel — RELEASE PRÊTE
+## État actuel — RELEASE EN COURS DE FINALISATION
 
 Toutes les tâches terminées et fusionnées dans release/v1.0.0 :
 - Malo : 1 tâche ✓
@@ -105,9 +106,18 @@ Toutes les tâches terminées et fusionnées dans release/v1.0.0 :
 - Théo : 7 tâches ✓
 Total : 17 tâches, 0 en cours.
 
+MR #30 (Zoé, .agents/Zoé.md + Gradle) : fusion manuelle demandée à l'utilisateur.
+
+Conflits MR #29 (release/v1.0.0 → main) :
+- gradle/libs.versions.toml : résolu (contenu fusionné fourni)
+- app/build.gradle.kts : résolu (contenu fusionné fourni)
+- .agents/Zoé.md : résolu (contenu fusionné fourni via MR #30)
+
 En attente de l'utilisateur :
-- Fusionner release/v1.0.0 → main
-- Poser le tag v1.0.0 sur main
+1. Fusion manuelle MR #30 ✓ (en cours)
+2. Appliquer les 3 fichiers résolus sur MR #29
+3. Fusionner release/v1.0.0 → main
+4. Poser le tag v1.0.0 sur main
 
 Tâches sans assignee (hors périmètre v1.0.0) :
 - 1c5cab0a : Corrections Scanneur (à faire)
@@ -124,8 +134,5 @@ Bugs :
 ## Assets modèle TFLite
 model.tflite + labels.txt présents sur main/app/assets — à vérifier dans release/v1.0.0.
 
-## Problème récurrent Théo
-Théo peine parfois à exécuter ses actions (boucle de messages). Solution : fichiers courts, sans helpers externes.
-
 ## Prochaine étape
-Release finale déclenchée par l'utilisateur : merge release/v1.0.0 → main + tag v1.0.0.
+Release finale : merge release/v1.0.0 → main + tag v1.0.0 (déclenché par l'utilisateur).

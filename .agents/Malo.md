@@ -104,17 +104,16 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - mr_review et task_review renvoient souvent 'pas en attente' même quand get_blockers les liste : toujours demander une fusion/clôture manuelle à l'utilisateur dans ce cas (ask_user). Ne pas réessayer indéfiniment.
 - isMinifyEnabled=false pour v1.0.0. R8/ProGuard à réactiver en v1.1+ après test d'un APK release signé sur appareil physique avec règles ProGuard adaptées (Room/Hilt/TFLite/coroutines).
 
-## État actuel — EN ATTENTE DE L'UTILISATEUR
+## État actuel — EN ATTENTE CONFIRMATION UTILISATEUR
 
 L'utilisateur a confirmé (option A) qu'il va :
 1. Fusionner MR #40 (agent/léna → release/v1.0.0, .gitignore)
 2. Fusionner MR #41 (agent/léna → release/v1.0.0, libs.versions.toml Room)
 3. Clore tâches 24b6deba et c09d3de2 (acceptées)
-4. Marquer bugs 2086c768 et a3052590 comme vérifiés
-5. Générer et commiter gradle/wrapper/gradle-wrapper.jar
-6. Merger release/v1.0.0 → main + tag v1.0.0
-
-En attente de sa confirmation que tout est fait.
+4. Marquer bug 2086c768 vérifié
+5. Marquer bug a3052590 corrigé/vérifié
+6. Générer et commiter gradle/wrapper/gradle-wrapper.jar (`gradle wrapper --gradle-version 8.9 --distribution-type bin`)
+7. Merger release/v1.0.0 → main + tag v1.0.0
 
 ## Modèle Label (confirmé)
 - Label : name, isSystem, createdAt

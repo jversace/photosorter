@@ -93,11 +93,13 @@ Tâches :
 - 596d8d9a Modération adulte : clôturée.
 - e3a1d1a6 et 3983405f : réaffectées à Zoé, ne plus toucher.
 - 4d0303c8 Tests unitaires back-end : MR #25 fusionnée.
-- c09d3de2 Corrections exécutable : CLÔTURÉE (décision A). Livré : gradlew, gradlew.bat, gradle-wrapper.properties (Gradle 8.9), .gitignore (!gradle/wrapper/gradle-wrapper.jar), doc docs/installation.md §1bis. Bug 2086c768 « corrigé ».
-- 24b6deba Wrapper Gradle : MR #41 fusionnée dans release/v1.0.0 (utilisateur a exécuté la MR #41). Correction : gradle/libs.versions.toml déclare les alias room-runtime/ktx/compiler/testing => libs.room.* (correspond à app/build.gradle.kts lignes 104-106,131), corrige bug a3052590 (Unresolved reference: room / échec synchro Gradle qui empêchait l'affichage des tâches Gradle). Reste décision utilisateur A : générer+committer le binaire gradle-wrapper.jar côté poste (`gradle wrapper --gradle-version 8.9 --distribution-type bin`) puis vérifier assembleDebug.
+- c09d3de2 Corrections exécutable : EN ATTENTE. Livrés : gradlew, gradlew.bat, gradle-wrapper.properties (Gradle 8.9), .gitignore (!gradle/wrapper/gradle-wrapper.jar bien placé après *.jar), doc docs/installation.md §1bis. MANQUE : gradle/wrapper/gradle-wrapper.jar (binaire) — décision A : l'utilisateur le génère/commite. Vérifié à plusieurs reprises : absent de agent/léna, main, release/v1.0.0 et branches des autres agents (seul gradle-wrapper.properties présent).
+- 24b6deba Wrapper Gradle : MR #41 (libs.versions.toml alias Room) fusionnée par l'utilisateur. Même blocage : le binaire .jar n'est pas poussé.
 
-LEÇON : l'alias TOML `room-runtime` produit `libs.room.runtime` ; `androidx-room-runtime` produirait `libs.androidx.room.runtime`. Toujours faire correspondre le nom d'alias à l'usage réel dans build.gradle.kts avant d'écrire.
+PROCÉDURE UTILISATEUR pour débloquer (à rappeler si besoin) : dir gradle\wrapper ; git branch --show-current (doit être agent/léna) ; si .jar absent du dossier le télécharger (raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar) ; git add -f gradle/wrapper/gradle-wrapper.jar ; git commit -m "build: versionner gradle-wrapper.jar (Gradle 8.9)" ; git push origin agent/léna ; vérifier git log origin/agent/léna -1 --stat.
 
-Conventions : tests Robolectric (isIncludeAndroidResources) + Mockito + TestDispatchers. Doc installation partagée — enrichie sans casser la structure de Zoé.
+LEÇON : l'alias TOML `room-runtime` produit `libs.room.runtime` ; toujours faire correspondre le nom d'alias à build.gradle.kts.
+
+Conventions : tests Robolectric (isIncludeAndroidResources) + Mockito + TestDispatchers. Doc installation partagée.
 
 Blocage externe (team) : conflit de fusion n°175 sur .agents/Zoé.md, résolu par Adam — aucune action de ma part.

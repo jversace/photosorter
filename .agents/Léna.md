@@ -92,10 +92,12 @@ Tâches :
 - 87bcaabc Repositories : clôturée.
 - 596d8d9a Modération adulte : clôturée.
 - e3a1d1a6 et 3983405f : réaffectées à Zoé, ne plus toucher.
-- 4d0303c8 Tests unitaires back-end : MR #25 soumise.
-- c09d3de2 Corrections exécutable : CLÔTURÉE par l'utilisateur (décision A : il fusionne la MR #38 et clôture la tâche). Livré : gradlew, gradlew.bat, gradle/wrapper/gradle-wrapper.properties (Gradle 8.9), exception .gitignore pour gradle-wrapper.jar, doc docs/installation.md section 1bis. Bug 2086c768 « corrigé ».
-- 24b6deba Régénérer et versionner le wrapper Gradle : EN ATTENTE de la décision utilisateur sur le binaire gradle-wrapper.jar (question posée, options A/B/C ; recommandation A = utilisateur génère le .jar via `gradle wrapper --gradle-version 8.9 --distribution-type bin` puis commit). Le .jar est un binaire non générable par mes actions texte ; scripts + properties déjà en place.
+- 4d0303c8 Tests unitaires back-end : MR #25 fusionnée.
+- c09d3de2 Corrections exécutable : CLÔTURÉE (décision A). Livré : gradlew, gradlew.bat, gradle-wrapper.properties (Gradle 8.9), .gitignore (!gradle/wrapper/gradle-wrapper.jar), doc docs/installation.md §1bis. Bug 2086c768 « corrigé ».
+- 24b6deba Wrapper Gradle : MR #41 fusionnée dans release/v1.0.0 (utilisateur a exécuté la MR #41). Correction : gradle/libs.versions.toml déclare les alias room-runtime/ktx/compiler/testing => libs.room.* (correspond à app/build.gradle.kts lignes 104-106,131), corrige bug a3052590 (Unresolved reference: room / échec synchro Gradle qui empêchait l'affichage des tâches Gradle). Reste décision utilisateur A : générer+committer le binaire gradle-wrapper.jar côté poste (`gradle wrapper --gradle-version 8.9 --distribution-type bin`) puis vérifier assembleDebug.
 
-Conventions : tests Robolectric (isIncludeAndroidResources) + Mockito + TestDispatchers. Doc installation partagée (originellement Zoé) — enrichie sans casser sa structure.
+LEÇON : l'alias TOML `room-runtime` produit `libs.room.runtime` ; `androidx-room-runtime` produirait `libs.androidx.room.runtime`. Toujours faire correspondre le nom d'alias à l'usage réel dans build.gradle.kts avant d'écrire.
 
-Blocage externe en cours (team) : conflit de fusion n°175 sur .agents/Zoé.md, résolution en cours par Adam — aucune action de ma part.
+Conventions : tests Robolectric (isIncludeAndroidResources) + Mockito + TestDispatchers. Doc installation partagée — enrichie sans casser la structure de Zoé.
+
+Blocage externe (team) : conflit de fusion n°175 sur .agents/Zoé.md, résolu par Adam — aucune action de ma part.

@@ -106,28 +106,15 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 
 ## État actuel — EN ATTENTE DE L'UTILISATEUR
 
-Toutes les tâches terminées et fusionnées dans release/v1.0.0 :
-- Malo : 1 tâche ✓
-- Zoé : 3 tâches ✓
-- Léna : 6 tâches + c09d3de2 (corrections exécutable) ✓
-- Théo : 7 tâches ✓
-
-Bug a3052590 (libs.versions.toml Room manquant) : corrigé par Léna, MR #41 soumise.
-Bug 2086c768 (wrapper Gradle absent) : corrigé par Léna, .gitignore fixé.
-
-Blocage système persistant (mr_review/task_review renvoient 'pas en attente') :
-- MR #40 (Léna — .gitignore) : approuvée visuellement, fusion à confirmer manuellement
-- MR #41 (Léna — libs.versions.toml Room) : approuvée visuellement, fusion à confirmer manuellement
-- Tâche 24b6deba : acceptée visuellement, clôture à confirmer manuellement
-- Tâche c09d3de2 : à clore manuellement
-
-Actions requises de l'utilisateur :
+L'utilisateur a confirmé (option A) qu'il va :
 1. Fusionner MR #40 (agent/léna → release/v1.0.0, .gitignore)
 2. Fusionner MR #41 (agent/léna → release/v1.0.0, libs.versions.toml Room)
 3. Clore tâches 24b6deba et c09d3de2 (acceptées)
-4. Marquer bug 2086c768 vérifié
-5. Générer et commiter gradle/wrapper/gradle-wrapper.jar (`gradle wrapper --gradle-version 8.9 --distribution-type bin`)
+4. Marquer bugs 2086c768 et a3052590 comme vérifiés
+5. Générer et commiter gradle/wrapper/gradle-wrapper.jar
 6. Merger release/v1.0.0 → main + tag v1.0.0
+
+En attente de sa confirmation que tout est fait.
 
 ## Modèle Label (confirmé)
 - Label : name, isSystem, createdAt
@@ -153,4 +140,4 @@ model.tflite + labels.txt présents sur main/app/assets — vérifiés dans rele
 ## Bug a3052590 (libs.versions.toml Room — corrigé)
 - 4 alias Room ajoutés : room-runtime, room-ktx, room-compiler, room-testing (v2.6.1)
 - Correspondent exactement aux libs.room.* dans app/build.gradle.kts
-- MR #41 soumise, approuvée visuellement — fusion manuelle requise
+- MR #41 soumise, approuvée visuellement — fusion manuelle en cours (utilisateur)

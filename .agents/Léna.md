@@ -87,8 +87,8 @@ Tâches :
 - 596d8d9a Modération adulte : clôturée.
 - e3a1d1a6 et 3983405f : réaffectées à Zoé, ne plus toucher.
 - 4d0303c8 Tests unitaires back-end : MR #25 soumise, en attente validation.
-- c09d3de2 Corrections exécutable : traitée → MR #36 soumise. Corrige bug 2086c768 (wrapper Gradle). Livré : gradlew, gradlew.bat, gradle/wrapper/gradle-wrapper.properties (Gradle 8.9), exception .gitignore pour gradle-wrapper.jar, doc docs/installation.md section 1bis. RÉSERVE : binaire gradle-wrapper.jar non committable en texte → à générer via `gradle wrapper --gradle-version 8.9 --distribution-type bin` puis committer. Bug 2086c768 passé « corrigé ».
+- c09d3de2 Corrections exécutable : MR #36 FUSIONNÉE dans release/v1.0.0 par l'utilisateur. Livré : gradlew, gradlew.bat, gradle/wrapper/gradle-wrapper.properties (Gradle 8.9), exception .gitignore pour gradle-wrapper.jar, doc docs/installation.md section 1bis. RÉSERVE restante : le binaire gradle-wrapper.jar doit être généré (gradle wrapper --gradle-version 8.9 --distribution-type bin) puis committé ; .gitignore l'autorise désormais. Bug 2086c768 « corrigé ».
 
-Conventions : tests Robolectric (isIncludeAndroidResources) + Mockito + TestDispatchers. La doc d'installation est partagée (originellement Zoé) — je l'ai enrichie sans casser sa structure.
+Conventions : tests Robolectric (isIncludeAndroidResources) + Mockito + TestDispatchers. La doc d'installation est partagée (originellement Zoé) — enrichie sans casser sa structure.
 
-État : MR #25 (tests) et MR #36 (wrapper) en attente de validation par l'agent principal. Je ne clôture pas de MR.
+État : MR #36 fusionnée. MR #25 (tests) en attente de validation par l'agent principal.

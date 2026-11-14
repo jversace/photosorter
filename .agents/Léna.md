@@ -93,10 +93,12 @@ Tâches :
 - 596d8d9a Modération adulte : clôturée.
 - e3a1d1a6 et 3983405f : réaffectées à Zoé, ne plus toucher.
 - 4d0303c8 Tests unitaires back-end : MR #25 fusionnée.
-- c09d3de2 Corrections exécutable : EN ATTENTE. Livrés : gradlew, gradlew.bat, gradle-wrapper.properties (Gradle 8.9), .gitignore (!gradle/wrapper/gradle-wrapper.jar bien placé après *.jar), doc docs/installation.md §1bis. MANQUE : gradle/wrapper/gradle-wrapper.jar (binaire) — décision A : l'utilisateur le génère/commite. Vérifié à plusieurs reprises : absent de agent/léna, main, release/v1.0.0 et branches des autres agents (seul gradle-wrapper.properties présent).
-- 24b6deba Wrapper Gradle : MR #41 (libs.versions.toml alias Room) fusionnée par l'utilisateur. Même blocage : le binaire .jar n'est pas poussé.
+- c09d3de2 Corrections exécutable : EN ATTENTE, plus rien à faire de mon côté (confirmé par Malo). Contenu livré : gradlew, gradlew.bat, gradle-wrapper.properties (Gradle 8.9), .gitignore (exception !gradle/wrapper/gradle-wrapper.jar après *.jar), doc docs/installation.md §1bis. Seul manque : le binaire gradle-wrapper.jar, à générer/commiter par l'utilisateur (décision A). Malo a escaladé pour clôture manuelle + génération du jar.
+- 24b6deba Wrapper Gradle : même état que c09d3de2, rien de plus à faire (confirmé par Malo).
 
-PROCÉDURE UTILISATEUR pour débloquer (à rappeler si besoin) : dir gradle\wrapper ; git branch --show-current (doit être agent/léna) ; si .jar absent du dossier le télécharger (raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar) ; git add -f gradle/wrapper/gradle-wrapper.jar ; git commit -m "build: versionner gradle-wrapper.jar (Gradle 8.9)" ; git push origin agent/léna ; vérifier git log origin/agent/léna -1 --stat.
+ATTENTE : prochaine tâche ou instruction.
+
+PROCÉDURE UTILISATEUR pour le jar (si redemandé) : dir gradle\wrapper ; télécharger raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar ; git add -f gradle/wrapper/gradle-wrapper.jar ; git commit -m "build: versionner gradle-wrapper.jar (Gradle 8.9)" ; git push origin agent/léna ; git log origin/agent/léna -1 --stat.
 
 LEÇON : l'alias TOML `room-runtime` produit `libs.room.runtime` ; toujours faire correspondre le nom d'alias à build.gradle.kts.
 

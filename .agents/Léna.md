@@ -91,17 +91,19 @@ Tâches :
 - 68b19a34 ScanEngine : terminée.
 - 87bcaabc Repositories : clôturée.
 - 596d8d9a Modération adulte : clôturée.
-- e3a1d1a6 et 3983405f : réaffectées à Zoé, ne plus toucher.
+- e3a1d1a6 et 3983405f : réaffectées à Zoé.
 - 4d0303c8 Tests unitaires back-end : MR #25 fusionnée.
-- c09d3de2 Corrections exécutable : EN ATTENTE, plus rien à faire de mon côté (confirmé par Malo). Contenu livré : gradlew, gradlew.bat, gradle-wrapper.properties (Gradle 8.9), .gitignore (exception !gradle/wrapper/gradle-wrapper.jar après *.jar), doc docs/installation.md §1bis. Seul manque : le binaire gradle-wrapper.jar, à générer/commiter par l'utilisateur (décision A). Malo a escaladé pour clôture manuelle + génération du jar.
-- 24b6deba Wrapper Gradle : même état que c09d3de2, rien de plus à faire (confirmé par Malo).
+- c09d3de2 Corrections exécutable / 24b6deba Wrapper : à vérifier, MR #44 soumise. gradle-wrapper.jar (43 453 o) versionné, wrapper complet, docs/installation.md §1bis corrigée.
 
-ATTENTE : prochaine tâche ou instruction.
+DEBUG BUILD (utilisateur dans Android Studio sur agent/léna) : 3 corrections back-end faites :
+1) strings_detail.xml supprimé (doublon string/detail_next avec strings.xml).
+2) ImageQueryDao.observeFiltered : ORDER BY réécrit valide (CASE asc/desc + COLLATE NOCASE, codes 0=NAME 1=DATE 2=SIZE 3=FORMAT 4=LABEL).
+3) FileActions : OpenableColumns.DATA -> MediaStore.MediaColumns.DATA.
+4) MimeTypeDetector : ContentResolver.MIME_TYPE_DEFAULT inexistant -> constante locale "application/octet-stream".
+Résultat : le back-end compile. Erreurs restantes = 100% ui/ (Théo) : collectAsStateWithLifecycle (dep lifecycle-runtime-compose manquante), import compose, doublon DetailUiState (DetailUiState.kt + DetailViewModel.kt), signatures NavHost/ViewModel, Label Int vs Label, @OptIn(ExperimentalFoundationApi). Message envoyé à Théo.
 
-PROCÉDURE UTILISATEUR pour le jar (si redemandé) : dir gradle\wrapper ; télécharger raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar ; git add -f gradle/wrapper/gradle-wrapper.jar ; git commit -m "build: versionner gradle-wrapper.jar (Gradle 8.9)" ; git push origin agent/léna ; git log origin/agent/léna -1 --stat.
+LEÇON : OpenableColumns n'a que DISPLAY_NAME/SIZE ; _data = MediaStore.MediaColumns.DATA.
+LEÇON : ORDER BY paramétré par direction = 2 blocs CASE (asc/desc) sinon :asc unused + syntax error.
+LEÇON : alias TOML room-runtime -> libs.room.runtime.
 
-LEÇON : l'alias TOML `room-runtime` produit `libs.room.runtime` ; toujours faire correspondre le nom d'alias à build.gradle.kts.
-
-Conventions : tests Robolectric (isIncludeAndroidResources) + Mockito + TestDispatchers. Doc installation partagée.
-
-Blocage externe (team) : conflit de fusion n°175 sur .agents/Zoé.md, résolu par Adam — aucune action de ma part.
+ATTENTE : réponse Théo sur les erreurs ui/ ; validation MR #44 par Malo.

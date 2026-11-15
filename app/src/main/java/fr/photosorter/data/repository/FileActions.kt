@@ -16,8 +16,8 @@ import java.io.File
  * - [ContentResolver.SCHEME_FILE] : le chemin est directement exploitable.
  * - [ContentResolver.SCHEME_CONTENT] : le champ [Uri.getPath] est un identifiant interne
  *   MediaStore (ex. `images/media/1234`) et NON un chemin de fichier. On résout le chemin
- *   réel via la colonne [OpenableColumns.DATA] (`_data`). En repli, si `_data` est absent
- *   ou vide (typique sur API >= 29 / scoped storage), on matérialise une copie dans le
+ *   réel via la colonne [MediaStore.MediaColumns.DATA] (`_data`). En repli, si `_data` est
+ *   absent ou vide (typique sur API >= 29 / scoped storage), on matérialise une copie dans le
  *   cache de l'app à partir du flux du resolver, nommée d'après [OpenableColumns.DISPLAY_NAME].
  *
  * Politique par opération :
@@ -125,17 +125,17 @@ class FileActions(private val context: Context) {
             else -> uri.path?.let { path ->
                 val f = File(path)
                 if (f.exists()) ResolvedFile(f, false)
-                else if (materializeIfNeeded) null else null
+                else null
             }
         }
     }
 
-    /** Interroge la colonne `_data` ([OpenableColumns.DATA]) d'une URI content://. */
+    /** Interroge la colonne `_data` ([MediaStore.MediaColumns.DATA]) d'une URI content://. */
     private fun queryDataPath(uri: Uri): File? {
         return runCatching {
-            resolver.query(uri, arrayOf(OpenableColumns.DATA), null, null, null)?.use { cursor ->
+            resolver.query(uri, arrayOf(MediaStore.MediaColumns.DATA), null, null, null)?.use { cursor ->
                 if (cursor.moveToFirst()) {
-                    val idx = cursor.getColumnIndex(OpenableColumns.DATA)
+                    val idx = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
                     if (idx >= 0 && !cursor.isNull(idx)) {
                         val path = cursor.getString(idx)
                         if (!path.isNullOrBlank()) return@use File(path).takeIf { it.exists() }

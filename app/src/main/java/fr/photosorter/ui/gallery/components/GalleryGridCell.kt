@@ -1,5 +1,6 @@
 package fr.photosorter.ui.gallery.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import fr.photosorter.domain.model.ImageItem
 
 /** Cellule carrée d'une image (mode grille de vignettes). */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun GalleryGridCell(
     item: ImageItem,

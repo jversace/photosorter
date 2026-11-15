@@ -91,16 +91,19 @@ Tâches :
 - 68b19a34 ScanEngine : terminée.
 - 87bcaabc Repositories : clôturée.
 - 596d8d9a Modération adulte : clôturée.
-- e3a1d1a6 et 3983405f : réaffectées à Zoé, ne plus toucher.
+- e3a1d1a6 et 3983405f : réaffectées à Zoé.
 - 4d0303c8 Tests unitaires back-end : MR #25 fusionnée.
-- c09d3de2 Corrections exécutable : à vérifier, MR #44 soumise vers release/v1.0.0. gradle-wrapper.jar (43 453 o) versionné sur agent/léna ; gradlew/gradlew.bat/gradle-wrapper.properties (8.9) cohérents ; .gitignore avec exception !gradle/wrapper/gradle-wrapper.jar ; docs/installation.md §1bis corrigée (jar versionné, plus de consigne obsolète) ; bug 2086c768 résolu.
-- 24b6deba Wrapper Gradle : à vérifier, MR #44 soumise, même livrable.
+- c09d3de2 Corrections exécutable / 24b6deba Wrapper : à vérifier, MR #44 soumise. gradle-wrapper.jar (43 453 o) versionné, wrapper complet, docs/installation.md §1bis corrigée.
 
-ATTENTE : validation MR #44 par Malo, puis prochaine tâche ou instruction.
+DEBUG BUILD (utilisateur dans Android Studio sur agent/léna) : 3 corrections back-end faites :
+1) strings_detail.xml supprimé (doublon string/detail_next avec strings.xml).
+2) ImageQueryDao.observeFiltered : ORDER BY réécrit valide (CASE asc/desc + COLLATE NOCASE, codes 0=NAME 1=DATE 2=SIZE 3=FORMAT 4=LABEL).
+3) FileActions : OpenableColumns.DATA -> MediaStore.MediaColumns.DATA.
+4) MimeTypeDetector : ContentResolver.MIME_TYPE_DEFAULT inexistant -> constante locale "application/octet-stream".
+Résultat : le back-end compile. Erreurs restantes = 100% ui/ (Théo) : collectAsStateWithLifecycle (dep lifecycle-runtime-compose manquante), import compose, doublon DetailUiState (DetailUiState.kt + DetailViewModel.kt), signatures NavHost/ViewModel, Label Int vs Label, @OptIn(ExperimentalFoundationApi). Message envoyé à Théo.
 
-LEÇON : l'alias TOML `room-runtime` produit `libs.room.runtime` ; toujours faire correspondre le nom d'alias à build.gradle.kts.
-LEÇON : un binaire (.jar) ne peut être produit par un agent ; l'utilisateur l'a fourni via release/v1.0.0 puis mergé — penser à corriger la doc quand un prérequis « à générer » devient versionné.
+LEÇON : OpenableColumns n'a que DISPLAY_NAME/SIZE ; _data = MediaStore.MediaColumns.DATA.
+LEÇON : ORDER BY paramétré par direction = 2 blocs CASE (asc/desc) sinon :asc unused + syntax error.
+LEÇON : alias TOML room-runtime -> libs.room.runtime.
 
-Conventions : tests Robolectric (isIncludeAndroidResources) + Mockito + TestDispatchers. Doc installation partagée.
-
-Blocage externe (team) : conflit de fusion n°175 sur .agents/Zoé.md, résolu par Adam — aucune action de ma part.
+ATTENTE : réponse Théo sur les erreurs ui/ ; validation MR #44 par Malo.

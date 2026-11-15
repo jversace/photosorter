@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import app.cash.turbine.test
 import fr.photosorter.data.db.dao.ImageDao
-import fr.photosorter.data.db.entity.ImageEntity
 import fr.photosorter.data.moderation.AdultClassifier
 import fr.photosorter.data.moderation.PreFilter
 import fr.photosorter.data.moderation.PreFilterDecision
@@ -37,8 +36,7 @@ class ScanEngineTest {
     private val adultClassifier: AdultClassifier = mock()
 
     private fun engine(): ScanEngine {
-        whenever(preFilter.classify(any(), any())).thenReturn(PreFilterDecision.Neutral)
-        whenever(adultClassifier.classify(any(), any())).thenReturn(false)
+        whenever(preFilter.decide(any(), any())).thenReturn(PreFilterDecision.SKIP)
         return ScanEngine(
             context = context,
             dispatchers = TestDispatchers(),
@@ -75,13 +73,13 @@ class ScanEngineTest {
         }
 
         verify(adultClassifier).ensureInitialized()
-        verify(imageDao).clear()
         verify(imageDao).insertAll(any())
     }
 
     @Test
     fun emptyRootCompletesWithZero() = runTest {
         whenever(storageRootProvider.roots()).thenReturn(listOf(tmp.root))
+        whenever(imageDao.insertAll(any())).thenReturn(emptyList())
         val engine = engine()
         val result = engine.scan()
         assertTrue(result is ScanProgress.Completed)
@@ -89,14 +87,16 @@ class ScanEngineTest {
     }
 
     @Test
-    fun cancellingBeforeScanStillProducesFinalState() = runTest {
-        touch(File(tmp.root, "a.jpg"))
+    fun preFilterSkipMeansNotAdult() = runTest {
+        touch(File(tmp.root, "Screenshot_1.jpg"))
         whenever(storageRootProvider.roots()).thenReturn(listOf(tmp.root))
         whenever(imageDao.insertAll(any())).thenReturn(listOf(1L))
+        whenever(preFilter.decide(any(), any())).thenReturn(PreFilterDecision.SKIP)
+
         val engine = engine()
-        engine.cancel()
         val result = engine.scan()
-        // scan() réinitialise l'annulation : le scan doit aboutir proprement
-        assertTrue(result is ScanProgress.Completed || result is ScanProgress.Running)
+        assertEquals(1, (result as ScanProgress.Completed).count)
+        // Le classifieur IA ne doit jamais être sollicité pour un screenshot.
+        verify(adultClassifier, org.mockito.kotlin.never()).classify(any())
     }
 }

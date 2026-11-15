@@ -19,6 +19,7 @@ import javax.inject.Singleton
  * - la factory [MediaMetadataReader],
  * - [PreFilter], [MimeTypeDetector], [StorageRootProvider].
  *
+ * Seul module fournissant ces bindings (ScannerModule supprimé : doublon).
  * Aucun constructeur de classe n'est modifié : on complète uniquement le graphe Hilt.
  */
 @Module
@@ -43,10 +44,11 @@ object DataModule {
     /**
      * Factory utilisée par [fr.photosorter.data.scanner.ScanEngine] :
      * `metadataReaderFactory: (Context) -> MediaMetadataReader`.
+     * @JvmSuppressWildcards évite le conflit de variance Kotlin côté Hilt.
      */
     @Provides
     @Singleton
-    fun provideMediaMetadataReaderFactory(): (Context) -> MediaMetadataReader =
+    fun provideMediaMetadataReaderFactory(): @JvmSuppressWildcards (Context) -> MediaMetadataReader =
         { context -> MediaMetadataReader(context.contentResolver) }
 
     @Provides

@@ -93,14 +93,13 @@ Tâches :
 - 596d8d9a Modération adulte : clôturée.
 - e3a1d1a6 et 3983405f : réaffectées à Zoé, ne plus toucher.
 - 4d0303c8 Tests unitaires back-end : MR #25 fusionnée.
-- c09d3de2 Corrections exécutable : EN ATTENTE, plus rien à faire de mon côté (confirmé par Malo). Contenu livré : gradlew, gradlew.bat, gradle-wrapper.properties (Gradle 8.9), .gitignore (exception !gradle/wrapper/gradle-wrapper.jar après *.jar), doc docs/installation.md §1bis. Seul manque : le binaire gradle-wrapper.jar, à générer/commiter par l'utilisateur (décision A). Malo a escaladé pour clôture manuelle + génération du jar.
-- 24b6deba Wrapper Gradle : même état que c09d3de2, rien de plus à faire (confirmé par Malo).
+- c09d3de2 Corrections exécutable : à vérifier, MR #44 soumise vers release/v1.0.0. Binaire gradle-wrapper.jar (43 453 o) présent sur agent/léna (fourni par l'utilisateur via release/v1.0.0 puis mergé).
+- 24b6deba Wrapper Gradle : à vérifier, MR #44 soumise. gradlew/gradlew.bat pointent sur gradle-wrapper.jar, gradle-wrapper.properties = Gradle 8.9, .gitignore avec exception !gradle/wrapper/gradle-wrapper.jar, doc installation §1bis.
 
-ATTENTE : prochaine tâche ou instruction.
-
-PROCÉDURE UTILISATEUR pour le jar (si redemandé) : dir gradle\wrapper ; télécharger raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar ; git add -f gradle/wrapper/gradle-wrapper.jar ; git commit -m "build: versionner gradle-wrapper.jar (Gradle 8.9)" ; git push origin agent/léna ; git log origin/agent/léna -1 --stat.
+ATTENTE : validation MR #44 par Malo, puis prochaine tâche ou instruction.
 
 LEÇON : l'alias TOML `room-runtime` produit `libs.room.runtime` ; toujours faire correspondre le nom d'alias à build.gradle.kts.
+LEÇON : un binaire (.jar) ne peut pas être produit par un agent (actions texte uniquement) ; le fournir via l'utilisateur puis pull.
 
 Conventions : tests Robolectric (isIncludeAndroidResources) + Mockito + TestDispatchers. Doc installation partagée.
 

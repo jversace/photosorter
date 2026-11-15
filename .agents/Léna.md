@@ -93,13 +93,13 @@ Tâches :
 - 596d8d9a Modération adulte : clôturée.
 - e3a1d1a6 et 3983405f : réaffectées à Zoé, ne plus toucher.
 - 4d0303c8 Tests unitaires back-end : MR #25 fusionnée.
-- c09d3de2 Corrections exécutable : à vérifier, MR #44 soumise vers release/v1.0.0. Binaire gradle-wrapper.jar (43 453 o) présent sur agent/léna (fourni par l'utilisateur via release/v1.0.0 puis mergé).
-- 24b6deba Wrapper Gradle : à vérifier, MR #44 soumise. gradlew/gradlew.bat pointent sur gradle-wrapper.jar, gradle-wrapper.properties = Gradle 8.9, .gitignore avec exception !gradle/wrapper/gradle-wrapper.jar, doc installation §1bis.
+- c09d3de2 Corrections exécutable : à vérifier, MR #44 soumise vers release/v1.0.0. gradle-wrapper.jar (43 453 o) versionné sur agent/léna ; gradlew/gradlew.bat/gradle-wrapper.properties (8.9) cohérents ; .gitignore avec exception !gradle/wrapper/gradle-wrapper.jar ; docs/installation.md §1bis corrigée (jar versionné, plus de consigne obsolète) ; bug 2086c768 résolu.
+- 24b6deba Wrapper Gradle : à vérifier, MR #44 soumise, même livrable.
 
 ATTENTE : validation MR #44 par Malo, puis prochaine tâche ou instruction.
 
 LEÇON : l'alias TOML `room-runtime` produit `libs.room.runtime` ; toujours faire correspondre le nom d'alias à build.gradle.kts.
-LEÇON : un binaire (.jar) ne peut pas être produit par un agent (actions texte uniquement) ; le fournir via l'utilisateur puis pull.
+LEÇON : un binaire (.jar) ne peut être produit par un agent ; l'utilisateur l'a fourni via release/v1.0.0 puis mergé — penser à corriger la doc quand un prérequis « à générer » devient versionné.
 
 Conventions : tests Robolectric (isIncludeAndroidResources) + Mockito + TestDispatchers. Doc installation partagée.
 

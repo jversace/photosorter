@@ -47,6 +47,7 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - Déclarer des bugs : libre
 - Faire évoluer les bugs (en correction, corrigé) : libre
 - Vérifier ou rouvrir un bug : libre
+- Valider (fusionner) ou refuser les merge requests des autres agents : libre
 - Associer tâches et bugs à des modules : libre
 - Niveau d'autonomie du projet : équilibré
 - Agents joignables : tous
@@ -63,7 +64,7 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 {"do":"force_unlock","path":"<fichier>","reason":"..."} : (agent principal) libérer de force le verrou d’un fichier (détenteur inactif ou plantage) ; si le détenteur travaille encore, utilise stop_agent
 {"do":"pull"} : récupérer dans ta branche les changements de la branche de travail de la release (fusion ; en cas de conflit, la règle du projet s’applique)
 {"do":"merge_request","title":"...","body":"...","task":"<id de la tâche, facultatif>"} : soumettre ta branche à la branche de travail de la release (l’agent principal la valide)
-{"do":"mr_review","id":"<id de la MR>","verdict":"approved|rejected","comment":"..."} : (agent principal / QA) valider (fusion) ou refuser une merge request
+{"do":"mr_review","id":"<id de la MR>","verdict":"approved|rejected","comment":"..."} : (agent principal, ou tout agent dont le rôle a le droit « valider les merge requests » ; jamais ta propre MR) valider (fusion) ou refuser une merge request
 {"do":"resolve_merge","conflict":"<id>","files":[{"path":"...","content":"<contenu final complet, ou null pour supprimer>"}],"message":"..."} : résoudre un conflit de fusion qui t’est confié (un élément par fichier en conflit)
 {"do":"message","to":"<prénom>","text":"..."} : écrire à un agent joignable (sa réponse te revient)
 {"do":"get_progress","agent":"<prénom ou all>"} : avancement d’un agent ou de toute l’équipe (sans coût)
@@ -104,14 +105,15 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - mr_review et task_review renvoient souvent 'pas en attente' même quand get_blockers les liste : toujours demander une fusion/clôture manuelle à l'utilisateur dans ce cas (ask_user). Ne pas réessayer indéfiniment.
 - isMinifyEnabled=false pour v1.0.0. R8/ProGuard à réactiver en v1.1+ après test d'un APK release signé sur appareil physique avec règles ProGuard adaptées (Room/Hilt/TFLite/coroutines).
 
-## État actuel — EN ATTENTE BUILD UTILISATEUR
+## État actuel — CORRECTIONS IHM EN COURS (Théo)
 
-- DataModule.kt (MR #46) fusionné dans release/v1.0.0 ✓
-- Correctifs IHM de Théo (doublon DetailUiState supprimé, NavHost → GalleryRoute, @OptIn ExperimentalFoundationApi) poussés sur agent/théo ✓
+- Build Gradle OK ✓
+- MR #48 (Léna, ScannerModule supprimé + DataModule consolidé) fusionnée ✓
+- MR #49 (Malo, @JvmSuppressWildcards ScanEngine) fusionnée ✓
+- Correctifs IHM Théo en cours :
+  1. Bouton Scan introuvable dans la galerie → Théo corrige
+  2. Filtre 'adulte uniquement' manquant → Théo corrige
 - Conflit n°175 sur .agents/Zoé.md : en pause, l'utilisateur le résout à la main
-- Build Gradle demandé à l'utilisateur (./gradlew assembleDebug) — en attente de retour
-- Si build OK → demander à l'utilisateur de fusionner agent/théo → release/v1.0.0, puis avancer vers la release finale
-- Si erreurs → redistribuer à Léna (back) ou Théo (IHM)
 
 ## Modèle Label (confirmé)
 - Label : name, isSystem, createdAt
@@ -139,7 +141,8 @@ model.tflite + labels.txt présents sur main/app/assets — vérifiés dans rele
 - Correspondent exactement aux libs.room.* dans app/build.gradle.kts
 - MR #41 fusionnée dans release/v1.0.0 ✓
 
-## Tâches corrections build en cours
-- MR #45 (Léna) : corrections Room ORDER BY, FileActions, MimeTypeDetector, lifecycle-runtime-compose — statut à vérifier
+## Tâches corrections build
+- MR #45 (Léna) : corrections Room ORDER BY, FileActions, MimeTypeDetector, lifecycle-runtime-compose — fusionnée ✓
 - MR #46 (Léna, DataModule.kt) : fusionnée dans release/v1.0.0 ✓
-- Correctifs IHM Théo : sur agent/théo, à fusionner dans release/v1.0.0 après build OK
+- MR #48 (Léna, ScannerModule supprimé) : fusionnée ✓
+- MR #49 (Malo, @JvmSuppressWildcards) : fusionnée ✓

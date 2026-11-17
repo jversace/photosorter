@@ -1,6 +1,5 @@
 package fr.photosorter.data.scanner
 
-import android.content.ContentResolver
 import android.webkit.MimeTypeMap
 import fr.photosorter.domain.model.ImageFormat
 
@@ -36,11 +35,15 @@ class MimeTypeDetector {
         "image/webp" -> ImageFormat.WEBP
         "image/gif" -> ImageFormat.GIF
         "image/bmp", "image/x-ms-bmp" -> ImageFormat.BMP
-        "image/x-adobe-dng", "image/x-canon-cr2", "image/x-nikon-nef", "image/tiff" -> ImageFormat.RAW
+        "image/x-adobe-dng", "image/x-canonon-cr2", "image/x-canon-cr2", "image/x-nikon-nef", "image/tiff" -> ImageFormat.RAW
         else -> null
     }
 
     fun mimeFromFile(fileName: String): String? =
         MimeTypeMap.getSingleton().getMimeTypeFromExtension(fileName.substringAfterLast('.', "").lowercase())
-        ?: ContentResolver.MIME_TYPE_DEFAULT.takeIf { it.isNotBlank() }
+            ?: MIME_TYPE_DEFAULT.takeIf { it.isNotBlank() }
+
+    private companion object {
+        const val MIME_TYPE_DEFAULT = "application/octet-stream"
+    }
 }

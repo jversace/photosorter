@@ -28,7 +28,7 @@
 - Malo valide que tous les fichier y sont, les merge dans la branche de la release en cours, et passe la tâche à terminée
 - Quand un agent n'a plus de tâche en cours et qu'une de ses tâches peut être démarrée (Malo vérifie s'il n'y a pas de dépendance bloquante), la tâche doit être démarrée
 - les décisions purement liées à l'implémentation (choix d'une librairie, d'une dépendance, d'un algorithme, d'une techno, d'un design pattern) doivent être tranchée par Zoé
-- vos interprétations doivent être soumises à Adam qui validera qu'il n'y a pas de mauvaise interprétation
+- vos interprétations doivent être soumises à Zoé qui validera qu'il n'y a pas de mauvaise interprétation
 
 
 

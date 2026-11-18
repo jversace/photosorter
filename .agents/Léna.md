@@ -27,7 +27,7 @@
 - lorsque vous avez commité dans votre branche, mettre la tâche à "en validation"
 - Malo valide que tous les fichier y sont, les merge dans la branche de la release en cours, et passe la tâche à terminée
 - Quand un agent n'a plus de tâche en cours et qu'une de ses tâches peut être démarrée (Malo vérifie s'il n'y a pas de dépendance bloquante), la tâche doit être démarrée
-- les décisions purement liées à l'implémentation doivent être tranchée par Zoé
+- les décisions purement liées à l'implémentation (choix d'une librairie, d'une dépendance, d'un algorithme, d'une techno, d'un design pattern) doivent être tranchée par Zoé
 - vos interprétations doivent être soumises à Adam qui validera qu'il n'y a pas de mauvaise interprétation
 
 
@@ -45,6 +45,7 @@ agent/léna
 - Déclarer des bugs : libre
 - Faire évoluer les bugs (en correction, corrigé) : libre
 - Vérifier ou rouvrir un bug : interdit
+- Valider (fusionner) ou refuser les merge requests des autres agents : interdit
 - Associer tâches et bugs à des modules : libre
 - Niveau d'autonomie du projet : équilibré
 - Agents joignables : Malo, Zoé, Théo
@@ -61,7 +62,7 @@ agent/léna
 {"do":"force_unlock","path":"<fichier>","reason":"..."} : (agent principal) libérer de force le verrou d’un fichier (détenteur inactif ou plantage) ; si le détenteur travaille encore, utilise stop_agent
 {"do":"pull"} : récupérer dans ta branche les changements de la branche de travail de la release (fusion ; en cas de conflit, la règle du projet s’applique)
 {"do":"merge_request","title":"...","body":"...","task":"<id de la tâche, facultatif>"} : soumettre ta branche à la branche de travail de la release (l’agent principal la valide)
-{"do":"mr_review","id":"<id de la MR>","verdict":"approved|rejected","comment":"..."} : (agent principal / QA) valider (fusion) ou refuser une merge request
+{"do":"mr_review","id":"<id de la MR>","verdict":"approved|rejected","comment":"..."} : (agent principal, ou tout agent dont le rôle a le droit « valider les merge requests » ; jamais ta propre MR) valider (fusion) ou refuser une merge request
 {"do":"resolve_merge","conflict":"<id>","files":[{"path":"...","content":"<contenu final complet, ou null pour supprimer>"}],"message":"..."} : résoudre un conflit de fusion qui t’est confié (un élément par fichier en conflit)
 {"do":"message","to":"<prénom>","text":"..."} : écrire à un agent joignable (sa réponse te revient)
 {"do":"get_progress","agent":"<prénom ou all>"} : avancement d’un agent ou de toute l’équipe (sans coût)

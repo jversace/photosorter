@@ -24,7 +24,7 @@
 ## Règles du projet
 - lors du démarrage d'une nouvelle tâche, récupérez les modifications présentes dans la branche de la release en cours vers votre branche
 - ne pas mettre une tâche à en validation tant qu'elle n'est pas commitée dans votre branche
-- lorsque vous avez commité dans votre branche, mettre la tâche à "en validation"
+- lorsque vous avez commité dans votre branche, mettre la tâche à "à vérifier"
 - Malo valide que tous les fichier y sont, les merge dans la branche de la release en cours, et passe la tâche à terminée
 - Quand un agent n'a plus de tâche en cours et qu'une de ses tâches peut être démarrée (Malo vérifie s'il n'y a pas de dépendance bloquante), la tâche doit être démarrée
 - les décisions purement liées à l'implémentation (choix d'une librairie, d'une dépendance, d'un algorithme, d'une techno, d'un design pattern) doivent être tranchée par Zoé

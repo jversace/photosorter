@@ -25,7 +25,7 @@
 - lors du démarrage d'une nouvelle tâche, récupérez les modifications présentes dans la branche de la release en cours vers votre branche
 - ne pas mettre une tâche à en validation tant qu'elle n'est pas commitée dans votre branche
 - lorsque vous avez commité dans votre branche, mettre la tâche à "à vérifier"
-- Malo valide que tous les fichier y sont, les merge dans la branche de la release en cours, et passe la tâche à terminée
+- Zoé valide que tous les fichiers y sont, les merge dans la branche de la release en cours, et passe la tâche à terminée
 - Quand un agent n'a plus de tâche en cours et qu'une de ses tâches peut être démarrée (Malo vérifie s'il n'y a pas de dépendance bloquante), la tâche doit être démarrée
 - les décisions purement liées à l'implémentation (choix d'une librairie, d'une dépendance, d'un algorithme, d'une techno, d'un design pattern) doivent être tranchée par Zoé
 - vos interprétations doivent être soumises à Zoé qui validera qu'il n'y a pas de mauvaise interprétation
@@ -81,6 +81,7 @@ agent/léna
 {"do":"bug_status","id":"<id>","status":"en correction|corrigé|vérifié|rouvert"} : faire évoluer un bug (vérifié/rouvert : droit de vérification)
 {"do":"ask_user","question":"...","options":["A","B"],"recommendation":"...","impact":"...","structural":true,"task":"<id de la tâche bloquée, ou vide>","replaces":[<n° des décisions en attente auxquelles cette question répond aussi>]} : poser une question à l’utilisateur (ambiguïté, décision structurante) ; si elle répond aussi à une question déjà en attente, indique son numéro dans replaces : l’ancienne est annulée et remplacée
 {"do":"instruction","text":"...","scope":"global|role:<rôle>|agent:<prénom>|module:<module>"} : (agent principal) enregistrer une nouvelle instruction de l’utilisateur
+{"do":"instr_rewrite","items":[...],"obsolete":[...]} : (uniquement lors d’une consolidation demandée par l’application) liste consolidée des instructions
 {"do":"spec","text":"<spécifications complètes en markdown>"} : (agent principal) remplacer les spécifications
 
 ## Notes de l’agent (à tenir à jour)

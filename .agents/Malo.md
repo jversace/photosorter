@@ -106,15 +106,19 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - mr_review et task_review renvoient souvent 'pas en attente' même quand get_blockers les liste : toujours demander une fusion/clôture manuelle à l'utilisateur dans ce cas (ask_user). Ne pas réessayer indéfiniment.
 - isMinifyEnabled=false pour v1.0.0. R8/ProGuard à réactiver en v1.1+ après test d'un APK release signé sur appareil physique avec règles ProGuard adaptées (Room/Hilt/TFLite/coroutines).
 
-## État actuel — CORRECTIONS IHM EN COURS (Théo)
+## État actuel — EN ATTENTE BUILD CI
 
-- Build Gradle OK ✓
+- Build Gradle OK ✓ (corrections précédentes fusionnées)
+- MR #44 (Léna, wrapper Gradle) : fusionnée ✓
 - MR #48 (Léna, ScannerModule supprimé + DataModule consolidé) fusionnée ✓
 - MR #49 (Malo, @JvmSuppressWildcards ScanEngine) fusionnée ✓
+- Toutes tâches back-end Léna : terminées ✓
+- Tâche 4d0303c8 (tests unitaires) : task_review 'pas en attente' → probablement déjà clôturée
 - Correctifs IHM Théo en cours :
   1. Bouton Scan introuvable dans la galerie → Théo corrige
   2. Filtre 'adulte uniquement' manquant → Théo corrige
 - Conflit n°175 sur .agents/Zoé.md : en pause, l'utilisateur le résout à la main
+- Build CI assembleDebug + testDebugUnitTest sur release/v1.0.0 : lancé par l'utilisateur, résultat attendu
 
 ## Modèle Label (confirmé)
 - Label : name, isSystem, createdAt
@@ -130,12 +134,12 @@ model.tflite + labels.txt présents sur main/app/assets — vérifiés dans rele
 - docs/installation.md : guide complet sideloading + ADB
 - MR #34 fusionnée dans release/v1.0.0 ✓
 
-## Wrapper Gradle (bug 2086c768 — corrigé)
+## Wrapper Gradle (tâche 24b6deba — terminée)
 - gradlew, gradlew.bat, gradle/wrapper/gradle-wrapper.properties (Gradle 8.9) dans release/v1.0.0
 - .gitignore : exception !gradle-wrapper.jar, exclusions keystore/APK/AAB
 - docs/installation.md : section 1bis + dépannage ClassNotFoundException
 - Réserve : gradle-wrapper.jar (~60 Ko binaire) à générer depuis un poste Gradle
-- MR #36 fusionnée dans release/v1.0.0 ✓
+- MR #44 fusionnée dans release/v1.0.0 ✓
 
 ## Bug a3052590 (libs.versions.toml Room — corrigé)
 - 4 alias Room ajoutés : room-runtime, room-ktx, room-compiler, room-testing (v2.6.1)
@@ -147,3 +151,4 @@ model.tflite + labels.txt présents sur main/app/assets — vérifiés dans rele
 - MR #46 (Léna, DataModule.kt) : fusionnée dans release/v1.0.0 ✓
 - MR #48 (Léna, ScannerModule supprimé) : fusionnée ✓
 - MR #49 (Malo, @JvmSuppressWildcards) : fusionnée ✓
+- MR #44 (Léna, wrapper + exécutable) : fusionnée ✓

@@ -85,27 +85,22 @@ agent/léna
 {"do":"spec","text":"<spécifications complètes en markdown>"} : (agent principal) remplacer les spécifications
 
 ## Notes de l’agent (à tenir à jour)
-Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (~10,3 Mo) + labels.txt dans app/assets. build.gradle.kts OK.
+Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (~10,3 Mo) + labels.txt dans app/assets. build.gradle.kts OK : minSdk 26, isMinifyEnabled=false (v1.0.0), compose+material-icons-extended et lifecycle-runtime-compose DÉJÀ en implementation.
 
-Tâches :
-- 45770063 Socle Android : terminée.
-- 31fa8938 Persistance Room : terminée.
-- 68b19a34 ScanEngine : terminée.
-- 87bcaabc Repositories : clôturée.
-- 596d8d9a Modération adulte : clôturée.
-- e3a1d1a6 et 3983405f : réaffectées à Zoé.
-- 4d0303c8 Tests unitaires back-end : MR #25 fusionnée.
-- c09d3de2 Corrections exécutable / 24b6deba Wrapper : à vérifier, MR #44 soumise. gradle-wrapper.jar (43 453 o) versionné, wrapper complet, docs/installation.md §1bis corrigée.
+Tâches back-end clôturées : 45770063, 31fa8938, 68b19a34. 87bcaabc et 596d8d9a clôturées. e3a1d1a6/3983405f réaffectées à Zoé.
+- 4d0303c8 Tests unitaires back-end : 'à vérifier'. Tests : MimeTypeDetectorTest, ScanRepositoryImplTest, StorageWalkerTest, MediaMetadataReaderTest, ScanEngineTest, ImageRepositoryFlowTest. Turbine 1.1.0 au catalog et utilisé pour Flows (progress, observeImages). Robolectric pour File/MediaStore (isIncludeAndroidResources=true). Mocks alignés : PreFilter.decide(path,name)->PreFilterDecision, AdultClassifier.classify(uri)->Result sealed, ensureInitialized().
+- c09d3de2 Corrections exécutable / 24b6deba Wrapper : à vérifier, MR #44 soumise (en attente validation Malo).
 
-DEBUG BUILD (utilisateur dans Android Studio sur agent/léna) : 3 corrections back-end faites :
-1) strings_detail.xml supprimé (doublon string/detail_next avec strings.xml).
-2) ImageQueryDao.observeFiltered : ORDER BY réécrit valide (CASE asc/desc + COLLATE NOCASE, codes 0=NAME 1=DATE 2=SIZE 3=FORMAT 4=LABEL).
-3) FileActions : OpenableColumns.DATA -> MediaStore.MediaColumns.DATA.
-4) MimeTypeDetector : ContentResolver.MIME_TYPE_DEFAULT inexistant -> constante locale "application/octet-stream".
-Résultat : le back-end compile. Erreurs restantes = 100% ui/ (Théo) : collectAsStateWithLifecycle (dep lifecycle-runtime-compose manquante), import compose, doublon DetailUiState (DetailUiState.kt + DetailViewModel.kt), signatures NavHost/ViewModel, Label Int vs Label, @OptIn(ExperimentalFoundationApi). Message envoyé à Théo.
+CONTRAT back-end (utile pour Théo/ui) :
+- FilterState.labels = Set<String> (NOMS de libellés, pas d'ID). ADULT_LABEL="adulte". Filtre adulte seul = labels=setOf(ADULT_LABEL), pas de champ dédié à ajouter.
+- Label = data class(name:String, isSystem:Boolean, createdAt:Long).
+- ImageQueryDao.observeFiltered = 10 params (sort, asc, includeAdult, hasFormats, formats, dateFrom, dateTo, minSize, hasLabels, labels) ; le repository calcule hasLabels/hasFormats.
+
+SYNCHRO THÉO : a corrigé doublon DetailUiState.kt et dépendance lifecycle-runtime-compose. Lui ai confirmé que material-icons-extended et lifecycle-runtime-compose sont déjà dans build.gradle.kts. Il vérifie l'usage effectif dans ui/ (pas de Label Int qui fuite, collectAsStateWithLifecycle) et me fera un retour. Filtre adulte : validation à faire par Zoé.
+
+MR #44 : en attente de Malo (review 'pas en attente' signalé). Build CI (assembleDebug + testDebugUnitTest) demandé à Malo pour confirmer ui/.
 
 LEÇON : OpenableColumns n'a que DISPLAY_NAME/SIZE ; _data = MediaStore.MediaColumns.DATA.
-LEÇON : ORDER BY paramétré par direction = 2 blocs CASE (asc/desc) sinon :asc unused + syntax error.
+LEÇON : ORDER BY paramétré par direction = 2 blocs CASE (asc/desc).
 LEÇON : alias TOML room-runtime -> libs.room.runtime.
-
-ATTENTE : réponse Théo sur les erreurs ui/ ; validation MR #44 par Malo.
+LEÇON : 'Label Int vs Label' côté UI = mauvais mapping sur id numérique ; le domaine n'expose que le nom (String).

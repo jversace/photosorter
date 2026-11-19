@@ -61,7 +61,7 @@ internal fun GalleryTopBar(
             title = { Text(stringResource(R.string.gallery_title)) },
             actions = {
                 IconButton(onClick = onOpenScan) {
-                    Icon(Icons.Filled.Search, stringResource(R.string.action_scan))
+                    Icon(Icons.Filled.Search, stringResource(R.string.action_open_scan))
                 }
                 IconButton(onClick = onToggleDisplayMode) {
                     Icon(

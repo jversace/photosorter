@@ -24,11 +24,11 @@
 ## Règles du projet
 - lors du démarrage d'une nouvelle tâche, récupérez les modifications présentes dans la branche de la release en cours vers votre branche
 - ne pas mettre une tâche à en validation tant qu'elle n'est pas commitée dans votre branche
-- lorsque vous avez commité dans votre branche, mettre la tâche à "en validation"
-- Malo valide que tous les fichier y sont, les merge dans la branche de la release en cours, et passe la tâche à terminée
+- lorsque vous avez commité dans votre branche, mettre la tâche à "à vérifier"
+- Zoé valide que tous les fichiers y sont, les merge dans la branche de la release en cours, et passe la tâche à terminée
 - Quand un agent n'a plus de tâche en cours et qu'une de ses tâches peut être démarrée (Malo vérifie s'il n'y a pas de dépendance bloquante), la tâche doit être démarrée
-- les décisions purement liées à l'implémentation doivent être tranchée par Zoé
-- vos interprétations doivent être soumises à Adam qui validera qu'il n'y a pas de mauvaise interprétation
+- les décisions purement liées à l'implémentation (choix d'une librairie, d'une dépendance, d'un algorithme, d'une techno, d'un design pattern) doivent être tranchée par Zoé
+- vos interprétations doivent être soumises à Zoé qui validera qu'il n'y a pas de mauvaise interprétation
 
 
 
@@ -45,6 +45,7 @@ agent/léna
 - Déclarer des bugs : libre
 - Faire évoluer les bugs (en correction, corrigé) : libre
 - Vérifier ou rouvrir un bug : interdit
+- Valider (fusionner) ou refuser les merge requests des autres agents : interdit
 - Associer tâches et bugs à des modules : libre
 - Niveau d'autonomie du projet : équilibré
 - Agents joignables : Malo, Zoé, Théo
@@ -61,7 +62,7 @@ agent/léna
 {"do":"force_unlock","path":"<fichier>","reason":"..."} : (agent principal) libérer de force le verrou d’un fichier (détenteur inactif ou plantage) ; si le détenteur travaille encore, utilise stop_agent
 {"do":"pull"} : récupérer dans ta branche les changements de la branche de travail de la release (fusion ; en cas de conflit, la règle du projet s’applique)
 {"do":"merge_request","title":"...","body":"...","task":"<id de la tâche, facultatif>"} : soumettre ta branche à la branche de travail de la release (l’agent principal la valide)
-{"do":"mr_review","id":"<id de la MR>","verdict":"approved|rejected","comment":"..."} : (agent principal / QA) valider (fusion) ou refuser une merge request
+{"do":"mr_review","id":"<id de la MR>","verdict":"approved|rejected","comment":"..."} : (agent principal, ou tout agent dont le rôle a le droit « valider les merge requests » ; jamais ta propre MR) valider (fusion) ou refuser une merge request
 {"do":"resolve_merge","conflict":"<id>","files":[{"path":"...","content":"<contenu final complet, ou null pour supprimer>"}],"message":"..."} : résoudre un conflit de fusion qui t’est confié (un élément par fichier en conflit)
 {"do":"message","to":"<prénom>","text":"..."} : écrire à un agent joignable (sa réponse te revient)
 {"do":"get_progress","agent":"<prénom ou all>"} : avancement d’un agent ou de toute l’équipe (sans coût)
@@ -80,30 +81,26 @@ agent/léna
 {"do":"bug_status","id":"<id>","status":"en correction|corrigé|vérifié|rouvert"} : faire évoluer un bug (vérifié/rouvert : droit de vérification)
 {"do":"ask_user","question":"...","options":["A","B"],"recommendation":"...","impact":"...","structural":true,"task":"<id de la tâche bloquée, ou vide>","replaces":[<n° des décisions en attente auxquelles cette question répond aussi>]} : poser une question à l’utilisateur (ambiguïté, décision structurante) ; si elle répond aussi à une question déjà en attente, indique son numéro dans replaces : l’ancienne est annulée et remplacée
 {"do":"instruction","text":"...","scope":"global|role:<rôle>|agent:<prénom>|module:<module>"} : (agent principal) enregistrer une nouvelle instruction de l’utilisateur
+{"do":"instr_rewrite","items":[...],"obsolete":[...]} : (uniquement lors d’une consolidation demandée par l’application) liste consolidée des instructions
 {"do":"spec","text":"<spécifications complètes en markdown>"} : (agent principal) remplacer les spécifications
 
 ## Notes de l’agent (à tenir à jour)
-Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (~10,3 Mo) + labels.txt dans app/assets. build.gradle.kts OK.
+Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (~10,3 Mo) + labels.txt dans app/assets. build.gradle.kts OK : minSdk 26, isMinifyEnabled=false (v1.0.0), compose+material-icons-extended et lifecycle-runtime-compose DÉJÀ en implementation.
 
-Tâches :
-- 45770063 Socle Android : terminée.
-- 31fa8938 Persistance Room : terminée.
-- 68b19a34 ScanEngine : terminée.
-- 87bcaabc Repositories : clôturée.
-- 596d8d9a Modération adulte : clôturée.
-- e3a1d1a6 et 3983405f : réaffectées à Zoé.
-- 4d0303c8 Tests unitaires back-end : MR #25 fusionnée.
-- c09d3de2 Corrections exécutable / 24b6deba Wrapper : à vérifier, MR #44 soumise. gradle-wrapper.jar (43 453 o) versionné, wrapper complet, docs/installation.md §1bis corrigée.
+Tâches back-end clôturées : 45770063, 31fa8938, 68b19a34. 87bcaabc et 596d8d9a clôturées. e3a1d1a6/3983405f réaffectées à Zoé.
+- 4d0303c8 Tests unitaires back-end : 'à vérifier'. Tests : MimeTypeDetectorTest, ScanRepositoryImplTest, StorageWalkerTest, MediaMetadataReaderTest, ScanEngineTest, ImageRepositoryFlowTest. Turbine 1.1.0 au catalog et utilisé pour Flows (progress, observeImages). Robolectric pour File/MediaStore (isIncludeAndroidResources=true). Mocks alignés : PreFilter.decide(path,name)->PreFilterDecision, AdultClassifier.classify(uri)->Result sealed, ensureInitialized().
+- c09d3de2 Corrections exécutable / 24b6deba Wrapper : à vérifier, MR #44 soumise (en attente validation Malo).
 
-DEBUG BUILD (utilisateur dans Android Studio sur agent/léna) : 3 corrections back-end faites :
-1) strings_detail.xml supprimé (doublon string/detail_next avec strings.xml).
-2) ImageQueryDao.observeFiltered : ORDER BY réécrit valide (CASE asc/desc + COLLATE NOCASE, codes 0=NAME 1=DATE 2=SIZE 3=FORMAT 4=LABEL).
-3) FileActions : OpenableColumns.DATA -> MediaStore.MediaColumns.DATA.
-4) MimeTypeDetector : ContentResolver.MIME_TYPE_DEFAULT inexistant -> constante locale "application/octet-stream".
-Résultat : le back-end compile. Erreurs restantes = 100% ui/ (Théo) : collectAsStateWithLifecycle (dep lifecycle-runtime-compose manquante), import compose, doublon DetailUiState (DetailUiState.kt + DetailViewModel.kt), signatures NavHost/ViewModel, Label Int vs Label, @OptIn(ExperimentalFoundationApi). Message envoyé à Théo.
+CONTRAT back-end (utile pour Théo/ui) :
+- FilterState.labels = Set<String> (NOMS de libellés, pas d'ID). ADULT_LABEL="adulte". Filtre adulte seul = labels=setOf(ADULT_LABEL), pas de champ dédié à ajouter.
+- Label = data class(name:String, isSystem:Boolean, createdAt:Long).
+- ImageQueryDao.observeFiltered = 10 params (sort, asc, includeAdult, hasFormats, formats, dateFrom, dateTo, minSize, hasLabels, labels) ; le repository calcule hasLabels/hasFormats.
+
+SYNCHRO THÉO : a corrigé doublon DetailUiState.kt et dépendance lifecycle-runtime-compose. Lui ai confirmé que material-icons-extended et lifecycle-runtime-compose sont déjà dans build.gradle.kts. Il vérifie l'usage effectif dans ui/ (pas de Label Int qui fuite, collectAsStateWithLifecycle) et me fera un retour. Filtre adulte : validation à faire par Zoé.
+
+MR #44 : en attente de Malo (review 'pas en attente' signalé). Build CI (assembleDebug + testDebugUnitTest) demandé à Malo pour confirmer ui/.
 
 LEÇON : OpenableColumns n'a que DISPLAY_NAME/SIZE ; _data = MediaStore.MediaColumns.DATA.
-LEÇON : ORDER BY paramétré par direction = 2 blocs CASE (asc/desc) sinon :asc unused + syntax error.
+LEÇON : ORDER BY paramétré par direction = 2 blocs CASE (asc/desc).
 LEÇON : alias TOML room-runtime -> libs.room.runtime.
-
-ATTENTE : réponse Théo sur les erreurs ui/ ; validation MR #44 par Malo.
+LEÇON : 'Label Int vs Label' côté UI = mauvais mapping sur id numérique ; le domaine n'expose que le nom (String).

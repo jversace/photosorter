@@ -88,11 +88,9 @@ agent/léna
 Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (~10,3 Mo)+labels.txt dans app/assets. build.gradle.kts : minSdk 26, isMinifyEnabled=false, compose+material-icons-extended+lifecycle-runtime-compose en implementation.
 
 Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a. e3a1d1a6/3983405f -> Zoé. 4d0303c8 tests : 'à vérifier'. c09d3de2/24b6deba : MR #44 attente Malo.
-- 9ec6eb25 (bug 2056025b, metadata file:// scoped storage) : CORRIGÉ. Relu par Zoé = conforme. MediaMetadataReader.kt : name/size/date depuis File en priorité, contentResolver best-effort (MIME + secours content://), dims BitmapFactory bounds-only. MediaMetadataReaderTest.kt : @Config(sdk=[29]) file:// (readsNameSizeAndDateFromFileUri, existsAgainAfterReading) + returnsNullForMissingFile. MR en attente validation Malo -> release/v1.0.0. Zoé a passé la tâche 'à vérifier'.
-- Décision Zoé : readsDimensionsFromFileUri NON requis (code support, couverture suffisante).
-- NOTE non bloquante v1.1 : dateModified n'est rempli que par la branche File (0 pour content://).
+- 9ec6eb25 (bug 2056025b, metadata file:// scoped storage) : RÉSOLU ET RELU. MediaMetadataReader.kt = correctif (name/size/date depuis File en priorité, contentResolver best-effort MIME + secours content://, dims BitmapFactory bounds-only). MediaMetadataReaderTest.kt = @Config(sdk=[29]) file:// (readsNameSizeAndDateFromFileUri, existsAgainAfterReading) + returnsNullForMissingFile. MR soumise. Tâche 'à vérifier'. Zoé relit et clôture.
 
-LEÇON MAJEURE : write_file tronquait les contenus LONGS (fichier inchangé). Solution : écrire COURT, 1 fichier/action, PUIS RELIRE le fichier réel. Écritures courtes = débloqué.
+LEÇON MAJEURE : write_file tronquait silencieusement les contenus LONGS (fichier inchangé à la relecture). Solution : ÉCRIRE COURT, 1 fichier par action, contenu réduit, PUIS RELIRE le fichier réel pour confirmer. C'est ce qui a débloqué.
 
 CONTRAT back-end : FilterState.labels=Set<String>(NOMS). ADULT_LABEL="adulte". Label=data class(name,isSystem,createdAt). ImageQueryDao.observeFiltered=10 params.
 LEÇON : OpenableColumns=DISPLAY_NAME/SIZE ; _data=MediaStore.MediaColumns.DATA. ORDER BY paramétré=2 blocs CASE. alias TOML room-runtime->libs.room.runtime. 'Label Int vs Label' UI=mauvais mapping id ; domaine n'expose que le nom. scoped storage file://->métadonnées depuis File(uri.path). Écrire->RELIRE->alors seulement annoncer.

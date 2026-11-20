@@ -63,8 +63,8 @@ internal suspend fun flushImages(
  */
 internal fun detectAdult(uri: Uri, name: String, preFilter: PreFilter, classifier: AdultClassifier): Boolean {
     when (preFilter.decide(uri.toString(), name)) {
-        PreFilterDecision.Skip -> return false
-        PreFilterDecision.Classify -> Unit
+        PreFilterDecision.SKIP -> return false
+        PreFilterDecision.ANALYZE -> Unit
     }
     return when (val r = classifier.classify(uri)) {
         is AdultClassifier.Result.Scored -> r.isAdult

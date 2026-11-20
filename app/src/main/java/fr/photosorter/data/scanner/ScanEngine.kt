@@ -12,6 +12,7 @@ import fr.photosorter.data.db.entity.ImageEntity
 import fr.photosorter.data.db.entity.ImageLabelEntity
 import fr.photosorter.data.db.entity.LabelEntity
 import fr.photosorter.data.moderation.AdultClassifier
+import fr.photosorter.data.moderation.AdultClassifier.Result
 import fr.photosorter.data.moderation.PreFilter
 import fr.photosorter.data.moderation.PreFilterDecision
 import fr.photosorter.domain.model.ADULT_LABEL
@@ -48,16 +49,11 @@ class ScanEngine @Inject constructor(
 
     private val _progress = MutableStateFlow<ScanProgress>(ScanProgress.Idle)
     val progress: Flow<ScanProgress> = _progress.asStateFlow()
-
     private val cancelled = AtomicBoolean(false)
-
     @Volatile private var running = false
-
     private val walker = StorageWalker(mimeDetector)
 
-    fun cancel() {
-        cancelled.set(true)
-    }
+    fun cancel() { cancelled.set(true) }
 
     suspend fun scan(): ScanProgress = withContext(dispatchers.io) {
         if (running) return@withContext _progress.value
@@ -67,17 +63,14 @@ class ScanEngine @Inject constructor(
         val reader = metadataReaderFactory(context)
         val buffer = ArrayList<ImageEntity>(BATCH_SIZE)
         var written = 0
-
         adultClassifier.ensureInitialized()
         adultClassifier.resetUnavailableCount()
-
         try {
             val roots = storageRootProvider.roots()
             val files = ArrayList<ScannedFile>(1024)
             _progress.value = ScanProgress.Running(0, 0, MSG_ANALYZING)
             walker.walk(roots, cancelled) { files.add(it) }
             val total = files.size
-
             for ((index, file) in files.withIndex()) {
                 if (cancelled.get()) break
                 val meta = reader.read(file.uri) ?: continue
@@ -88,7 +81,6 @@ class ScanEngine @Inject constructor(
                 _progress.value = ScanProgress.Running(index + 1, total, meta.name)
             }
             if (buffer.isNotEmpty()) written += flush(buffer)
-
             val duration = SystemClock.elapsedRealtime() - startedAt
             val result = if (cancelled.get()) ScanProgress.Error(MSG_CANCELLED) else ScanProgress.Completed(written, duration, adultClassifier.unavailableCount)
             _progress.value = result
@@ -103,7 +95,7 @@ class ScanEngine @Inject constructor(
         }
     }
 
-    /** Insere un lot d'images ET les liens au libelle 'adulte' dans une transaction atomique. */
+    /** Insere un lot d'images ET les liens au libelle 'adulte' atomiquement. */
     private suspend fun flush(buffer: MutableList<ImageEntity>): Int {
         if (buffer.isEmpty()) return 0
         val batch = ArrayList(buffer)
@@ -111,33 +103,35 @@ class ScanEngine @Inject constructor(
         var inserted = 0
         db.withTransaction {
             val ids = imageDao.insertAll(batch)
-            inserted = ids.count { it != null && it > 0L }
-            val adultIndices = batch.indices.filter { i -> i < ids.size && ids[i] > 0L && batch[i].isAdult }
-            if (adultIndices.isNotEmpty()) {
-                if (labelDao.getByName(ADULT_LABEL) == null) {
-                    labelDao.insert(LabelEntity(name = ADULT_LABEL, isSystem = true))
-                }
-                val links = adultIndices.map { i -> ImageLabelEntity(imageId = ids[i], labelName = ADULT_LABEL) }
-                imageLabelDao.insertAll(links)
+            val adultLinks = ArrayList<ImageLabelEntity>()
+            for (i in batch.indices) {
+                val id = ids.getOrNull(i) ?: continue
+                if (id > 0L && batch[i].isAdult) adultLinks.add(ImageLabelEntity(imageId = id, labelName = ADULT_LABEL))
             }
+            if (adultLinks.isNotEmpty()) {
+                if (labelDao.getByName(ADULT_LABEL) == null) labelDao.insert(LabelEntity(name = ADULT_LABEL, isSystem = true))
+                imageLabelDao.insertAll(adultLinks)
+            }
+            inserted = ids.count { it != null && it > 0L }
         }
         return inserted
     }
 
-    /**
-     * Moderation adulte d'une image : pre-filtre puis classifieur.
-     * Retourne true si l'image est classe adulte. Unavailable -> false (conservateur).
-     */
-    private fun detectAdult(uri: String, displayName: String): Boolean {
-        if (preFilter.decide(uri, displayName) == PreFilterDecision.SKIP) return false
-        return when (val r = adultClassifier.classify(android.net.Uri.parse(uri))) {
-            is AdultClassifier.Result.Scored -> r.isAdult
-            AdultClassifier.Result.Unavailable -> false
+    /** Moderation adulte : pre-filtre puis classifieur. Unavailable => normale (conservateur). */
+    private suspend fun detectAdult(uri: String, name: String): Boolean {
+        return when (preFilter.decide(uri, name)) {
+            PreFilterDecision.SKIP_NOT_PHOTO -> false
+            PreFilterDecision.ANALYZE -> {
+                if (!adultClassifier.isReady()) false else when (val r = adultClassifier.classify(android.net.Uri.parse(uri))) {
+                    is Result.Scored -> r.isAdult
+                    is Result.Unavailable -> false
+                }
+            }
         }
     }
 
     companion object {
-        private const val BATCH_SIZE = 100
+        private const val BATCH_SIZE = 50
         private const val MSG_ANALYZING = "Analyse du stockage..."
         private const val MSG_CANCELLED = "Scan annule"
         private const val MSG_ERROR = "Erreur de scan"

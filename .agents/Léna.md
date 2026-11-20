@@ -85,19 +85,21 @@ agent/léna
 {"do":"spec","text":"<spécifications complètes en markdown>"} : (agent principal) remplacer les spécifications
 
 ## Notes de l’agent (à tenir à jour)
-Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (~10,3 Mo)+labels.txt dans app/assets. build.gradle.kts : minSdk 26, isMinifyEnabled=false, compose+material-icons-extended+lifecycle-runtime-compose en implementation.
+Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (~10,3 Mo)+labels.txt dans app/assets. build.gradle.kts : minSdk 26, isMinifyEnabled=false.
 
-Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a. e3a1d1a6/3983405f -> Zoé. c09d3de2/24b6deba : MR en attente Malo.
+Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a. e3a1d1a6/3983405f -> Zoé. c09d3de2/24b6deba : MR validée.
 
-3222873d (bug f6eb4edf, détection adulte) : LIVRÉ sur MR #56 (déjà ouverte, sera validée), statut 'à vérifier'. Décision Zoé durable : normalisation d'entrée PILOTÉE PAR CONFIG (assets/model.config clé scale=ZERO_ONE|ZERO_255|MINUS_ONE_ONE), jamais en dur ; défaut ZERO_ONE documenté comme hypothèse ; valeur finale en attente de la config d'entraînement du modèle (réponse utilisateur). NE PAS dire 'détection réparée'. Livrables : enum InputScale+apply() ; toInputBuffer applique l'échelle ; repli FileInputStream(File(uri.path)) pour file:// ; markUnavailable incrémente unavailableCounter (exposé via unavailableCount/resetUnavailableCount) ; ScanProgress.Completed.unclassifiedCount:Int=0 (KDoc 'non classée' != 'normale') ; ScanEngine reset compteur en début de scan + renseigne unclassifiedCount. Seuil et normalize() INCHANGÉS.
+DÉTECTION ADULTE (bug f6eb4edf) — CAUSE RACINE TROUVÉE (logs appareil 2026-11-20) : 'Modele TFLite indisponible : model.tflite' + toutes images Unavailable. Le modèle n'était jamais chargé car assets.openFd() échoue sur asset COMPRESSÉ. Correctif (MR #58, tâche 3a354e9c) : loadModelFile() repli copie InputStream->ByteBuffer direct si openFd lève. RECOMMANDATION BUILD à Zoé : noCompress += 'tflite' dans build.gradle.kts (évite copie mémoire). MR #58 en attente validation. NE PAS dire 'détection réparée' avant vérif log scores réels sur appareil (porn/sexy élevés).
 
-9ec6eb25 (bug 2056025b, metadata file:// scoped storage) : correctif file:// utile mais PAS la cause racine (permission runtime). Statut 'à vérifier', MR #56 ; clôture après correctif IHM de Théo.
+Mécanisme AdultClassifier : enum InputScale (ZERO_ONE/ZERO_255/MINUS_ONE_ONE) lu depuis assets/model.config clé scale, défaut ZERO_ONE (hypothèse) ; normalisation pilotée config ; instrumentation logScores (raw+probs+échelle+décision) ; repli FileInputStream(File(uri.path)) ; unavailableCount/resetUnavailableCount ; ScanProgress.Completed.unclassifiedCount. normalize()/softmax et seuil 0.5 INCHANGÉS.
 
-DÉCISIONS ZOÉ (durables) : (1) Permission via RequestMultiplePermissions, API 26+. (2) FilterState.labels = IDs de libellé, sémantique OU, PAS de onlyAdult. (3) Signature DAO filtrée figée MAIS NON IMPLÉMENTÉE : getWithLabelsFiltered(labelIds:Set<String>) avec jointure image_labels, ORDER BY name ASC ; résolution nom->id côté repository. (4) Défaut latent DAO non réactif -> tâche de 1er niveau APRÈS correctif IHM. (5) ScanProgress : AJOUTER un champ à défaut ne casse pas le consommateur (pas d'accord Théo requis) ; RETRAIT/changement de type = accord requis.
+9ec6eb25 (metadata file:// scoped storage) : MR #56 validée, statut 'à vérifier'. MediaMetadataReader : nom/taille/date depuis File(uri.path), contentResolver best-effort, MIME repli URLConnection.guessContentTypeFromName, dimensions inJustDecodeBounds. Test file:// en @Config(sdk=[29]).
 
-ÉTAT ImageDao RÉEL : insertAll(REPLACE)->List<Long>, update, clear, deleteById, getById, getAllWithLabels() (sans filtre image_labels). Aucune requête filtrée.
+DÉCISIONS ZOÉ (durables) : (1) Permission via RequestMultiplePermissions, API 26+. (2) FilterState.labels = IDs de libellé, sémantique OU, PAS de onlyAdult. (3) DAO filtré figé NON implémenté : getWithLabelsFiltered(labelIds:Set<String>) jointure image_labels ORDER BY name ASC ; résolution nom->id côté repository. (4) Défaut latent DAO non réactif -> tâche 1er niveau APRÈS correctif IHM. (5) ScanProgress : AJOUTER un champ à défaut OK ; RETRAIT/changement de type = accord requis.
 
-CONTRAT back-end : ScanEngine(context, dispatchers, imageDao, mimeDetector, storageRootProvider, metadataReaderFactory=(Context)->MediaMetadataReader, preFilter:PreFilter, adultClassifier:AdultClassifier) ; scan() sans paramètre ; ScanProgress.Completed(count,durationMs,unclassifiedCount=0). MediaMetadataReader(context). MIME best-effort 'application/octet-stream'.
+ÉTAT ImageDao RÉEL : insertAll(REPLACE)->List<Long>, update, clear, deleteById, getById, getAllWithLabels() (sans filtre).
+
+CONTRAT back-end : ScanEngine(context, dispatchers, imageDao, mimeDetector, storageRootProvider, metadataReaderFactory=(Context)->MediaMetadataReader, preFilter:PreFilter, adultClassifier:AdultClassifier) ; scan() sans paramètre ; ScanProgress.Completed(count,durationMs,unclassifiedCount=0).
 
 LEÇON MAJEURE : write_file tronque les contenus LONGS -> ÉCRIRE COURT, 1 fichier/action, PUIS RELIRE avant d'annoncer.
-LEÇON : JSON du transport (content de write_file) doit être échappé MAIS le fichier écrit doit être du Kotlin/source réel, pas un littéral échappé. OpenableColumns=DISPLAY_NAME/SIZE ; scoped storage file://->métadonnées depuis File(uri.path). Conflit résolu par Adam.
+LEÇON : JSON échappé MAIS fichier écrit = source réel. OpenableColumns=DISPLAY_NAME/SIZE. Conflit résolu par Adam.

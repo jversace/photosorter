@@ -87,18 +87,14 @@ agent/léna
 ## Notes de l’agent (à tenir à jour)
 Rôle : Développeur back-end. Branche agent/léna.
 
-Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a, 87c5f661, 4f0b27e5. 24b6deba/3222873d/3a354e9c OK. c09d3de2/24b6deba MR validée.
+Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a, 87c5f661, 4f0b27e5. 3222873d/3a354e9c/e9e95a30 OK. c09d3de2/24b6deba MR validée.
 
-DÉTECTION ADULTE : cause racine assets.openFd() sur asset compressé -> repli InputStream->ByteBuffer. AdultClassifier : InputScale via assets/model.config, logScores, unavailableCount. NE PAS dire 'réparée' avant vérif logs scores.
+DÉCISION ZOÉ (scission ScanEngine, option A) : ScanEngine.kt = classe private fields + scan() ; ScanEngineSupport.kt = internal const val BATCH_SIZE/MSG_* top-level + extensions PARAMÉTRÉES flushImages(batch,db,imageDao,imageLabelDao,labelDao):Int et detectAdult(uri,name,preFilter,classifier):Boolean. Champs de la classe restent private.
 
-FILTRE ADULTE (87c5f661) : back-end OK (syncAdultLabels après scan). FIX FK LABEL (4f0b27e5) : ensureLabelExists avant insertAll dans ImageRepositoryImpl/LabelRepositoryImpl.assign.
+BUG dd7f6f6c volet 2 (tâche 4e517524, à vérifier) : flushImages crée le libellé 'adulte' si absent PUIS ImageLabelEntity(imageId,ADULT_LABEL) via ImageLabelDao.insertAll(IGNORE), atomiquement avec ImageDao.insertAll dans db.withTransaction. Unavailable=>false, aucune insertion.
 
-CONTRAT MOVE/COPY SAF (tâche 826b1ea6) : ImageRepository.move/copy(items, destUri:String) où destUri = tree URI d'un OpenDocumentTree (l'IHM Théo fait déjà takePersistableUriPermission + treeUri.toString()). FileActions.moveToTree/copyToTree(imageUri, treeUri) via DocumentFile.fromTreeUri ; copy lit le flux source (MediaStore > _data > matéri. cache) et crée fichier via tree.createFile ; move = copie + FileActions.delete(source). Anciens move/copy(File) conservés.
+CONTRATS DB VÉRIFIÉS : LabelEntity(name PK, isSystem, createdAt:Long SANS défaut -> OBLIGER createdAt=System.currentTimeMillis()). ImageDao.insertAll->List<Long> (REPLACE, ids peuvent changer au re-scan). ImageLabelDao.insertAll(List)->Unit IGNORE ; unassign/clearForImage. ImageLabelEntity(imageId,labelName) 2 FK CASCADE : label_name->LabelEntity.name => 'adulte' DOIT exister avant insert.
 
-CATALOGUE : libs.versions.toml complété (room runtime/ktx/compiler/testing, lifecycle-runtime-compose, documentfile 1.0.1, androidx-test-core, robolectric, turbine, mockito). build.gradle.kts référence ces alias.
+WRITE_FILE : contenu >~5000 car. tronqué -> scinder en petits fichiers, read_file systématique après écriture. JSON action = \n échappés.
 
-SCHÉMA DB : image_labels(image_id:Long, label_name:String). LabelDao.getByName/insert(IGNORE)/update/deleteNonSystem. ImageLabelDao.insertAll(IGNORE)/unassign/clearForImage. ImageDao.getAllWithLabels() -> List<ImageWithLabels>. ADULT_LABEL='adulte' ds domain/model/Label.kt.
-
-DÉCISIONS ZOÉ : (1) RequestMultiplePermissions API26+. (2) FilterState.labels=Set<String> OU. (3) observeFiltered adultOnly:Int+adultLabel:String. (5) ScanProgress : ajout champ à défaut OK.
-
-LEÇON : write_file tronque les longs contenus -> 1 fichier/action, JSON échappé, relire avant d'annoncer.
+DÉTECTION ADULTE : AdultClassifier.isReady (pas isAvailable), ensureInitialized, unavailableCount/resetUnavailableCount, classify(Uri)->Result.Scored(isAdult)/Unavailable. model.config InputScale. Assets model.tflite+labels.txt.

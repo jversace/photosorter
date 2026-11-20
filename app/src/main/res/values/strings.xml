@@ -54,7 +54,7 @@
     <string name="filters_include_adult">Inclure le contenu adulte</string>
     <string name="filters_adult_section">Contenu adulte</string>
     <string name="filters_adult_show_all">Tout afficher</string>
-    <string name="filters_adult_hide">Masquer l'adulte</string>
+    <string name="filters_adult_hide">Masquer l\'adulte</string>
     <string name="filters_adult_only">Uniquement adulte</string>
     <string name="filters_apply">Appliquer</string>
     <string name="filters_clear">Réinitialiser</string>

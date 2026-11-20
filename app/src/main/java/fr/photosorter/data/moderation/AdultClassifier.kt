@@ -94,7 +94,7 @@ class AdultClassifier @Inject constructor(
                 val shape = interp.getInputTensor(0).shape()
                 if (shape.size == 4 && shape[1] > 0) inputSize = shape[1]
             }
-            Log.i(TAG, "InputScale=$inputScale inputSize=$inputSize modele=${if (isReady) \"ok\" else \"KO\"}")
+            Log.i(TAG, "InputScale=$inputScale inputSize=$inputSize modele=${if (isReady) "ok" else "KO"}")
         }
     }
 
@@ -125,7 +125,7 @@ class AdultClassifier @Inject constructor(
             TAG,
             "Scores[$uri] scale=$inputScale raw=[${raw.joinToString(", ") { fmt(it) }}] " +
                 "probs=[${probs.joinToString(", ") { fmt(it) }}] adult=$adultScore " +
-                "-> ${if (adultScore >= ADULT_THRESHOLD) \"ADULTE\" else \"normale\"}"
+                "-> ${if (adultScore >= ADULT_THRESHOLD) "ADULTE" else "normale"}"
         )
     }
 

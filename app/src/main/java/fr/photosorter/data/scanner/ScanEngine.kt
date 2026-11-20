@@ -3,12 +3,19 @@ package fr.photosorter.data.scanner
 import android.content.Context
 import android.net.Uri
 import android.os.SystemClock
+import androidx.room.withTransaction
 import fr.photosorter.core.dispatchers.DispatchersProvider
+import fr.photosorter.data.db.AppDatabase
 import fr.photosorter.data.db.dao.ImageDao
+import fr.photosorter.data.db.dao.ImageLabelDao
+import fr.photosorter.data.db.dao.LabelDao
 import fr.photosorter.data.db.entity.ImageEntity
+import fr.photosorter.data.db.entity.ImageLabelEntity
+import fr.photosorter.data.db.entity.LabelEntity
 import fr.photosorter.data.moderation.AdultClassifier
 import fr.photosorter.data.moderation.PreFilter
 import fr.photosorter.data.moderation.PreFilterDecision
+import fr.photosorter.domain.model.ADULT_LABEL
 import fr.photosorter.domain.model.ScanProgress
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +31,8 @@ import javax.inject.Singleton
  * 2) Parcourt recursivement via [StorageWalker] (exclusions systeme).
  * 3) Lit les metadonnees (taille, date, format, dimensions, MIME).
  * 4) Moderation adulte : pre-filtre screenshots/documents puis classifieur TFLite.
- * 5) Ecrit dans Room par lots (batch).
+ * 5) Ecrit dans Room par lots (batch) de facon atomique : images + libelle systeme
+ *    'adulte' (dans image_labels) sont inseres dans la MEME transaction.
  * 6) Emet [ScanProgress] en temps reel sur un Flow.
  *
  * 100% local : aucun envoi de donnees a l'exterieur.
@@ -33,7 +41,10 @@ import javax.inject.Singleton
 class ScanEngine @Inject constructor(
     private val context: Context,
     private val dispatchers: DispatchersProvider,
+    private val db: AppDatabase,
     private val imageDao: ImageDao,
+    private val imageLabelDao: ImageLabelDao,
+    private val labelDao: LabelDao,
     private val mimeDetector: MimeTypeDetector,
     private val storageRootProvider: StorageRootProvider,
     private val metadataReaderFactory: @JvmSuppressWildcards (Context) -> MediaMetadataReader,
@@ -64,9 +75,7 @@ class ScanEngine @Inject constructor(
         val buffer = ArrayList<ImageEntity>(BATCH_SIZE)
         var written = 0
 
-        // Initialise le classifieur (degrade proprement si modele absent).
         adultClassifier.ensureInitialized()
-        // Remet a zero le compteur d'images non classees pour ce scan.
         adultClassifier.resetUnavailableCount()
 
         try {
@@ -124,33 +133,52 @@ class ScanEngine @Inject constructor(
             result
         } finally {
             running = false
+            buffer.clear()
         }
     }
 
     /**
-     * Determine si une image est adulte.
-     * 1) Pre-filtre : screenshots/documents -> non adulte (revisable par l'utilisateur).
-     * 2) Sinon classifieur TFLite ; si indisponible -> non adulte (compte comme non classee).
+     * Insere un lot d'images ET les associations au libelle systeme 'adulte' dans
+     * une seule transaction Room : impossible d'avoir isAdult=true sans libelle.
+     * Renvoie le nombre d'images reellement ecrites (ids > 0).
      */
-    private suspend fun detectAdult(uri: Uri, name: String): Boolean {
-        return when (preFilter.decide(uri.path, name)) {
-            PreFilterDecision.SKIP -> false
-            PreFilterDecision.ANALYZE -> when (val r = adultClassifier.classify(uri)) {
-                is AdultClassifier.Result.Scored -> r.isAdult
-                AdultClassifier.Result.Unavailable -> false
-            }
-        }
-    }
-
     private suspend fun flush(buffer: MutableList<ImageEntity>): Int {
         if (buffer.isEmpty()) return 0
         val batch = ArrayList(buffer)
         buffer.clear()
-        val ids = imageDao.insertAll(batch)
-        return ids.count { it > 0 }
+
+        return db.withTransaction {
+            val ids = imageDao.insertAll(batch)
+            val adultLinks = ArrayList<ImageLabelEntity>()
+            ids.forEachIndexed { index, id ->
+                if (id > 0L && batch[index].isAdult) {
+                    adultLinks.add(ImageLabelEntity(imageId = id, labelName = ADULT_LABEL))
+                }
+            }
+            if (adultLinks.isNotEmpty()) {
+                // FK labels.name : garantir l'existence du libelle systeme avant les liens.
+                if (labelDao.getByName(ADULT_LABEL) == null) {
+                    labelDao.insert(LabelEntity(name = ADULT_LABEL, isSystem = true, createdAt = System.currentTimeMillis()))
+                }
+                imageLabelDao.insertAll(adultLinks)
+            }
+            ids.count { it > 0L }
+        }
+    }
+
+    /** Pre-filtre puis classifieur. Renvoie false si indisponible (aucune classification). */
+    private suspend fun detectAdult(uri: Uri, name: String): Boolean {
+        return when (preFilter.evaluate(name)) {
+            PreFilterDecision.Adult -> true
+            PreFilterDecision.Neutral -> false
+            PreFilterDecision.NeedsModel -> {
+                val score = adultClassifier.classify(uri)
+                score?.isAdult ?: false
+            }
+        }
     }
 
     companion object {
-        const val BATCH_SIZE = 100
+        private const val BATCH_SIZE = 200
     }
 }

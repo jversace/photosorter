@@ -90,27 +90,27 @@ agent/zoé
 ## SCHÉMA RÉEL
 - image_labels.image_id + image_labels.label_name (FK -> labels.name) = SOURCE DE VÉRITÉ (n°224).
 - images.is_adult = cache ; ne pas s'y fier seul.
-- ADULT_LABEL = "adulte" (constante chaîne domaine).
+- ADULT_LABEL = "adulte".
 
-## FILTRES (validé sur code réel agent/léna)
-- ImageQueryDao.observeFiltered : adultOnly via EXISTS(image_labels il WHERE il.image_id=i.id AND il.label_name=:adultLabel) CORRÉLÉ, indépendant de IN(:labels) ; adultLabel=ADULT_LABEL. CORRECT.
-- ImageRepositoryImpl.observeImages transmet adultOnly + adultLabel. matchesFilter gère adultOnly. CORRECT.
-- 'Uniquement adulte vide' = CONSÉQUENCE du crash FK (aucune ligne image_labels='adulte' écrite). Après correctif FK, réassigner le label adulte puis retester.
+## FILTRES (validé)
+- ImageQueryDao.observeFiltered : adultOnly via EXISTS corrélé, indépendant de IN(:labels). CORRECT.
+- ImageRepositoryImpl.observeImages transmet adultOnly+adultLabel ; matchesFilter gère adultOnly. CORRECT.
+- 'Uniquement adulte vide' = conséquence du crash FK (corrigé) ; réassigner le label adulte puis retester.
 
-## CRASH FOREIGN KEY (bug 4cd6654d, corrigé+accepté)
-- LabelRepositoryImpl.assign : ensureLabelExists(label) AVANT imageLabelDao.insertAll(links). Bon principe.
-- RÉSERVE NON BLOQUANTE v1.0.0 : assign() non @Transaction (ensureLabelExists+insertAll = 2 ops) -> durcir plus tard (RISQUE COURSE).
+## CRASH FK (bug 4cd6654d corrigé+accepté)
+- LabelRepositoryImpl.assign : ensureLabelExists AVANT insertAll. RÉSERVE non bloquante v1 : assign() non @Transaction.
 
-## COPIER/DÉPLACER SAF (bug 1e0fc60c OUVERT, sous-tâche Léna 826b1ea6)
-- IHM Théo CONFORME : GalleryScreen.kt fait OpenDocumentTree + takePersistableUriPermission + PendingDestAction MOVE/COPY -> moveSelected/copySelected(treeUri.toString()). (Mon 1er constat d'absence était FAUX, corrigé.)
-- DÉFAUT BACK : ImageRepositoryImpl.ensureDestDir fait Uri.parse(destUri).path?.let(::File) -> File('/tree/primary:X'), mkdirs échoue -> 'Dossier destination invalide'.
-- DÉCISION ARchi (Zoé) : consommer tree URI via DocumentFile (SAF), pas File. FileActions ajoute moveToTree/copyToTree(imageUri, treeUri) : DocumentFile.fromTreeUri -> createFile(mime,name) -> copie flux -> delete source si MOVE. ImageRepositoryImpl.move/copy appellent ces méthodes + SUPPRIMER ensureDestDir. Signature publique ImageRepository.move(items, destUri:String) INCHANGÉE (pas d'impact IHM).
+## COPIER/DÉPLACER SAF + TOML (MR #68 Léna, tâche 826b1ea6 acceptée)
+- IHM Théo CONFORME : GalleryScreen OpenDocumentTree + takePersistableUriPermission -> moveSelected/copySelected(treeUri.toString()).
+- DÉCISION ARchi : FileActions consomme tree URI via DocumentFile.moveToTree/copyToTree (fromTreeUri -> createFile -> copie flux -> delete source si MOVE) ; ImageRepositoryImpl appelle ces méthodes, SUPPRIME ensureDestDir. Signature ImageRepository.move(items,destUri:String) inchangée.
+- CAUSE BUILD 'Unresolved reference room/compose' : release/v1.0.0 avait un libs.versions.toml TRONQUÉ (manquaient room-runtime/ktx/compiler/testing, androidx-lifecycle-runtime-compose, androidx-documentfile). agent/léna le fournit complet via MR #68. Ce N'ÉTAIT PAS un cache ni le checkout local de l'utilisateur.
+- STATUT MR #68 : approbation de fond donnée par moi ; mr_review renvoie 'pas en attente' (décalage outil) -> fusion à faire côté application/utilisateur/Malo. Après fusion : rebuild, puis bug 1e0fc60c -> corrigé/vérifié.
 
 ## AUTRES
-- ScanScreen (agent/malo) permission runtime : CONFORME (MEME_PERMISSIONS, RequestMultiplePermissions, enabled lié à permissionGranted).
-- DÉTECTION ADULTE : normalisation d'entrée pilotée par config modèle + logScores ; valeur finale en attente appareil.
+- ScanScreen permission runtime (Malo) CONFORME.
+- Détection adulte : normalisation pilotée par config + logScores ; valeur finale en attente appareil (n°248).
 - Packaging v1.0.0 : isMinifyEnabled=false.
 
 ## Limites d'outil
-- mr_review peut dire 'pas en attente de validation' alors que get_blockers la liste : décalage outil. Toujours vérifier par read_file sur la branche.
-- bug_status modifie l'état ; vérifier coherence avec workflow (corrigé -> QA vérifie).
+- mr_review 'pas en attente' alors que get_blockers la liste : décalage outil. Vérifier par read_file sur la branche + faire fusionner côté application.
+- bug_status : cohérence workflow (corrigé -> QA vérifie).

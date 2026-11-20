@@ -85,12 +85,21 @@ agent/léna
 {"do":"spec","text":"<spécifications complètes en markdown>"} : (agent principal) remplacer les spécifications
 
 ## Notes de l’agent (à tenir à jour)
-Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (~10,3 Mo)+labels.txt dans app/assets. build.gradle.kts : minSdk 26, isMinifyEnabled=false, compose+material-icons-extended+lifecycle-runtime-compose en implementation.
+Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (~10,3 Mo)+labels.txt dans app/assets. build.gradle.kts : minSdk 26, isMinifyEnabled=false.
 
-Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a. e3a1d1a6/3983405f -> Zoé. 4d0303c8 tests : 'à vérifier'. c09d3de2/24b6deba : MR #44 attente Malo.
-- 9ec6eb25 (bug 2056025b, metadata file:// scoped storage) : RÉSOLU ET RELU. MediaMetadataReader.kt = correctif (name/size/date depuis File en priorité, contentResolver best-effort MIME + secours content://, dims BitmapFactory bounds-only). MediaMetadataReaderTest.kt = @Config(sdk=[29]) file:// (readsNameSizeAndDateFromFileUri, existsAgainAfterReading) + returnsNullForMissingFile. MR soumise. Tâche 'à vérifier'. Zoé relit et clôture.
+Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a. e3a1d1a6/3983405f -> Zoé. c09d3de2/24b6deba : MR validée.
 
-LEÇON MAJEURE : write_file tronquait silencieusement les contenus LONGS (fichier inchangé à la relecture). Solution : ÉCRIRE COURT, 1 fichier par action, contenu réduit, PUIS RELIRE le fichier réel pour confirmer. C'est ce qui a débloqué.
+DÉTECTION ADULTE (bug f6eb4edf) — CAUSE RACINE TROUVÉE (logs appareil 2026-11-20) : 'Modele TFLite indisponible : model.tflite' + toutes images Unavailable. Le modèle n'était jamais chargé car assets.openFd() échoue sur asset COMPRESSÉ. Correctif (MR #58, tâche 3a354e9c) : loadModelFile() repli copie InputStream->ByteBuffer direct si openFd lève. RECOMMANDATION BUILD à Zoé : noCompress += 'tflite' dans build.gradle.kts (évite copie mémoire). MR #58 en attente validation. NE PAS dire 'détection réparée' avant vérif log scores réels sur appareil (porn/sexy élevés).
 
-CONTRAT back-end : FilterState.labels=Set<String>(NOMS). ADULT_LABEL="adulte". Label=data class(name,isSystem,createdAt). ImageQueryDao.observeFiltered=10 params.
-LEÇON : OpenableColumns=DISPLAY_NAME/SIZE ; _data=MediaStore.MediaColumns.DATA. ORDER BY paramétré=2 blocs CASE. alias TOML room-runtime->libs.room.runtime. 'Label Int vs Label' UI=mauvais mapping id ; domaine n'expose que le nom. scoped storage file://->métadonnées depuis File(uri.path). Écrire->RELIRE->alors seulement annoncer.
+Mécanisme AdultClassifier : enum InputScale (ZERO_ONE/ZERO_255/MINUS_ONE_ONE) lu depuis assets/model.config clé scale, défaut ZERO_ONE (hypothèse) ; normalisation pilotée config ; instrumentation logScores (raw+probs+échelle+décision) ; repli FileInputStream(File(uri.path)) ; unavailableCount/resetUnavailableCount ; ScanProgress.Completed.unclassifiedCount. normalize()/softmax et seuil 0.5 INCHANGÉS.
+
+9ec6eb25 (metadata file:// scoped storage) : MR #56 validée, statut 'à vérifier'. MediaMetadataReader : nom/taille/date depuis File(uri.path), contentResolver best-effort, MIME repli URLConnection.guessContentTypeFromName, dimensions inJustDecodeBounds. Test file:// en @Config(sdk=[29]).
+
+DÉCISIONS ZOÉ (durables) : (1) Permission via RequestMultiplePermissions, API 26+. (2) FilterState.labels = IDs de libellé, sémantique OU, PAS de onlyAdult. (3) DAO filtré figé NON implémenté : getWithLabelsFiltered(labelIds:Set<String>) jointure image_labels ORDER BY name ASC ; résolution nom->id côté repository. (4) Défaut latent DAO non réactif -> tâche 1er niveau APRÈS correctif IHM. (5) ScanProgress : AJOUTER un champ à défaut OK ; RETRAIT/changement de type = accord requis.
+
+ÉTAT ImageDao RÉEL : insertAll(REPLACE)->List<Long>, update, clear, deleteById, getById, getAllWithLabels() (sans filtre).
+
+CONTRAT back-end : ScanEngine(context, dispatchers, imageDao, mimeDetector, storageRootProvider, metadataReaderFactory=(Context)->MediaMetadataReader, preFilter:PreFilter, adultClassifier:AdultClassifier) ; scan() sans paramètre ; ScanProgress.Completed(count,durationMs,unclassifiedCount=0).
+
+LEÇON MAJEURE : write_file tronque les contenus LONGS -> ÉCRIRE COURT, 1 fichier/action, PUIS RELIRE avant d'annoncer.
+LEÇON : JSON échappé MAIS fichier écrit = source réel. OpenableColumns=DISPLAY_NAME/SIZE. Conflit résolu par Adam.

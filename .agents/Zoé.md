@@ -87,33 +87,34 @@ agent/zoé
 ## Notes de l’agent (à tenir à jour)
 # Contexte Zoé (Architecte)
 
+## SCHÉMA RÉEL (corrigé — primes sur mes notes précédentes)
+- image_labels.image_id + image_labels.label_name (CHAÎNE, FK -> labels.name) : association image/libellé = SOURCE DE VÉRITÉ (n°224).
+- images.is_adult : dénormalisation/cache. NE PAS s'y fier pour un filtre SANS vérifier qu'il est synchronisé à la révision du label.
+- Pas d'ADULT_LABEL_ID numérique. Label adulte = constante domaine ADULT_LABEL (chaîne).
+
 ## Décisions durables
-- Détection contenu adulte : IA locale TFLite + pré-filtre screenshots/documents. Aucun envoi externe. Label 'adulte' révisable.
-- Pré-filtre : exclure screenshots/documents/texte (ML Kit). Erreur -> passer à l'IA.
-- UI : Jetpack Compose + Material 3, mono-activity, Navigation Compose.
-- ANDROID 8.0 min (API 26), hors-ligne (pas INTERNET), FR.
-- Packaging v1.0.0 : isMinifyEnabled=false. R8 v1.1+.
+- Détection contenu adulte : IA TFLite + pré-filtre. 100% local. Label révisable.
+- UI : Jetpack Compose + Material3, mono-activity, Navigation Compose. API 26 min.
+- Packaging v1.0.0 : isMinifyEnabled=false.
 
-## WORKFLOW GIT
-- Agent pousse -> merge_request vers release/v1.0.0 -> agent principal valide -> agents pull. Merges main = utilisateur. Conflits : Adam (non joignable), réassignable Zoé.
-
-## DÉCISIONS ARCHI
-- Permission runtime IHM : ActivityResultContracts.RequestMultiplePermissions, SANS Accompanist. READ_MEDIA_IMAGES (≥33) sinon READ_EXTERNAL_STORAGE (≤32). Bouton scan désactivé, message si refus.
-- FILTRES : labels:Set<String> = IDs en OU (IN). ET adultOnly:Boolean = false (champ DÉDIÉ) pour 'uniquement adulte' (contrainte ET). RÉVISÉ : la règle 'PAS de onlyAdult' est LEVÉE — justifiée car labels={adulte} en OU ne suffit pas si cumul d'autres libellés. Le toggle UI adulte pilote adultOnly, pas labels.
-- DAO getWithLabelsFiltered(labelIds:Set<String>, adultOnly:Boolean, ...) : labelIds->EXISTS IN (OU) ; adultOnly->AND EXISTS(ADULT_LABEL_ID) ; repository consomme ADULT_LABEL_ID de seed (pas de résolution nom->id). Convention UI : ne pas exposer labels={adulte} + adultOnly=true ensemble.
+## FILTRES (DÉCISION FINALE alignée schéma réel)
+- FilterState : labels:Set<String> (NOMS, OU/IN) + includeAdult:Boolean + adultOnly:Boolean=false (champ DÉDIÉ, contrainte ET 'uniquement adulte').
+- adultOnly -> EXISTS(image_labels il WHERE il.image_id=i.id AND il.label_name = :adultLabel), :adultLabel=ADULT_LABEL. PAS via is_adult par défaut (cache). Léna vérifie qui écrit is_adult ; si fiable -> raccourci OK sinon image_labels.
+- DAO observeFiltered : garder signature existante (labels noms, includeAdult) + AJOUTER adultOnly. Room ne surcharge pas @Query : une requête avec param adultOnly + clause conditionnelle (:adultOnly=0 OR EXISTS(...)), ou 2 @Query distinctes. NE PAS casser l'appel de Théo.
+- UI Théo : 3 chips Tout/Masquer/Uniquement -> (includeAdult, adultOnly) ; ne touche pas labels. Conforme.
 
 ## DÉTECTION ADULTE — 2 problèmes
-(1) MODÈLE NON CHARGÉ : openFd échoue si tflite compressé. Correctif : noCompress += 'tflite' + repli copie ByteBuffer (agent/malo).
-(2) InputScale paramétrable + model.config + logScores ; VALEUR FINALE en attente. Ne pas dire 'réparé' avant scores appareil.
+(1) MODÈLE NON CHARGÉ : openFd échoue si tflite compressé -> noCompress 'tflite' + repli ByteBuffer.
+(2) InputScale paramétrable + model.config + logScores ; valeur finale en attente appareil.
 
-## ÉTAT release/v1.0.0 — VÉRIFIÉ NON À JOUR (avant corrections manuelles)
-- ScanScreen.kt base=4974 o = ancienne sans permission. AdultClassifier.kt base=6047 o = ancienne sans repli.
-- Fusions #60/#61 = 'Fichiers modifiés : (aucun)' -> n'ont RIEN apporté. NE PAS rebuilder APK en l'état (reproduit les 2 bugs).
-- Malo réécrit les 2 fichiers sur agent/malo ; re-vérifier par lecture base après application réelle.
+## ÉTAT release/v1.0.0 — VÉRIFIÉ NON À JOUR
+- ScanScreen.kt base=4974 o (sans permission), AdultClassifier.kt base=6047 o (sans repli).
+- Fusions #60/#61 'aucun fichier modifié' -> n'ont rien apporté. NE PAS rebuilder APK. Malo réécrit les 2 fichiers sur agent/malo ; re-vérifier par lecture base après application réelle.
 
-## '0 image au scan' — cause = permission runtime non accordée (confirmé). Correctif = ScanScreen version Théo/Malo (7558 o).
+## '0 image au scan' = permission runtime non accordée (confirmé). Correctif = ScanScreen Théo/Malo.
 
 ## DÉFAUT ARCHI LATENT (après stabilisation release)
-ImageDao sans Flow -> galerie non rafraîchie. Correctif : DAO Flow + observeImages. Tâche 1er niveau à proposer.
+ImageDao : vérifier présence Flow réactif pour galerie. À proposer tâche si absent.
 
-## Limite outil : mr_review/resolve_merge renvoient des états incohérents ; messages parfois en échec (crédit 400). TOUJOURS vérifier par read_file sur la base.
+## Limites d'outil
+- mr_review/resolve_merge renvoient états incohérents ; messages parfois 400 (crédit). TOUJOURS vérifier par read_file sur la base.

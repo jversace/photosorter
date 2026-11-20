@@ -87,34 +87,30 @@ agent/zoé
 ## Notes de l’agent (à tenir à jour)
 # Contexte Zoé (Architecte)
 
-## SCHÉMA RÉEL (corrigé — primes sur mes notes précédentes)
-- image_labels.image_id + image_labels.label_name (CHAÎNE, FK -> labels.name) : association image/libellé = SOURCE DE VÉRITÉ (n°224).
-- images.is_adult : dénormalisation/cache. NE PAS s'y fier pour un filtre SANS vérifier qu'il est synchronisé à la révision du label.
-- Pas d'ADULT_LABEL_ID numérique. Label adulte = constante domaine ADULT_LABEL (chaîne).
+## SCHÉMA RÉEL
+- image_labels.image_id + image_labels.label_name (FK -> labels.name) = SOURCE DE VÉRITÉ (n°224).
+- images.is_adult = cache ; ne pas s'y fier seul.
+- ADULT_LABEL = "adulte" (constante chaîne domaine).
 
-## Décisions durables
-- Détection contenu adulte : IA TFLite + pré-filtre. 100% local. Label révisable.
-- UI : Jetpack Compose + Material3, mono-activity, Navigation Compose. API 26 min.
+## FILTRES (validé sur code réel agent/léna)
+- ImageQueryDao.observeFiltered : adultOnly via EXISTS(image_labels il WHERE il.image_id=i.id AND il.label_name=:adultLabel) CORRÉLÉ, indépendant de IN(:labels) ; adultLabel=ADULT_LABEL. CORRECT.
+- ImageRepositoryImpl.observeImages transmet adultOnly + adultLabel. matchesFilter gère adultOnly. CORRECT.
+- 'Uniquement adulte vide' = CONSÉQUENCE du crash FK (aucune ligne image_labels='adulte' écrite). Après correctif FK, réassigner le label adulte puis retester.
+
+## CRASH FOREIGN KEY (bug 4cd6654d, corrigé+accepté)
+- LabelRepositoryImpl.assign : ensureLabelExists(label) AVANT imageLabelDao.insertAll(links). Bon principe.
+- RÉSERVE NON BLOQUANTE v1.0.0 : assign() non @Transaction (ensureLabelExists+insertAll = 2 ops) -> durcir plus tard (RISQUE COURSE).
+
+## COPIER/DÉPLACER SAF (bug 1e0fc60c OUVERT, sous-tâche Léna 826b1ea6)
+- IHM Théo CONFORME : GalleryScreen.kt fait OpenDocumentTree + takePersistableUriPermission + PendingDestAction MOVE/COPY -> moveSelected/copySelected(treeUri.toString()). (Mon 1er constat d'absence était FAUX, corrigé.)
+- DÉFAUT BACK : ImageRepositoryImpl.ensureDestDir fait Uri.parse(destUri).path?.let(::File) -> File('/tree/primary:X'), mkdirs échoue -> 'Dossier destination invalide'.
+- DÉCISION ARchi (Zoé) : consommer tree URI via DocumentFile (SAF), pas File. FileActions ajoute moveToTree/copyToTree(imageUri, treeUri) : DocumentFile.fromTreeUri -> createFile(mime,name) -> copie flux -> delete source si MOVE. ImageRepositoryImpl.move/copy appellent ces méthodes + SUPPRIMER ensureDestDir. Signature publique ImageRepository.move(items, destUri:String) INCHANGÉE (pas d'impact IHM).
+
+## AUTRES
+- ScanScreen (agent/malo) permission runtime : CONFORME (MEME_PERMISSIONS, RequestMultiplePermissions, enabled lié à permissionGranted).
+- DÉTECTION ADULTE : normalisation d'entrée pilotée par config modèle + logScores ; valeur finale en attente appareil.
 - Packaging v1.0.0 : isMinifyEnabled=false.
 
-## FILTRES (DÉCISION FINALE alignée schéma réel)
-- FilterState : labels:Set<String> (NOMS, OU/IN) + includeAdult:Boolean + adultOnly:Boolean=false (champ DÉDIÉ, contrainte ET 'uniquement adulte').
-- adultOnly -> EXISTS(image_labels il WHERE il.image_id=i.id AND il.label_name = :adultLabel), :adultLabel=ADULT_LABEL. PAS via is_adult.
-- DAO observeFiltered : garder signature existante (labels noms, includeAdult) + AJOUTER adultOnly/adultLabel. Room ne surcharge pas @Query : clause conditionnelle (:adultOnly=0 OR EXISTS(...)) ou 2 @Query. NE PAS casser l'appel de Théo.
-- UI Théo : 3 chips Tout(includeAdult=true,adultOnly=false) / Masquer(false,false) / Uniquement(false,true) ; ne touche pas labels. Conforme.
-- DETTE : includeAdult s'appuie sur is_adult (cache) alors qu'adultOnly s'appuie sur image_labels -> risque de divergence 'Tout' vs 'Uniquement' si is_adult désynchronisé. v1.0.0: garder adultOnly=image_labels. Tâche de suivi à proposer (1er niveau, validation utilisateur) : aligner includeAdult sur image_labels OU garantir synchro is_adult à chaque révision.
-
-## DÉTECTION ADULTE — 2 problèmes
-(1) MODÈLE NON CHARGÉ : openFd échoue si tflite compressé -> noCompress 'tflite' + repli ByteBuffer.
-(2) InputScale paramétrable + model.config + logScores ; valeur finale en attente appareil.
-
-## ÉTAT release/v1.0.0 — VÉRIFIÉ NON À JOUR
-- ScanScreen.kt base=4974 o (sans permission), AdultClassifier.kt base=6047 o (sans repli). Fusions #60/#61 'aucun fichier modifié' -> n'ont rien apporté. NE PAS rebuilder APK. Malo réécrit les 2 fichiers sur agent/malo ; re-vérifier par lecture base après application réelle.
-
-## '0 image au scan' = permission runtime non accordée (confirmé). Correctif = ScanScreen Théo/Malo.
-
-## DÉFAUT ARCHI LATENT (après stabilisation release)
-ImageDao sans Flow réactif -> galerie non rafraîchie. Tâche 1er niveau à proposer.
-
 ## Limites d'outil
-- mr_review/resolve_merge renvoient états incohérents ; messages parfois 400 (crédit). TOUJOURS vérifier par read_file sur la base.
+- mr_review peut dire 'pas en attente de validation' alors que get_blockers la liste : décalage outil. Toujours vérifier par read_file sur la branche.
+- bug_status modifie l'état ; vérifier coherence avec workflow (corrigé -> QA vérifie).

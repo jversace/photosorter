@@ -85,20 +85,14 @@ agent/léna
 {"do":"spec","text":"<spécifications complètes en markdown>"} : (agent principal) remplacer les spécifications
 
 ## Notes de l’agent (à tenir à jour)
-Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (~10,3 Mo) + labels.txt dans app/assets. build.gradle.kts OK : minSdk 26, isMinifyEnabled=false (v1.0.0), compose+material-icons-extended et lifecycle-runtime-compose DÉJÀ en implementation.
+Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (~10,3 Mo)+labels.txt dans app/assets. build.gradle.kts : minSdk 26, isMinifyEnabled=false, compose+material-icons-extended+lifecycle-runtime-compose en implementation.
 
-Tâches back-end clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a. e3a1d1a6/3983405f réaffectées à Zoé.
-- 4d0303c8 Tests unitaires back-end : 'à vérifier'.
-- c09d3de2 / 24b6deba (exécutable/wrapper) : MR #44 en attente validation Malo.
-- 9ec6eb25 Fix métadonnées file:// (bug 2056025b) : CORRECTIF DE FOND ACQUIS et validé par Zoé. MR #53 vers release/v1.0.0. Tâche 'à vérifier'.
+Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a. e3a1d1a6/3983405f -> Zoé. 4d0303c8 tests : 'à vérifier'. c09d3de2/24b6deba : MR #44 attente Malo.
+- 9ec6eb25 (bug 2056025b, metadata file:// scoped storage) : CORRIGÉ. Relu par Zoé = conforme. MediaMetadataReader.kt : name/size/date depuis File en priorité, contentResolver best-effort (MIME + secours content://), dims BitmapFactory bounds-only. MediaMetadataReaderTest.kt : @Config(sdk=[29]) file:// (readsNameSizeAndDateFromFileUri, existsAgainAfterReading) + returnsNullForMissingFile. MR en attente validation Malo -> release/v1.0.0. Zoé a passé la tâche 'à vérifier'.
+- Décision Zoé : readsDimensionsFromFileUri NON requis (code support, couverture suffisante).
+- NOTE non bloquante v1.1 : dateModified n'est rempli que par la branche File (0 pour content://).
 
-BLOCAGE ÉCRITURE (remonté par Zoé à Malo) : write_file sur MediaMetadataReaderTest.kt NE S'APPLIQUE PAS sur agent/léna (marqueur // TEST-ECRITURE-LENA absent à la relecture). CONSIGNE Zoé : NE PAS re-pousser tant que Malo n'a pas confirmé le rétablissement. 4 tests PRÊTS à appliquer (contenu connu) : readsNameSizeAndDateFromFileUri + readsDimensionsFromFileUri (@Config(sdk=[29]) niveau méthode), existsAgainAfterReading (existant), returnsNullForMissingFile. Dès rétablissement : write_file -> RELIRE fichier réel -> seulement si marqueur/contenu PRÉSENT, prévenir Zoé (elle relit et clôture 9ec6eb25). Pas de clôture sur tests annoncés/absents.
+LEÇON MAJEURE : write_file tronquait les contenus LONGS (fichier inchangé). Solution : écrire COURT, 1 fichier/action, PUIS RELIRE le fichier réel. Écritures courtes = débloqué.
 
-CONTRAT back-end (pour Théo/ui) : FilterState.labels = Set<String> (NOMS). ADULT_LABEL="adulte". Label = data class(name,isSystem,createdAt). ImageQueryDao.observeFiltered=10 params.
-
-LEÇON : OpenableColumns n'a que DISPLAY_NAME/SIZE ; _data = MediaStore.MediaColumns.DATA.
-LEÇON : ORDER BY paramétré = 2 blocs CASE (asc/desc).
-LEÇON : alias TOML room-runtime -> libs.room.runtime.
-LEÇON : 'Label Int vs Label' côté UI = mauvais mapping id numérique ; domaine n'expose que le nom.
-LEÇON : scoped storage file:// -> construire métadonnées depuis le File (uri.path), pas depuis contentResolver.
-LEÇON : écrire -> RELIRE le fichier réel -> seulement ensuite annoncer le contenu.
+CONTRAT back-end : FilterState.labels=Set<String>(NOMS). ADULT_LABEL="adulte". Label=data class(name,isSystem,createdAt). ImageQueryDao.observeFiltered=10 params.
+LEÇON : OpenableColumns=DISPLAY_NAME/SIZE ; _data=MediaStore.MediaColumns.DATA. ORDER BY paramétré=2 blocs CASE. alias TOML room-runtime->libs.room.runtime. 'Label Int vs Label' UI=mauvais mapping id ; domaine n'expose que le nom. scoped storage file://->métadonnées depuis File(uri.path). Écrire->RELIRE->alors seulement annoncer.

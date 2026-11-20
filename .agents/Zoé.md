@@ -90,27 +90,30 @@ agent/zoé
 ## SCHÉMA RÉEL
 - image_labels.image_id + image_labels.label_name (FK -> labels.name) = SOURCE DE VÉRITÉ (n°224).
 - images.is_adult = cache ; ne pas s'y fier seul.
-- ADULT_LABEL = "adulte".
+- ADULT_LABEL = "adulte" défini dans fr.photosorter.domain.model (Label.kt).
+- ImageLabelEntity(imageId, labelName) avec FK CASCADE (image_id->images.id, label_name->labels.name). La FK label_name IMPOSE que le libellé existe dans labels AVANT insert.
 
 ## FILTRES (validé)
-- ImageQueryDao.observeFiltered : adultOnly via EXISTS corrélé, indépendant de IN(:labels). CORRECT.
+- ImageQueryDao.observeFiltered : adultOnly via EXISTS corrélé. CORRECT.
 - ImageRepositoryImpl.observeImages transmet adultOnly+adultLabel ; matchesFilter gère adultOnly. CORRECT.
-- 'Uniquement adulte vide' = conséquence du crash FK (corrigé) ; réassigner le label adulte puis retester.
 
-## CRASH FK (bug 4cd6654d corrigé+accepté)
-- LabelRepositoryImpl.assign : ensureLabelExists AVANT insertAll. RÉSERVE non bloquante v1 : assign() non @Transaction.
+## BUG dd7f6f6c (filtre 'uniquement adulte')
+- Volet 1 (DAO adultOnly/chaîne) corrigé et accepté.
+- Volet 2 (ScanEngine insère 'adulte') : MR #71 Léna. REVIEW FAITE PAR MOI = CODE BON.
+  - Scission : ScanEngine.kt (classe/scan) + ScanEngineSupport.kt (extensions flushImages/detectAdult, consts top-level internal).
+  - flushImages : withTransaction { imageDao.insertAll (REPLACE) ; ensure label 'adulte' via labelDao.getByName/insert ; imageLabelDao.insertAll (IGNORE) }. Unavailable => pas d'insertion de libellé.
+  - detectAdult : PreFilterDecision.SKIP -> non-adulte ; ANALYZE -> classifieur. (CORRIGÉ : avant c'était Skip/Classify = ne compilait pas).
+- STATUT MR #71 : en attente de validation (get_blockers), mais mr_review renvoie 'pas en attente' (décalage outil). FUSION À FAIRE CÔTÉ APPLICATION/Malo. Message à Malo NON délivré (profondeur max). Après fusion : rebuild puis bug dd7f6f6c -> corrigé, puis vérif (réassigner label adulte sur images déjà scannées).
 
-## COPIER/DÉPLACER SAF + TOML (MR #68 Léna, tâche 826b1ea6 acceptée)
-- IHM Théo CONFORME : GalleryScreen OpenDocumentTree + takePersistableUriPermission -> moveSelected/copySelected(treeUri.toString()).
-- DÉCISION ARchi : FileActions consomme tree URI via DocumentFile.moveToTree/copyToTree (fromTreeUri -> createFile -> copie flux -> delete source si MOVE) ; ImageRepositoryImpl appelle ces méthodes, SUPPRIME ensureDestDir. Signature ImageRepository.move(items,destUri:String) inchangée.
-- CAUSE BUILD 'Unresolved reference room/compose' : release/v1.0.0 avait un libs.versions.toml TRONQUÉ (manquaient room-runtime/ktx/compiler/testing, androidx-lifecycle-runtime-compose, androidx-documentfile). agent/léna le fournit complet via MR #68. Ce N'ÉTAIT PAS un cache ni le checkout local de l'utilisateur.
-- STATUT MR #68 : approbation de fond donnée par moi ; mr_review renvoie 'pas en attente' (décalage outil) -> fusion à faire côté application/utilisateur/Malo. Après fusion : rebuild, puis bug 1e0fc60c -> corrigé/vérifié.
+## PRÉFILTRE / MODÉRATION
+- PreFilterDecision enum : SKIP / ANALYZE (PAS Skip/Classify). À vérifier systématiquement dans les reviews.
+- Détection adulte : normalisation pilotée par config + logScores (n°248 en attente valeur appareil).
 
 ## AUTRES
-- ScanScreen permission runtime (Malo) CONFORME.
-- Détection adulte : normalisation pilotée par config + logScores ; valeur finale en attente appareil (n°248).
-- Packaging v1.0.0 : isMinifyEnabled=false.
+- Packaging v1.0.0 : isMinifyEnabled=false (n°227).
+- Wrapper Gradle : jar à générer par l'utilisateur (n°228).
 
 ## Limites d'outil
-- mr_review 'pas en attente' alors que get_blockers la liste : décalage outil. Vérifier par read_file sur la branche + faire fusionner côté application.
-- bug_status : cohérence workflow (corrigé -> QA vérifie).
+- mr_review 'pas en attente' alors que get_blockers liste la MR : décalage outil récurrent. Faire fusionner côté application (Malo/utilisateur).
+- message vers agent principal peut échouer 'profondeur max atteinte' en fin de conversation : consigner l'info dans le contexte.
+- bug_status : workflow corrigé -> QA vérifie.

@@ -32,6 +32,10 @@ import javax.inject.Singleton
  * cle scale), jamais codee en dur. Valeurs : ZERO_ONE, ZERO_255, MINUS_ONE_ONE.
  * En l'absence de config, on retombe sur DEFAULT_INPUT_SCALE (hypothese a confirmer
  * avec la config d'entrainement reelle du modele).
+ *
+ * Instrumentation : chaque inference journalise (tag AdultClassifier) l'echelle active
+ * et les scores bruts par label sur la sortie brute, pour diagnostiquer sur appareil
+ * l'echelle attendue par le modele (cf. decision utilisateur).
  */
 @Singleton
 class AdultClassifier @Inject constructor(
@@ -109,6 +113,7 @@ class AdultClassifier @Inject constructor(
             val input = toInputBuffer(bitmap)
             val output = Array(1) { FloatArray(LABEL_COUNT) }
             interp.run(input, output)
+            logScores(uri, output[0])
             val probs = normalize(output[0])
             val adultScore = (probs[2] + probs[3]).coerceIn(0f, 1f)
             Result.Scored(isAdult = adultScore >= ADULT_THRESHOLD)
@@ -119,6 +124,24 @@ class AdultClassifier @Inject constructor(
             bitmap.recycle()
         }
     }
+
+    /**
+     * Journalise les scores bruts et normalises par label pour l'image, ainsi que
+     * l'echelle active et la decision. Permet de diagnostiquer sur appareil la
+     * normalisation d'entree attendue par le modele (decision utilisateur).
+     */
+    private fun logScores(uri: Uri, raw: FloatArray) {
+        val probs = normalize(raw)
+        val adultScore = (probs[2] + probs[3]).coerceIn(0f, 1f)
+        Log.d(
+            TAG,
+            "Scores[$uri] scale=$inputScale raw=[${raw.joinToString(", ") { fmt(it) }}] " +
+                "probs=[${probs.joinToString(", ") { fmt(it) }}] adult=$adultScore " +
+                "-> ${if (adultScore >= ADULT_THRESHOLD) "ADULTE" else "normale"}"
+        )
+    }
+
+    private fun fmt(v: Float): String = String.format(java.util.Locale.US, "%.4f", v)
 
     private fun markUnavailable(reason: String): Result.Unavailable {
         unavailableCounter.incrementAndGet()

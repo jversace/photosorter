@@ -85,24 +85,12 @@ agent/léna
 {"do":"spec","text":"<spécifications complètes en markdown>"} : (agent principal) remplacer les spécifications
 
 ## Notes de l’agent (à tenir à jour)
-Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (~10,3 Mo) + labels.txt dans app/assets. build.gradle.kts OK : minSdk 26, isMinifyEnabled=false (v1.0.0), compose+material-icons-extended et lifecycle-runtime-compose DÉJÀ en implementation.
+Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (~10,3 Mo)+labels.txt dans app/assets. build.gradle.kts : minSdk 26, isMinifyEnabled=false, compose+material-icons-extended+lifecycle-runtime-compose en implementation.
 
-Tâches back-end clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a. e3a1d1a6/3983405f réaffectées à Zoé.
-- 4d0303c8 Tests unitaires back-end : 'à vérifier'.
-- c09d3de2 / 24b6deba (exécutable/wrapper) : MR #44 en attente validation Malo.
-- 9ec6eb25 Fix métadonnées file:// (bug 2056025b 'scan 0 image API>=29') : CORRIGÉ. MediaMetadataReader lit nom/taille/date depuis le File en priorité (fiable file://), contentResolver best-effort, dimensions BitmapFactory bounds-only depuis File puis resolver. Tests MediaMetadataReaderTest @Config(sdk=[29]). MR #53 soumise vers release/v1.0.0, tâche 'à vérifier'.
+Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a. e3a1d1a6/3983405f -> Zoé. 4d0303c8 tests : 'à vérifier'. c09d3de2/24b6deba : MR #44 attente Malo.
+- 9ec6eb25 (bug 2056025b, metadata file:// scoped storage) : RÉSOLU ET RELU. MediaMetadataReader.kt = correctif (name/size/date depuis File en priorité, contentResolver best-effort MIME + secours content://, dims BitmapFactory bounds-only). MediaMetadataReaderTest.kt = @Config(sdk=[29]) file:// (readsNameSizeAndDateFromFileUri, existsAgainAfterReading) + returnsNullForMissingFile. MR soumise. Tâche 'à vérifier'. Zoé relit et clôture.
 
-CONTRAT back-end (pour Théo/ui) :
-- FilterState.labels = Set<String> (NOMS, pas d'ID). ADULT_LABEL="adulte". Filtre adulte seul = labels=setOf(ADULT_LABEL).
-- Label = data class(name:String, isSystem:Boolean, createdAt:Long).
-- ImageQueryDao.observeFiltered = 10 params ; repository calcule hasLabels/hasFormats.
+LEÇON MAJEURE : write_file tronquait silencieusement les contenus LONGS (fichier inchangé à la relecture). Solution : ÉCRIRE COURT, 1 fichier par action, contenu réduit, PUIS RELIRE le fichier réel pour confirmer. C'est ce qui a débloqué.
 
-SYNCHRO THÉO : doublon DetailUiState.kt supprimé, lifecycle-runtime-compose ajouté. Lui ai confirmé material-icons-extended + lifecycle-runtime-compose déjà en implementation. Il vérifie l'usage ui/ et me fera un retour. Filtre adulte : validation Zoé à faire.
-
-Build CI (assembleDebug + testDebugUnitTest) demandé à Malo pour confirmer ui/ et MR #53.
-
-LEÇON : OpenableColumns n'a que DISPLAY_NAME/SIZE ; _data = MediaStore.MediaColumns.DATA.
-LEÇON : ORDER BY paramétré = 2 blocs CASE (asc/desc).
-LEÇON : alias TOML room-runtime -> libs.room.runtime.
-LEÇON : 'Label Int vs Label' côté UI = mauvais mapping sur id numérique ; domaine n'expose que le nom (String).
-LEÇON : sous scoped storage, URI file:// -> contentResolver.getType() renvoie souvent null et query peut échouer ; construire les métadonnées depuis le File (uri.path), pas depuis le resolver.
+CONTRAT back-end : FilterState.labels=Set<String>(NOMS). ADULT_LABEL="adulte". Label=data class(name,isSystem,createdAt). ImageQueryDao.observeFiltered=10 params.
+LEÇON : OpenableColumns=DISPLAY_NAME/SIZE ; _data=MediaStore.MediaColumns.DATA. ORDER BY paramétré=2 blocs CASE. alias TOML room-runtime->libs.room.runtime. 'Label Int vs Label' UI=mauvais mapping id ; domaine n'expose que le nom. scoped storage file://->métadonnées depuis File(uri.path). Écrire->RELIRE->alors seulement annoncer.

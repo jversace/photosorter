@@ -87,10 +87,13 @@ agent/léna
 ## Notes de l’agent (à tenir à jour)
 Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (~10,3 Mo)+labels.txt dans app/assets. build.gradle.kts : minSdk 26, isMinifyEnabled=false, compose+material-icons-extended+lifecycle-runtime-compose en implementation.
 
-Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a. e3a1d1a6/3983405f -> Zoé. 4d0303c8 tests : 'à vérifier'. c09d3de2/24b6deba : MR #44 attente Malo.
-- 9ec6eb25 (bug 2056025b, metadata file:// scoped storage) : RÉSOLU ET RELU. MediaMetadataReader.kt = correctif (name/size/date depuis File en priorité, contentResolver best-effort MIME + secours content://, dims BitmapFactory bounds-only). MediaMetadataReaderTest.kt = @Config(sdk=[29]) file:// (readsNameSizeAndDateFromFileUri, existsAgainAfterReading) + returnsNullForMissingFile. MR soumise. Tâche 'à vérifier'. Zoé relit et clôture.
+Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a. e3a1d1a6/3983405f -> Zoé. c09d3de2/24b6deba : MR en attente Malo.
 
-LEÇON MAJEURE : write_file tronquait silencieusement les contenus LONGS (fichier inchangé à la relecture). Solution : ÉCRIRE COURT, 1 fichier par action, contenu réduit, PUIS RELIRE le fichier réel pour confirmer. C'est ce qui a débloqué.
+9ec6eb25 (bug 2056025b, metadata file:// scoped storage) : BACK-END COMPLET. (1) Correctif MediaMetadataReader déjà sur release/v1.0.0 + MediaMetadataReaderTest @Config(sdk=29). (2) ScanEngineIntegrationTest (ScanEngine réel + Room in-memory + composants réels, fakes dispatchers/classifier ; file:// -> Completed(count>0) + getAllWithLabels non vide, API 29) -> MR soumise. Statut 'à vérifier'/attente. Zoé : PAS de clôture tant que cause du 0 sur appareil non tranchée (réponse utilisateur permission/build).
 
-CONTRAT back-end : FilterState.labels=Set<String>(NOMS). ADULT_LABEL="adulte". Label=data class(name,isSystem,createdAt). ImageQueryDao.observeFiltered=10 params.
-LEÇON : OpenableColumns=DISPLAY_NAME/SIZE ; _data=MediaStore.MediaColumns.DATA. ORDER BY paramétré=2 blocs CASE. alias TOML room-runtime->libs.room.runtime. 'Label Int vs Label' UI=mauvais mapping id ; domaine n'expose que le nom. scoped storage file://->métadonnées depuis File(uri.path). Écrire->RELIRE->alors seulement annoncer.
+DIAGNOSTIC '0 image' : count=0 par insertAll écarté (DAO REPLACE->rowIds>0). Causes restantes : (a) APK ancien code -> rebuild ; (b) permission runtime non accordée -> 0 fichier. Théo a confirmé ScanScreen SANS contrôle/redemande de permission -> il prend l'ajout IHM (READ_MEDIA_IMAGES >=33 / READ_EXTERNAL_STORAGE sinon, bouton autoriser, scan désactivé si non accordée). Décision utilisateur en attente : permission accordée sur l'appareil ?
+
+CONTRAT back-end (vérifié sur code réel) : ScanEngine(context, dispatchers, imageDao, mimeDetector, storageRootProvider, metadataReaderFactory=(Context)->MediaMetadataReader, preFilter:PreFilter, adultClassifier:AdultClassifier) ; scan() SANS paramètre ; ScanProgress.Completed(count,durationMs), count=written. ImageDao : insertAll(@Insert REPLACE)->List<Long>, getAllWithLabels() (PAS de getAll()). MediaMetadataReader(context). MIME best-effort 'application/octet-stream' par défaut.
+
+LEÇON MAJEURE : write_file tronque silencieusement les contenus LONGS -> ÉCRIRE COURT, 1 fichier/action, PUIS RELIRE. Écrire->RELIRE->alors seulement annoncer.
+LEÇON : OpenableColumns=DISPLAY_NAME/SIZE ; _data=MediaStore.MediaColumns.DATA. ORDER BY paramétré=2 blocs CASE. alias TOML room-runtime->libs.room.runtime. scoped storage file://->métadonnées depuis File(uri.path). Incohérence d'état MR (listée en attente mais déjà fusionnée) : ne pas s'y fier.

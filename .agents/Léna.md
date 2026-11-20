@@ -90,19 +90,15 @@ Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (~10,3 Mo) + 
 Tâches back-end clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a. e3a1d1a6/3983405f réaffectées à Zoé.
 - 4d0303c8 Tests unitaires back-end : 'à vérifier'.
 - c09d3de2 / 24b6deba (exécutable/wrapper) : MR #44 en attente validation Malo.
-- 9ec6eb25 Fix métadonnées file:// (bug 2056025b 'scan 0 image API>=29') : CORRIGÉ. MediaMetadataReader lit nom/taille/date depuis le File en priorité (fiable file://), contentResolver best-effort, dimensions BitmapFactory bounds-only depuis File puis resolver. Tests MediaMetadataReaderTest @Config(sdk=[29]). MR #53 soumise vers release/v1.0.0, tâche 'à vérifier'.
+- 9ec6eb25 Fix métadonnées file:// (bug 2056025b) : CORRECTIF DE FOND ACQUIS et validé par Zoé (MediaMetadataReader lit nom/taille/date depuis le File, resolver best-effort, dims bounds-only). MR #53 vers release/v1.0.0. Tâche 'à vérifier'.
 
-CONTRAT back-end (pour Théo/ui) :
-- FilterState.labels = Set<String> (NOMS, pas d'ID). ADULT_LABEL="adulte". Filtre adulte seul = labels=setOf(ADULT_LABEL).
-- Label = data class(name:String, isSystem:Boolean, createdAt:Long).
-- ImageQueryDao.observeFiltered = 10 params ; repository calcule hasLabels/hasFormats.
+BLOCAGE ÉCRITURE (remonté par Zoé à Malo) : write_file sur app/src/test/java/fr/photosorter/data/scanner/MediaMetadataReaderTest.kt NE S'APPLIQUE PAS sur agent/léna (marqueur // TEST-ECRITURE-LENA absent à la relecture, fichier inchangé = 2 tests sans @Config). Ne PAS réessayer en boucle, ne pas changer de chemin, ne pas contourner. Conséquence : ajouts de test (readsDimensionsFromFileUri, returnsNullForMissingFile, @Config(sdk=[29])) NON livrés ; pas bloquant pour la fusion. Leçon : toujours relire le fichier réel après écriture avant d'annoncer.
 
-SYNCHRO THÉO : doublon DetailUiState.kt supprimé, lifecycle-runtime-compose ajouté. Lui ai confirmé material-icons-extended + lifecycle-runtime-compose déjà en implementation. Il vérifie l'usage ui/ et me fera un retour. Filtre adulte : validation Zoé à faire.
-
-Build CI (assembleDebug + testDebugUnitTest) demandé à Malo pour confirmer ui/ et MR #53.
+CONTRAT back-end (pour Théo/ui) : FilterState.labels = Set<String> (NOMS). ADULT_LABEL="adulte". Label = data class(name,isSystem,createdAt). ImageQueryDao.observeFiltered=10 params.
 
 LEÇON : OpenableColumns n'a que DISPLAY_NAME/SIZE ; _data = MediaStore.MediaColumns.DATA.
 LEÇON : ORDER BY paramétré = 2 blocs CASE (asc/desc).
 LEÇON : alias TOML room-runtime -> libs.room.runtime.
-LEÇON : 'Label Int vs Label' côté UI = mauvais mapping sur id numérique ; domaine n'expose que le nom (String).
-LEÇON : sous scoped storage, URI file:// -> contentResolver.getType() renvoie souvent null et query peut échouer ; construire les métadonnées depuis le File (uri.path), pas depuis le resolver.
+LEÇON : 'Label Int vs Label' côté UI = mauvais mapping id numérique ; domaine n'expose que le nom.
+LEÇON : scoped storage file:// -> construire métadonnées depuis le File (uri.path), pas depuis contentResolver.
+LEÇON : écrire -> RELIRE le fichier réel -> seulement ensuite annoncer le contenu.

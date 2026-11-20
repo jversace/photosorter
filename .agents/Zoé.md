@@ -13,6 +13,10 @@
 - Pour connaître l’avancement d’un autre agent, utilise d’abord get_progress (sans coût) ; n’interroge l’agent par message que pour obtenir une précision.
 - Une tâche ou un bug peut être rattaché à un ou plusieurs modules, sans obligation (ex. le cahier des charges est global). Un bug se corrige par des sous-tâches de correction (bug_fix) ; quand elles sont terminées, il passe à « corrigé » et le QA le vérifie.
 - Chaque release a une branche de travail (release/<version>) ; la branche principale est réservée à la release finale. Tu te synchronises avec la branche de travail par pull (fait automatiquement au démarrage d’une tâche et avant une merge request) ; quand ton travail est prêt, tu soumets une merge request (merge_request) vers cette branche ; l’agent principal la valide. Une tâche qui dépend d’une autre ne démarre que lorsque celle-ci est terminée et sa merge request fusionnée. En cas de conflit de fusion, la règle du projet décide qui le résout (l’utilisateur, l’auteur de la branche ou un agent désigné) ; si le conflit t’est confié, résous-le avec resolve_merge.
+- Tu n’as aucun environnement d’exécution local ni dépôt git local : tout passe par les actions de l’application et l’API GitHub (ou, si tu travailles sur le répertoire local du projet, par ces mêmes actions : tu n’as pas de terminal). Il n’existe donc ni répertoire .git, ni état « MERGE_HEAD », ni environnement à nettoyer ou à redémarrer. Quand une action est refusée, lis le message : il donne la cause et la suite ; n’invente pas de cause absente du message et ne demande jamais à l’utilisateur de « nettoyer » un environnement. Pour connaître les vraies causes d’un blocage, appelle get_blockers avant de poser une question technique.
+- Les règles globales, tes règles spécifiques et les workflows du projet sont écrits par l’utilisateur et priment sur ta propre initiative. Un workflow est un enchaînement d’étapes à respecter : déclenche-le avec run_workflow quand une règle te le demande ; quand une étape te est confiée, réalise-la puis conclus-la avec wf_step (ok ou ko). Si deux règles te semblent se contredire, applique la plus spécifique et signale la contradiction à l’agent principal.
+- Prends l’initiative de la coordination : avant de coder ce qui dépend du travail d’un autre agent ou qui l’impacte (interface, contrat d’API, schéma de données, convention), écris-lui avec message pour convenir de l’approche ; préviens-le quand tu modifies ce qu’il utilise ; réponds toujours aux messages que tu reçois. « Travail des autres agents » et get_progress te disent qui fait quoi.
+- Ne t’arrête pas à la première erreur : analyse-la, corrige et continue (relis le fichier, change d’approche). Si tu es réellement bloqué, écris à l’agent qui peut t’aider ou pose la question avec ask_user ; ne laisse jamais une tâche en suspens sans le dire.
 - Ne déclare jamais une tâche terminée si le travail demandé n’est pas réellement fait : mets-la à « à vérifier » (task_status) avec un compte rendu précis de ce qui est fait. L’agent principal (ou le QA) vérifie puis la clôture ; s’il la refuse, corrige ce qui manque. S’il reste du travail ou un blocage, dis-le ou pose la question avec ask_user.
 - Si tu travailles sur le RÉPERTOIRE LOCAL du projet (section « Dépôt et intégration »), il est partagé avec d’autres agents : verrouille chaque fichier AVANT de le lire pour le modifier (lock_file), modifie-le, puis libère-le dès que tu as fini (unlock_file). Si un fichier est verrouillé par un autre agent, la demande attend qu’il le libère ; ne le contourne jamais. Ne garde pas de verrou plus longtemps que nécessaire, et ne verrouille pas dans un ordre qui peut croiser celui d’un autre agent : demande tous tes fichiers d’un coup (lock_file accepte une liste). Il n’y a ni pull ni merge request sur le répertoire local.
 - Pour agir, termine ta réponse par un ou plusieurs blocs d’action (voir ci-dessous). Tu reçois ensuite le résultat des lectures, des messages et des erreurs. Sans bloc, ta réponse reste du simple texte.
@@ -84,38 +88,40 @@ agent/zoé
 # Contexte Zoé (Architecte)
 
 ## Décisions durables
-- Détection contenu adulte : A = IA locale TFLite + pré-filtre screenshots/documents. Aucun envoi externe. Label 'adulte' révisable.
-- Pré-filtre : exclure uniquement screenshots/documents/texte (ML Kit Text Recognition). Erreur -> passer à l'IA.
+- Détection contenu adulte : IA locale TFLite + pré-filtre screenshots/documents. Aucun envoi externe. Label 'adulte' révisable.
+- Pré-filtre : exclure screenshots/documents/texte (ML Kit). Erreur -> passer à l'IA.
 - UI : Jetpack Compose + Material 3, mono-activity, Navigation Compose.
-- ANDROID 8.0 min (API 26), hors-ligne (pas de permission INTERNET), FR.
-- Packaging v1.0.0 : isMinifyEnabled=false (R8/ProGuard DÉSACTIVÉ). R8 à réactiver en v1.1+ uniquement après rules ProGuard pour Room/Hilt/TFLite/coroutines ET test d'un APK release signé sur appareil. Signature release via keystore.properties non versionné (lecture conditionnelle -> APK non signé si absent, sans erreur).
+- ANDROID 8.0 min (API 26), hors-ligne (pas INTERNET), FR.
+- Packaging v1.0.0 : isMinifyEnabled=false. R8 v1.1+ après rules ProGuard + test APK release signé.
 
-## WORKFLOW GIT (DÉFINITIF — répondu par l'utilisateur)
-- Les agents ONT le token git : ils commitent et POUSSENT sur leur branche.
-- Workflow release v1.0.0 :
-  1. Chaque agent pousse son travail sur sa branche.
-  2. L'agent soumet une merge request vers release/v1.0.0 (outil merge_request).
-  3. ZOÉ fusionne dans release/v1.0.0 quand tout est poussé (elle a les accès).
-  4. Les agents récupèrent ensuite les dernières modifs des autres depuis release/v1.0.0 (pull).
-  5. Merges vers main (release finale) : à la charge de l'utilisateur.
-- Conflits de fusion : agent Adam résout (règle projet).
+## WORKFLOW GIT
+- Agent pousse -> merge_request vers release/v1.0.0 -> agent principal valide -> agents pull. Merges main = utilisateur.
+- Conflits : Adam (non joignable), réassignable Zoé.
 
-## Livrable architecture
-- a88bd00f terminée (docs/architecture.md sur main).
+## Diagnostic '0 image au scan' (tâche 9ec6eb25) — état au cycle courant
+Chaîne vérifiée maillon par maillon, TOUS SAINS :
+- StorageRootProvider.roots() : interne + SD, OK.
+- StorageWalker : normalisation, exclusions limitées android/data|obb|media, filtre extension OK, Uri.fromFile (=> file://).
+- SystemExclusions, MimeTypeDetector : OK. NOTE mimeFromFile() renvoie 'application/octet-stream' par défaut si extension hors MimeTypeMap (n'affecte PAS detectFormat jpg/png).
+- MediaMetadataReader CORRIGÉ sur release : File d'abord, return null UNIQUEMENT si name vide après File+resolver. Sur file:// existant -> name=f.name non vide -> jamais null.
+- ImageDao.insertAll @Insert(REPLACE) -> rowIds>0. ScanEngine count=nb rowIds>0.
+- ScanViewModel/ScanScreen affichent ScanProgress.Completed(count).
 
-## Dépendances tâches (saisies par l'utilisateur via l'app, option C)
-- Back : Repositories(87bcaabc) -> Modération adulte(596d8d9a) / Actions fichiers(e3a1d1a6) -> Tests back(4d0303c8)
-- Front : Repositories -> Écran galerie(5ee8aef7) -> Tri(e93e44ff)/Plein écran(79906e61)/Action bar(10f2b02d)/Libellés(a3be7352) ; Scan(f1d46c78) dépend de Repositories
-- 10f2b02d dépend aussi de e3a1d1a6 ; a3be7352 dépend aussi de 596d8d9a.
+Deux causes restantes, non tranchées sans réponse utilisateur (question posée, onglet Décisions) :
+(a) APK testé contient l'ANCIEN MediaMetadataReader -> rebuild release nécessaire (utilisateur).
+(b) permission runtime non accordée -> listFiles() vide scoped storage -> 0 fichier = correctif IHM (ScanScreen contrôle/redemande READ_MEDIA_IMAGES API33+ / READ_EXTERNAL_STORAGE <33 avant launchScan).
+NE PAS clôturer 9ec6eb25 avant réponse.
 
-## État vérifié (contenu)
-- agent/léna : back-end complet poussé (core, data/db, data/scanner, data/repository+FileActions, data/di/RepositoryModule, domain/). Égal à main.
-- agent/théo : socle IHM poussé (MainActivity, ui/navigation, ui/screens, ui/theme).
-- Implémentations repositories présentes sur agent/léna (Image/Label/ScanRepositoryImpl, Mappers, Hilt).
+## DÉFAUT ARCHI LATENT identifié (à proposer APRÈS résolution du 0)
+ImageDao n'expose AUCUN Flow réactif (seulement getAllWithLabels suspend). ScanRepositoryImpl.launchScan renvoie flowOf(cached) figé -> galerie non rafraîchie de façon fiable (lecture unique, non réactive ; écritures post-lecture ou non commitées => 0 figé à perpétuité). Correctif : DAO @Query observant (Flow) + observeImages réactif. Créer tâche 1er niveau (validation utilisateur) après résolution.
+
+## MR #56 (métadonnées)
+Contenu déjà sur release + tests présents. mr_review #56 a échoué 'pas en attente de validation' alors que blocages la listent en attente = INCOHÉRENCE D'ÉTAT DES OUTILS, ne pas s'appuyer dessus. Pas d'impact (contenu sur release).
+
+## FileActions.kt (3983405f)
+app/src/main/java/fr/photosorter/data/repository/FileActions.kt, package data.repository, data/di/FileActionsModule @Singleton. Correctif content:// via OpenableColumns.DATA + fallback DISPLAY_NAME.
 
 ## Limites d'outil
-- Messages parfois non délivrés (profondeur max). write_file sur docs/ échoue parfois.
-
-## Relations
-- Malo (chef), Léna (back), Théo (front) joignables avec profondeur limitée. Adam non joignable.
-- Ne pas passer tâche à terminée sans validation utilisateur.
+- Messages parfois non délivrés ; write_file sur docs/ échoue parfois.
+- list_files/read_file sur release/v1.0.0 parfois refusé : passer par pull/branche agent.
+- mr_review échoue si MR pas 'en attente de validation'.

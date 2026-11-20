@@ -9,6 +9,7 @@ import fr.photosorter.core.result.AppResult
 import fr.photosorter.data.db.dao.ImageDao
 import fr.photosorter.data.db.dao.ImageLabelDao
 import fr.photosorter.data.db.dao.ImageQueryDao
+import fr.photosorter.domain.model.ADULT_LABEL
 import fr.photosorter.domain.model.FilterState
 import fr.photosorter.domain.model.ImageItem
 import fr.photosorter.domain.model.SortCriteria
@@ -42,6 +43,8 @@ class ImageRepositoryImpl @Inject constructor(
             sort = sort.field.toSortCode(),
             asc = if (sort.ascending) 1 else 0,
             includeAdult = if (filter.includeAdult) 1 else 0,
+            adultOnly = if (filter.adultOnly) 1 else 0,
+            adultLabel = ADULT_LABEL,
             hasFormats = if (filter.formats.isEmpty()) 0 else 1,
             formats = filter.formats.map { it.name },
             dateFrom = filter.dateFrom,
@@ -135,6 +138,8 @@ class ImageRepositoryImpl @Inject constructor(
 
     private fun matchesFilter(item: ImageItem, filter: FilterState): Boolean {
         if (!filter.includeAdult && item.isAdult) return false
+        // adultOnly : source de vérité = libellés (table image_labels), pas le cache is_adult.
+        if (filter.adultOnly && ADULT_LABEL !in item.labels) return false
         if (filter.formats.isNotEmpty() && item.format !in filter.formats) return false
         if (filter.dateFrom != null && item.dateModified < filter.dateFrom) return false
         if (filter.dateTo != null && item.dateModified > filter.dateTo) return false

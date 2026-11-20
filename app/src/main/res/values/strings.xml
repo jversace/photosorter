@@ -93,9 +93,6 @@
     <!-- Dialogues d'actions galerie -->
     <string name="dialog_delete_title">Supprimer les images</string>
     <string name="dialog_delete_message">Supprimer %1$d image(s) définitivement ? Cette action est irréversible.</string>
-    <string name="dialog_destination_label">Dossier/URI de destination</string>
-    <string name="dialog_move_title">Déplacer vers…</string>
-    <string name="dialog_copy_title">Copier vers…</string>
     <string name="dialog_label_assign_title">Assigner un libellé</string>
     <string name="dialog_label_remove_title">Retirer un libellé</string>
     <string name="dialog_label_name">Nom du libellé</string>

@@ -30,8 +30,9 @@ import javax.inject.Singleton
  * Normalisation d'entree PILOTEE PAR LA CONFIG du modele (app/assets/model.config,
  * cle scale). En l'absence de config, DEFAULT_INPUT_SCALE (hypothese a confirmer).
  *
- * Instrumentation : chaque inference journalise (tag AdultClassifier) l'echelle active
- * et les scores bruts par label, pour diagnostiquer sur appareil l'echelle attendue.
+ * Instrumentation (instruction n°248) : chaque inference journalise (tag AdultClassifier)
+ * l'echelle active, les scores bruts, les scores normalises et le score adulte, pour
+ * diagnostiquer sur appareil (Logcat) ce que le modele retourne reellement.
  */
 @Singleton
 class AdultClassifier @Inject constructor(
@@ -108,10 +109,11 @@ class AdultClassifier @Inject constructor(
             val input = toInputBuffer(bitmap)
             val output = Array(1) { FloatArray(LABEL_COUNT) }
             interp.run(input, output)
-            logScores(uri, output[0])
             val probs = normalize(output[0])
             val adultScore = (probs[2] + probs[3]).coerceIn(0f, 1f)
-            Result.Scored(isAdult = adultScore >= ADULT_THRESHOLD)
+            val isAdult = adultScore >= ADULT_THRESHOLD
+            logScores(uri, output[0], probs, adultScore, isAdult)
+            Result.Scored(isAdult = isAdult)
         } catch (t: Throwable) {
             Log.w(TAG, "Inference echouee : ${t.javaClass.simpleName}: ${t.message}")
             markUnavailable("inference: ${t.message}")
@@ -120,18 +122,27 @@ class AdultClassifier @Inject constructor(
         }
     }
 
-    private fun logScores(uri: Uri, raw: FloatArray) {
-        val probs = normalize(raw)
-        val adultScore = (probs[2] + probs[3]).coerceIn(0f, 1f)
+    /**
+     * Journalisation de diagnostic (instruction n°248) : scores bruts, scores normalises,
+     * score adulte vs seuil et resultat. Permet de lire Logcat pour reperer l'echelle
+     * d'entree / le mapping de sortie reellement attendus par le modele.
+     */
+    private fun logScores(
+        uri: Uri,
+        raw: FloatArray,
+        probs: FloatArray,
+        adultScore: Float,
+        isAdult: Boolean
+    ) {
+        Log.d(TAG, "Classification[$uri] scale=$inputScale")
+        Log.d(TAG, "Scores bruts: ${raw.toList()}")
+        Log.d(TAG, "Scores normalisés: ${probs.toList()}")
         Log.d(
             TAG,
-            "Scores[$uri] scale=$inputScale raw=[${raw.joinToString(", ") { fmt(it) }}] " +
-                "probs=[${probs.joinToString(", ") { fmt(it) }}] adult=$adultScore " +
-                "-> ${if (adultScore >= ADULT_THRESHOLD) "ADULTE" else "normale"}"
+            "Score adulte (porn+sexy): $adultScore, seuil: $ADULT_THRESHOLD, " +
+                "résultat: ${if (isAdult) "ADULTE" else "normale"}"
         )
     }
-
-    private fun fmt(v: Float): String = String.format(java.util.Locale.US, "%.4f", v)
 
     private fun markUnavailable(reason: String): Result.Unavailable {
         unavailableCounter.incrementAndGet()
@@ -211,7 +222,6 @@ class AdultClassifier @Inject constructor(
      * Si l'asset est compresse, openFd() echoue ("can not be opened as a file descriptor;
      * it is probably compressed") : repli sur une copie de l'InputStream dans un ByteBuffer
      * DIRECT (obligatoire pour TFLite, un buffer heap serait rejete).
-     * Le type de retour est ByteBuffer (super-type commun de MappedByteBuffer et ByteBuffer).
      */
     private fun loadModelFile(): ByteBuffer {
         return try {

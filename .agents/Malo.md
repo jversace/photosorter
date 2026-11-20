@@ -103,22 +103,19 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - resolve_merge ne peut pas purger MERGE_HEAD (nécessite un conflict id actif assigné par le système).
 - MR fantômes #14 et #24 : ignorées sur instruction utilisateur.
 - task_status 'en validation' n'existe pas dans l'outil : utiliser 'à vérifier'.
-- mr_review et task_review renvoient souvent 'pas en attente' même quand get_blockers les liste : toujours demander une fusion/clôture manuelle à l'utilisateur dans ce cas (ask_user). Ne pas réessayer indéfiniment.
+- mr_review et task_review renvoient souvent 'pas en attente' même quand get_blockers les liste : normal, déjà traité automatiquement. Ne pas réessayer indéfiniment.
 - isMinifyEnabled=false pour v1.0.0. R8/ProGuard à réactiver en v1.1+ après test d'un APK release signé sur appareil physique avec règles ProGuard adaptées (Room/Hilt/TFLite/coroutines).
+- Blocage write_file sur agent/léna (signalé par Zoé) : résolu via nouvelle MR #54 avec commits directs. Mécanisme opérationnel.
 
-## État actuel — EN ATTENTE BUILD CI
+## État actuel
 
-- Build Gradle OK ✓ (corrections précédentes fusionnées)
-- MR #44 (Léna, wrapper Gradle) : fusionnée ✓
-- MR #48 (Léna, ScannerModule supprimé + DataModule consolidé) fusionnée ✓
-- MR #49 (Malo, @JvmSuppressWildcards ScanEngine) fusionnée ✓
 - Toutes tâches back-end Léna : terminées ✓
-- Tâche 4d0303c8 (tests unitaires) : task_review 'pas en attente' → probablement déjà clôturée
-- Correctifs IHM Théo en cours :
-  1. Bouton Scan introuvable dans la galerie → Théo corrige
-  2. Filtre 'adulte uniquement' manquant → Théo corrige
+- Bug 2056025b (scan 0 image URI file:// API>=29) : corrigé et vérifié ✓ (MR #54 fusionnée)
+- Tâche 9ec6eb25 : terminée ✓
 - Conflit n°175 sur .agents/Zoé.md : en pause, l'utilisateur le résout à la main
-- Build CI assembleDebug + testDebugUnitTest sur release/v1.0.0 : lancé par l'utilisateur, résultat attendu
+- Tâches corrections ouvertes : 1c5cab0a (Scanneur), 7445b925 (IHM)
+- Sous-tâche 3983405f (URI content:// FileActions) : terminée ✓
+- Sous-tâche 9ec6eb25 (métadonnées file://) : terminée ✓
 
 ## Modèle Label (confirmé)
 - Label : name, isSystem, createdAt
@@ -143,12 +140,12 @@ model.tflite + labels.txt présents sur main/app/assets — vérifiés dans rele
 
 ## Bug a3052590 (libs.versions.toml Room — corrigé)
 - 4 alias Room ajoutés : room-runtime, room-ktx, room-compiler, room-testing (v2.6.1)
-- Correspondent exactement aux libs.room.* dans app/build.gradle.kts
 - MR #41 fusionnée dans release/v1.0.0 ✓
 
 ## Tâches corrections build
 - MR #45 (Léna) : corrections Room ORDER BY, FileActions, MimeTypeDetector, lifecycle-runtime-compose — fusionnée ✓
-- MR #46 (Léna, DataModule.kt) : fusionnée dans release/v1.0.0 ✓
+- MR #46 (Léna, DataModule.kt) : fusionnée ✓
 - MR #48 (Léna, ScannerModule supprimé) : fusionnée ✓
 - MR #49 (Malo, @JvmSuppressWildcards) : fusionnée ✓
 - MR #44 (Léna, wrapper + exécutable) : fusionnée ✓
+- MR #54 (Léna, MediaMetadataReader fix) : fusionnée ✓

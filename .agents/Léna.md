@@ -85,18 +85,20 @@ agent/léna
 {"do":"spec","text":"<spécifications complètes en markdown>"} : (agent principal) remplacer les spécifications
 
 ## Notes de l’agent (à tenir à jour)
-Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (~10,3 Mo)+labels.txt dans app/assets. build.gradle.kts : minSdk 26, isMinifyEnabled=false.
+Rôle : Développeur back-end. Branche agent/léna.
 
-Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a. e3a1d1a6/3983405f -> Zoé. c09d3de2/24b6deba : MR validée. 87c5f661 (filtre adulte) OK.
+Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a, 87c5f661, 4f0b27e5. 24b6deba/3222873d/3a354e9c OK. c09d3de2/24b6deba MR validée.
 
-DÉTECTION ADULTE : cause racine assets.openFd() sur asset compressé -> repli InputStream->ByteBuffer (MR #58, tâche 3a354e9c). AdultClassifier : InputScale via assets/model.config, logScores, unavailableCount. NE PAS dire 'réparée' avant vérif logs scores.
+DÉTECTION ADULTE : cause racine assets.openFd() sur asset compressé -> repli InputStream->ByteBuffer. AdultClassifier : InputScale via assets/model.config, logScores, unavailableCount. NE PAS dire 'réparée' avant vérif logs scores.
 
-FILTRE ADULTE (87c5f661) : back-end OK. ScanRepositoryImpl.syncAdultLabels() après scan garantit label système + liens image_labels (IGNORE idempotent).
+FILTRE ADULTE (87c5f661) : back-end OK (syncAdultLabels après scan). FIX FK LABEL (4f0b27e5) : ensureLabelExists avant insertAll dans ImageRepositoryImpl/LabelRepositoryImpl.assign.
 
-FIX FK LABEL (4f0b27e5 / bug 4cd6654d) : cause = LabelRepositoryImpl.assign insérait image_labels(label_name) sans garantir la ligne labels(name) -> FK constraint. Correction : ensureLabelExists(name) avant insertAll (getByName ; sinon insert IGNORE, entité seeder si ADULT_LABEL). Même logique de seed que syncAdultLabels. Contrat DAO vérifié : LabelEntity(name, isSystem, createdAt) ; LabelEntity.toDomain() dans Mappers ; ImageLabelEntity(imageId, labelName) FK images.id + labels.name onDelete CASCADE ; LabelDao.getByName/insert(IGNORE)/update/deleteNonSystem:Int/observeLabels ; ImageLabelDao.insertAll/unassign.
+CONTRAT MOVE/COPY SAF (tâche 826b1ea6) : ImageRepository.move/copy(items, destUri:String) où destUri = tree URI d'un OpenDocumentTree (l'IHM Théo fait déjà takePersistableUriPermission + treeUri.toString()). FileActions.moveToTree/copyToTree(imageUri, treeUri) via DocumentFile.fromTreeUri ; copy lit le flux source (MediaStore > _data > matéri. cache) et crée fichier via tree.createFile ; move = copie + FileActions.delete(source). Anciens move/copy(File) conservés.
 
-SCHÉMA DB : image_labels(image_id:Long, label_name:String). LabelDao.getByName(name)/insert(entity). ImageLabelDao.insertAll(list) IGNORE, unassign(imageIds,label), clearForImage(id). ImageDao.getAllWithLabels() = List<ImageWithLabels>(image, labels). ADULT_LABEL='adulte' dans domain/model/Label.kt.
+CATALOGUE : libs.versions.toml complété (room runtime/ktx/compiler/testing, lifecycle-runtime-compose, documentfile 1.0.1, androidx-test-core, robolectric, turbine, mockito). build.gradle.kts référence ces alias.
 
-DÉCISIONS ZOÉ : (1) RequestMultiplePermissions API26+. (2) FilterState.labels = NOMS (Set<String>) sémantique OU. (3) observeFiltered gagne adultOnly:Int + adultLabel:String. (5) ScanProgress : ajout champ à défaut OK, retrait = accord requis.
+SCHÉMA DB : image_labels(image_id:Long, label_name:String). LabelDao.getByName/insert(IGNORE)/update/deleteNonSystem. ImageLabelDao.insertAll(IGNORE)/unassign/clearForImage. ImageDao.getAllWithLabels() -> List<ImageWithLabels>. ADULT_LABEL='adulte' ds domain/model/Label.kt.
 
-LEÇON : write_file tronque les contenus longs -> écrire court, 1 fichier/action, JSON échappé (\n pas de retour à la ligne brut), relire avant d'annoncer.
+DÉCISIONS ZOÉ : (1) RequestMultiplePermissions API26+. (2) FilterState.labels=Set<String> OU. (3) observeFiltered adultOnly:Int+adultLabel:String. (5) ScanProgress : ajout champ à défaut OK.
+
+LEÇON : write_file tronque les longs contenus -> 1 fichier/action, JSON échappé, relire avant d'annoncer.

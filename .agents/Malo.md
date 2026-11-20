@@ -36,6 +36,7 @@
   Déclenchement : sur demande de l’utilisateur, sur demande d’un agent (run_workflow), toutes les 10 minutes.
   Étapes :
     1. Zoé : créer la tâche associée (si échec : demander à l’utilisateur)
+    2. Zoé : affecter la tâche à l'agent adapté (si échec : demander à l’utilisateur)
 
 ## Mon rôle
 Chef de projet — Planifie, priorise, coordonne l’équipe et rend compte de l’avancement.

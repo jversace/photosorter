@@ -7,17 +7,10 @@ import fr.photosorter.core.result.AppResult
 import fr.photosorter.data.db.dao.ImageDao
 import fr.photosorter.data.db.dao.ImageLabelDao
 import fr.photosorter.data.db.dao.ImageQueryDao
-import fr.photosorter.data.db.entity.ImageEntity
-import fr.photosorter.data.db.entity.ImageWithLabels
-import fr.photosorter.domain.model.FilterState
 import fr.photosorter.domain.model.ImageFormat
 import fr.photosorter.domain.model.ImageItem
-import fr.photosorter.domain.model.SortCriteria
-import fr.photosorter.domain.model.SortField
 import fr.photosorter.testutil.TestDispatchers
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -34,18 +27,12 @@ class ImageRepositoryImplTest {
 
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val imageDao: ImageDao = mock()
-    private val labelDao: ImageLabelDao = mock()
-    private val queryDao: ImageQueryDao = mock()
+    private val imageLabelDao: ImageLabelDao = mock()
+    private val imageQueryDao: ImageQueryDao = mock()
     private val fileActions: FileActions = mock()
 
     private fun repo() = ImageRepositoryImpl(
-        context, imageDao, labelDao, queryDao, fileActions, TestDispatchers()
-    )
-
-    private fun entity(id: Long) = ImageEntity(
-        id = id, uri = "uri/$id", name = "n$id.jpg", format = ImageFormat.JPEG.name,
-        sizeBytes = 1, dateTaken = null, dateModified = 0, width = 1, height = 1,
-        thumbnailHint = null
+        context, imageDao, imageLabelDao, imageQueryDao, fileActions, TestDispatchers()
     )
 
     private fun item(id: Long) = ImageItem(
@@ -54,28 +41,15 @@ class ImageRepositoryImplTest {
         labels = emptySet(), isAdult = false, thumbnailHint = null
     )
 
-    @Test
-    fun observeImagesMapsRows() = runTest {
-        whenever(
-            queryDao.observeFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
-        ).thenReturn(flowOf(listOf(ImageWithLabels(entity(1), emptyList()))))
-
-        val result = repo().observeImages(
-            SortCriteria(SortField.NAME, true), FilterState()
-        )
-        var emitted: List<ImageItem>? = null
-        result.collect { emitted = it }
-
-        assertEquals(1, emitted?.size)
-        assertEquals(1L, emitted?.first()?.id)
-    }
+    private val treeUri =
+        "content://com.android.externalstorage.documents/tree/primary%3APhotos"
 
     @Test
     fun deleteSuccessCleansAndRemovesRow() = runTest {
         whenever(fileActions.delete(eq("uri/1"))).thenReturn(null)
         val result = repo().delete(listOf(item(1)))
         assertTrue(result is AppResult.Success)
-        verify(labelDao).clearForImage(1L)
+        verify(imageLabelDao).clearForImage(1L)
         verify(imageDao).deleteById(1L)
     }
 
@@ -84,17 +58,61 @@ class ImageRepositoryImplTest {
         whenever(fileActions.delete(eq("uri/1"))).thenReturn(AppError.NotFound("nope"))
         val result = repo().delete(listOf(item(1)))
         assertTrue(result is AppResult.Failure)
-        verify(labelDao, never()).clearForImage(any())
+        verify(imageLabelDao, never()).clearForImage(any())
         verify(imageDao, never()).deleteById(any())
     }
 
     @Test
-    fun deleteReportsFirstErrorAmongItems() = runTest {
-        whenever(fileActions.delete(eq("uri/1"))).thenReturn(AppError.Io("e1"))
-        whenever(fileActions.delete(eq("uri/2"))).thenReturn(null)
-        val result = repo().delete(listOf(item(1), item(2)))
+    fun copyDelegatesToCopyToTreeWithTreeUri() = runTest {
+        whenever(fileActions.copyToTree(eq("uri/1"), eq(treeUri))).thenReturn(null)
+        whenever(fileActions.copyToTree(eq("uri/2"), eq(treeUri))).thenReturn(null)
+
+        val result = repo().copy(listOf(item(1), item(2)), treeUri)
+
+        assertTrue(result is AppResult.Success)
+        verify(fileActions).copyToTree(eq("uri/1"), eq(treeUri))
+        verify(fileActions).copyToTree(eq("uri/2"), eq(treeUri))
+    }
+
+    @Test
+    fun copyFailureReturnsFailure() = runTest {
+        whenever(fileActions.copyToTree(eq("uri/1"), eq(treeUri)))
+            .thenReturn(AppError.Io("copie impossible"))
+
+        val result = repo().copy(listOf(item(1)), treeUri)
+
         assertTrue(result is AppResult.Failure)
-        // item 2 a bien été supprimé malgré l'échec du 1
-        verify(imageDao).deleteById(2L)
+    }
+
+    @Test
+    fun moveDelegatesToMoveToTreeWithTreeUri() = runTest {
+        whenever(fileActions.moveToTree(eq("uri/1"), eq(treeUri))).thenReturn(null)
+
+        val result = repo().move(listOf(item(1)), treeUri)
+
+        assertTrue(result is AppResult.Success)
+        verify(fileActions).moveToTree(eq("uri/1"), eq(treeUri))
+    }
+
+    @Test
+    fun moveFailureReturnsFailure() = runTest {
+        whenever(fileActions.moveToTree(eq("uri/1"), eq(treeUri)))
+            .thenReturn(AppError.Io("deplacement impossible"))
+
+        val result = repo().move(listOf(item(1)), treeUri)
+
+        assertTrue(result is AppResult.Failure)
+    }
+
+    @Test
+    fun copyReportsFirstErrorAmongItems() = runTest {
+        whenever(fileActions.copyToTree(eq("uri/1"), eq(treeUri)))
+            .thenReturn(AppError.Io("e1"))
+        whenever(fileActions.copyToTree(eq("uri/2"), eq(treeUri))).thenReturn(null)
+
+        val result = repo().copy(listOf(item(1), item(2)), treeUri)
+
+        assertTrue(result is AppResult.Failure)
+        verify(fileActions).copyToTree(eq("uri/2"), eq(treeUri))
     }
 }

@@ -18,15 +18,17 @@ import fr.photosorter.domain.repository.ImageRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * Implémentation [ImageRepository] :
  * - Lecture/tri/filtre poussés en SQL via [ImageQueryDao].
- * - Actions fichiers via [FileActions] (scoped storage + fallback).
+ * - Actions fichiers via [FileActions] (scoped storage + SAF + fallback).
  * - Partage via [Intent.ACTION_SEND] et FileProvider.
+ *
+ * Copie/déplacement : [destUri] est une tree URI SAF (OpenDocumentTree) consommée via
+ * [FileActions.copyToTree]/[FileActions.moveToTree] (DocumentFile).
  */
 @Singleton
 class ImageRepositoryImpl @Inject constructor(
@@ -76,18 +78,15 @@ class ImageRepositoryImpl @Inject constructor(
             if (failure == null) AppResult.Success(Unit) else AppResult.Failure(failure)
         }
 
+    // destUri = tree URI SAF choisie par l'utilisateur (OpenDocumentTree).
     override suspend fun move(items: List<ImageItem>, destUri: String): AppResult<Unit> =
         withContext(dispatchers.io) {
-            val destDir = ensureDestDir(destUri)
-                ?: return@withContext AppResult.Failure(AppError.NotFound("Dossier destination invalide"))
-            runAction(items) { fileActions.move(it.uri, destDir) }
+            runAction(items) { fileActions.moveToTree(it.uri, destUri) }
         }
 
     override suspend fun copy(items: List<ImageItem>, destUri: String): AppResult<Unit> =
         withContext(dispatchers.io) {
-            val destDir = ensureDestDir(destUri)
-                ?: return@withContext AppResult.Failure(AppError.NotFound("Dossier destination invalide"))
-            runAction(items) { fileActions.copy(it.uri, destDir) }
+            runAction(items) { fileActions.copyToTree(it.uri, destUri) }
         }
 
     override suspend fun share(items: List<ImageItem>): AppResult<Unit> =
@@ -120,12 +119,6 @@ class ImageRepositoryImpl @Inject constructor(
         }
 
     // --- helpers ---
-
-    private fun ensureDestDir(destUri: String): File? {
-        val dir = runCatching { Uri.parse(destUri).path?.let(::File) }.getOrNull() ?: return null
-        if (!dir.isDirectory && !dir.mkdirs() && !dir.isDirectory) return null
-        return dir
-    }
 
     private fun runAction(items: List<ImageItem>, action: (ImageItem) -> AppError?): AppResult<Unit> {
         var firstError: AppError? = null

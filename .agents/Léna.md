@@ -87,10 +87,17 @@ agent/léna
 ## Notes de l’agent (à tenir à jour)
 Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (~10,3 Mo)+labels.txt dans app/assets. build.gradle.kts : minSdk 26, isMinifyEnabled=false, compose+material-icons-extended+lifecycle-runtime-compose en implementation.
 
-Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a. e3a1d1a6/3983405f -> Zoé. 4d0303c8 tests : 'à vérifier'. c09d3de2/24b6deba : MR #44 attente Malo.
-- 9ec6eb25 (bug 2056025b, metadata file:// scoped storage) : RÉSOLU ET RELU. MediaMetadataReader.kt = correctif (name/size/date depuis File en priorité, contentResolver best-effort MIME + secours content://, dims BitmapFactory bounds-only). MediaMetadataReaderTest.kt = @Config(sdk=[29]) file:// (readsNameSizeAndDateFromFileUri, existsAgainAfterReading) + returnsNullForMissingFile. MR soumise. Tâche 'à vérifier'. Zoé relit et clôture.
+Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a. e3a1d1a6/3983405f -> Zoé. c09d3de2/24b6deba : MR en attente Malo.
 
-LEÇON MAJEURE : write_file tronquait silencieusement les contenus LONGS (fichier inchangé à la relecture). Solution : ÉCRIRE COURT, 1 fichier par action, contenu réduit, PUIS RELIRE le fichier réel pour confirmer. C'est ce qui a débloqué.
+3222873d (bug f6eb4edf, détection adulte) : LIVRÉ sur MR #56 (déjà ouverte, sera validée), statut 'à vérifier'. Décision Zoé durable : normalisation d'entrée PILOTÉE PAR CONFIG (assets/model.config clé scale=ZERO_ONE|ZERO_255|MINUS_ONE_ONE), jamais en dur ; défaut ZERO_ONE documenté comme hypothèse ; valeur finale en attente de la config d'entraînement du modèle (réponse utilisateur). NE PAS dire 'détection réparée'. Livrables : enum InputScale+apply() ; toInputBuffer applique l'échelle ; repli FileInputStream(File(uri.path)) pour file:// ; markUnavailable incrémente unavailableCounter (exposé via unavailableCount/resetUnavailableCount) ; ScanProgress.Completed.unclassifiedCount:Int=0 (KDoc 'non classée' != 'normale') ; ScanEngine reset compteur en début de scan + renseigne unclassifiedCount. Seuil et normalize() INCHANGÉS.
 
-CONTRAT back-end : FilterState.labels=Set<String>(NOMS). ADULT_LABEL="adulte". Label=data class(name,isSystem,createdAt). ImageQueryDao.observeFiltered=10 params.
-LEÇON : OpenableColumns=DISPLAY_NAME/SIZE ; _data=MediaStore.MediaColumns.DATA. ORDER BY paramétré=2 blocs CASE. alias TOML room-runtime->libs.room.runtime. 'Label Int vs Label' UI=mauvais mapping id ; domaine n'expose que le nom. scoped storage file://->métadonnées depuis File(uri.path). Écrire->RELIRE->alors seulement annoncer.
+9ec6eb25 (bug 2056025b, metadata file:// scoped storage) : correctif file:// utile mais PAS la cause racine (permission runtime). Statut 'à vérifier', MR #56 ; clôture après correctif IHM de Théo.
+
+DÉCISIONS ZOÉ (durables) : (1) Permission via RequestMultiplePermissions, API 26+. (2) FilterState.labels = IDs de libellé, sémantique OU, PAS de onlyAdult. (3) Signature DAO filtrée figée MAIS NON IMPLÉMENTÉE : getWithLabelsFiltered(labelIds:Set<String>) avec jointure image_labels, ORDER BY name ASC ; résolution nom->id côté repository. (4) Défaut latent DAO non réactif -> tâche de 1er niveau APRÈS correctif IHM. (5) ScanProgress : AJOUTER un champ à défaut ne casse pas le consommateur (pas d'accord Théo requis) ; RETRAIT/changement de type = accord requis.
+
+ÉTAT ImageDao RÉEL : insertAll(REPLACE)->List<Long>, update, clear, deleteById, getById, getAllWithLabels() (sans filtre image_labels). Aucune requête filtrée.
+
+CONTRAT back-end : ScanEngine(context, dispatchers, imageDao, mimeDetector, storageRootProvider, metadataReaderFactory=(Context)->MediaMetadataReader, preFilter:PreFilter, adultClassifier:AdultClassifier) ; scan() sans paramètre ; ScanProgress.Completed(count,durationMs,unclassifiedCount=0). MediaMetadataReader(context). MIME best-effort 'application/octet-stream'.
+
+LEÇON MAJEURE : write_file tronque les contenus LONGS -> ÉCRIRE COURT, 1 fichier/action, PUIS RELIRE avant d'annoncer.
+LEÇON : JSON du transport (content de write_file) doit être échappé MAIS le fichier écrit doit être du Kotlin/source réel, pas un littéral échappé. OpenableColumns=DISPLAY_NAME/SIZE ; scoped storage file://->métadonnées depuis File(uri.path). Conflit résolu par Adam.

@@ -107,15 +107,21 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - isMinifyEnabled=false pour v1.0.0. R8/ProGuard à réactiver en v1.1+ après test d'un APK release signé sur appareil physique avec règles ProGuard adaptées (Room/Hilt/TFLite/coroutines).
 - noCompress += "tflite" confirmé par Zoé et Léna : model.tflite non compressé dans l'APK. openFd() fonctionne. Repli ByteBuffer conservé comme filet de sécurité.
 - InputScale (normalisation TFLite) : paramétrable via app/assets/model.config (clé scale=). Défaut : ZERO_ONE.
+- assign() non @Transaction : réserve non bloquante v1.0.0, à durcir en v1.1+.
 
 ## État actuel
 
-- Tâche dc4d6e94 (SAF OpenDocumentTree copier/déplacer) : acceptée, MR #66 fusionnée
-- Tâche 87c5f661 (filtre adultOnly) : acceptée (test unitaire DAO ajouté), MR #67 fusionnée
+- Tâche dc4d6e94 (SAF OpenDocumentTree copier/déplacer IHM) : acceptée, MR #66 fusionnée
+- Tâche 87c5f661 (filtre adultOnly) : acceptée, MR #67 fusionnée
+- Tâche 4f0b27e5 (FOREIGN KEY ImageLabelDao) : acceptée
 - Bug a65dffe2 (filtre adulte) : corrigé
-- Tâche 4f0b27e5 (FOREIGN KEY ImageLabelDao) : en cours chez Léna
-- Bug 4cd6654d (crash FOREIGN KEY) : en correction
+- Bug 4cd6654d (crash FOREIGN KEY) : corrigé
+- Bug 1e0fc60c (copier/déplacer tree URI -> File échec) : OUVERT — ensureDestDir convertit tree URI en File, échec. Léna traite la sous-tâche 826b1ea6 (FileActions DocumentFile tree URI).
 - Tâches corrections ouvertes : 1c5cab0a (Scanneur), 7445b925 (IHM)
+- Tâche 826b1ea6 (FileActions DocumentFile tree URI) : à faire, Léna
+
+## Prochaine action Léna
+- 826b1ea6 : FileActions consommer tree URI via DocumentFile.fromTreeUri + createDocument/createFile pour copier/déplacer
 
 ## Modèle Label (confirmé)
 - Label : name, isSystem, createdAt
@@ -153,4 +159,4 @@ model.config (clé scale=) à créer par l'utilisateur si normalisation non ZERO
 - MR #58 (Léna, chargement modèle tolerant asset compressé)
 - MR #62 (Léna, log enrichi AdultClassifier)
 - MR #66 (Théo, SAF OpenDocumentTree)
-- MR #67 (Léna, syncAdultLabels)
+- MR #67 (Léna, syncAdultLabels + test adultOnly)

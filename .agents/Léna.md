@@ -87,20 +87,16 @@ agent/léna
 ## Notes de l’agent (à tenir à jour)
 Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (~10,3 Mo)+labels.txt dans app/assets. build.gradle.kts : minSdk 26, isMinifyEnabled=false.
 
-Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a. e3a1d1a6/3983405f -> Zoé. c09d3de2/24b6deba : MR validée.
+Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a. e3a1d1a6/3983405f -> Zoé. c09d3de2/24b6deba : MR validée. 87c5f661 (filtre adulte) OK.
 
-DÉTECTION ADULTE (bug f6eb4edf) — CAUSE RACINE (logs appareil 2026-11-20) : assets.openFd() échoue sur asset COMPRESSÉ. Correctif (MR #58, tâche 3a354e9c) : loadModelFile() repli copie InputStream->ByteBuffer. MR #58 en attente validation. RECOMMANDATION BUILD à Zoé : noCompress += 'tflite'. NE PAS dire 'détection réparée' avant vérif log scores réels.
+DÉTECTION ADULTE : cause racine assets.openFd() sur asset compressé -> repli InputStream->ByteBuffer (MR #58, tâche 3a354e9c). AdultClassifier : InputScale via assets/model.config, logScores, unavailableCount. NE PAS dire 'réparée' avant vérif logs scores.
 
-AdultClassifier : enum InputScale (ZERO_ONE/ZERO_255/MINUS_ONE_ONE) lu depuis assets/model.config clé scale, défaut ZERO_ONE ; instrumentation logScores ; repli FileInputStream ; unavailableCount/resetUnavailableCount ; ScanProgress.Completed.unclassifiedCount. normalize()/softmax et seuil 0.5 INCHANGÉS.
+FILTRE ADULTE (87c5f661) : back-end OK. ScanRepositoryImpl.syncAdultLabels() après scan garantit label système + liens image_labels (IGNORE idempotent).
 
-9ec6eb25 (metadata file:// scoped storage) : MR #56 validée.
+FIX FK LABEL (4f0b27e5 / bug 4cd6654d) : cause = LabelRepositoryImpl.assign insérait image_labels(label_name) sans garantir la ligne labels(name) -> FK constraint. Correction : ensureLabelExists(name) avant insertAll (getByName ; sinon insert IGNORE, entité seeder si ADULT_LABEL). Même logique de seed que syncAdultLabels. Contrat DAO vérifié : LabelEntity(name, isSystem, createdAt) ; LabelEntity.toDomain() dans Mappers ; ImageLabelEntity(imageId, labelName) FK images.id + labels.name onDelete CASCADE ; LabelDao.getByName/insert(IGNORE)/update/deleteNonSystem:Int/observeLabels ; ImageLabelDao.insertAll/unassign.
 
-FILTRE ADULTE (en cours) : contrat figé avec Zoé+Théo. FilterState.adultOnly:Boolean=false ajouté (includeAdult conservé). ImageQueryDao.observeFiltered gagne adultOnly:Int + adultLabel:String ; clause AND (:adultOnly = 0 OR EXISTS(SELECT 1 FROM image_labels ila WHERE ila.image_id=i.id AND ila.label_name=:adultLabel)). AdultOnly s'appuie sur image_labels (PAS is_adult : cache désync après révision label). ImageRepositoryImpl propage adultOnly/adultLabel et matchesFilter gère adultOnly via item.labels. UI 3 états : Tout=(includeAdult=1,adultOnly=0), Masquer=(0,0), Uniquement=(0,1). DETTE Zoé (v1.0.0 non bloquante) : aligner includeAdult sur image_labels (actuellement is_adult) ou garantir synchro is_adult.
+SCHÉMA DB : image_labels(image_id:Long, label_name:String). LabelDao.getByName(name)/insert(entity). ImageLabelDao.insertAll(list) IGNORE, unassign(imageIds,label), clearForImage(id). ImageDao.getAllWithLabels() = List<ImageWithLabels>(image, labels). ADULT_LABEL='adulte' dans domain/model/Label.kt.
 
-SCHÉMA DB RÉEL : image_labels(image_id, label_name) — label_name = CHAÎNE, FK vers labels.name ; PAS d'id numérique de libellé. label système adulte = ADULT_LABEL="adulte" (const dans domain/model/Label.kt). 
+DÉCISIONS ZOÉ : (1) RequestMultiplePermissions API26+. (2) FilterState.labels = NOMS (Set<String>) sémantique OU. (3) observeFiltered gagne adultOnly:Int + adultLabel:String. (5) ScanProgress : ajout champ à défaut OK, retrait = accord requis.
 
-DÉCISIONS ZOÉ (durables) : (1) Permission via RequestMultiplePermissions, API 26+. (2) FilterState.labels = IDs de libellé — ATTENTION en réalité labels=Set<String> de NOMS. Sémantique OU. (3) DAO filtré : observeFiltered avec adultOnly. (5) ScanProgress : AJOUTER un champ à défaut OK ; RETRAIT/changement type = accord requis.
-
-CONTRAT back-end : ScanEngine(...) ; scan() sans paramètre ; ScanProgress.Completed(count,durationMs,unclassifiedCount=0).
-
-LEÇON MAJEURE : write_file tronque les contenus LONGS -> ÉCRIRE COURT, 1 fichier/action, PUIS RELIRE avant d'annoncer.
+LEÇON : write_file tronque les contenus longs -> écrire court, 1 fichier/action, JSON échappé (\n pas de retour à la ligne brut), relire avant d'annoncer.

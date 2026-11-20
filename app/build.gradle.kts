@@ -92,6 +92,9 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
 
+    // SAF / DocumentFile (copie/déplacement vers un tree URI)
+    implementation(libs.androidx.documentfile)
+
     // Coroutines
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)

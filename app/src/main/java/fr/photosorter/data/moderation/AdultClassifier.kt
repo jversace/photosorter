@@ -29,13 +29,10 @@ import javax.inject.Singleton
  * 100% local.
  *
  * Normalisation d'entree PILOTEE PAR LA CONFIG du modele (app/assets/model.config,
- * cle scale), jamais codee en dur. Valeurs : ZERO_ONE, ZERO_255, MINUS_ONE_ONE.
- * En l'absence de config, on retombe sur DEFAULT_INPUT_SCALE (hypothese a confirmer
- * avec la config d'entrainement reelle du modele).
+ * cle scale). En l'absence de config, DEFAULT_INPUT_SCALE (hypothese a confirmer).
  *
  * Instrumentation : chaque inference journalise (tag AdultClassifier) l'echelle active
- * et les scores bruts par label sur la sortie brute, pour diagnostiquer sur appareil
- * l'echelle attendue par le modele (cf. decision utilisateur).
+ * et les scores bruts par label, pour diagnostiquer sur appareil l'echelle attendue.
  */
 @Singleton
 class AdultClassifier @Inject constructor(
@@ -79,11 +76,8 @@ class AdultClassifier @Inject constructor(
 
     private val unavailableCounter = AtomicInteger(0)
 
-    /** Nombre d'images non classees (Unavailable) depuis le dernier reset. Exploitable par le rapport de scan. */
     val unavailableCount: Int get() = unavailableCounter.get()
-
     fun resetUnavailableCount() { unavailableCounter.set(0) }
-
     val isReady: Boolean get() = interpreter != null
     val currentInputScale: InputScale get() = inputScale
 
@@ -101,7 +95,7 @@ class AdultClassifier @Inject constructor(
                 val shape = interp.getInputTensor(0).shape()
                 if (shape.size == 4 && shape[1] > 0) inputSize = shape[1]
             }
-            Log.i(TAG, "InputScale=$inputScale inputSize=$inputSize")
+            Log.i(TAG, "InputScale=$inputScale inputSize=$inputSize modele=${if (isReady) "ok" else "KO"}")
         }
     }
 
@@ -125,11 +119,6 @@ class AdultClassifier @Inject constructor(
         }
     }
 
-    /**
-     * Journalise les scores bruts et normalises par label pour l'image, ainsi que
-     * l'echelle active et la decision. Permet de diagnostiquer sur appareil la
-     * normalisation d'entree attendue par le modele (decision utilisateur).
-     */
     private fun logScores(uri: Uri, raw: FloatArray) {
         val probs = normalize(raw)
         val adultScore = (probs[2] + probs[3]).coerceIn(0f, 1f)
@@ -171,7 +160,6 @@ class AdultClassifier @Inject constructor(
             ?.let { Bitmap.createScaledBitmap(it, inputSize, inputSize, true).also { s -> if (s !== it) it.recycle() } }
     }
 
-    /** Ouvre un flux tolerant file:// : contentResolver d'abord, repli FileInputStream pour file://. */
     private fun openStream(uri: Uri): java.io.InputStream? {
         runCatching { context.contentResolver.openInputStream(uri) }.getOrNull()?.let { return it }
         if (uri.scheme == "file") {
@@ -217,12 +205,26 @@ class AdultClassifier @Inject constructor(
         }
     }
 
+    /**
+     * Charge le modele en MappedByteBuffer. Si l'asset est compresse, openFd() echoue
+     * ("can not be opened as a file descriptor; it is probably compressed"). On retombe
+     * alors sur une copie de l'InputStream dans un ByteBuffer direct.
+     */
     private fun loadModelFile(): MappedByteBuffer {
-        context.assets.openFd(MODEL_FILE).use { afd: AssetFileDescriptor ->
-            FileInputStream(afd.fileDescriptor).use { input ->
-                val channel = input.channel
-                return channel.map(FileChannel.MapMode.READ_ONLY, afd.startOffset, afd.declaredLength)
+        return try {
+            context.assets.openFd(MODEL_FILE).use { afd: AssetFileDescriptor ->
+                FileInputStream(afd.fileDescriptor).use { input ->
+                    input.channel.map(FileChannel.MapMode.READ_ONLY, afd.startOffset, afd.declaredLength)
+                }
             }
+        } catch (e: Exception) {
+            Log.w(TAG, "openFd a echoue (asset compresse ?), repli copie flux : ${e.message}")
+            val bytes = context.assets.open(MODEL_FILE).use { it.readBytes() }
+            val buffer = ByteBuffer.allocateDirect(bytes.size).order(ByteOrder.nativeOrder())
+            buffer.put(bytes)
+            buffer.rewind()
+            @Suppress("UNCHECKED_CAST")
+            buffer as MappedByteBuffer
         }
     }
 

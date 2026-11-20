@@ -1,14 +1,18 @@
 package fr.photosorter.data.repository
 
 import fr.photosorter.core.dispatchers.DispatchersProvider
+import fr.photosorter.data.db.DatabaseSeeder
 import fr.photosorter.data.db.dao.ImageDao
+import fr.photosorter.data.db.dao.ImageLabelDao
+import fr.photosorter.data.db.dao.LabelDao
+import fr.photosorter.data.db.entity.ImageLabelEntity
 import fr.photosorter.data.scanner.ScanEngine
+import fr.photosorter.domain.model.ADULT_LABEL
 import fr.photosorter.domain.model.ImageItem
 import fr.photosorter.domain.model.ScanProgress
 import fr.photosorter.domain.repository.ScanRepository
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -21,6 +25,8 @@ import javax.inject.Singleton
 class ScanRepositoryImpl @Inject constructor(
     private val scanEngine: ScanEngine,
     private val imageDao: ImageDao,
+    private val imageLabelDao: ImageLabelDao,
+    private val labelDao: LabelDao,
     private val dispatchers: DispatchersProvider
 ) : ScanRepository {
 
@@ -31,12 +37,29 @@ class ScanRepositoryImpl @Inject constructor(
         if (finalState is ScanProgress.Error) {
             throw IllegalStateException(finalState.message)
         }
+        syncAdultLabels()
         val cached = imageDao.getAllWithLabels().map { it.toDomain() }
-        kotlinx.coroutines.flow.flowOf(cached)
+        flowOf(cached)
     }
 
     override suspend fun getCachedImages(): List<ImageItem> = withContext(dispatchers.io) {
         imageDao.getAllWithLabels().map { it.toDomain() }
+    }
+
+    /**
+     * Garantit la cohérence entre images.is_adult et la table image_labels, seule
+     * source utilisée par le filtre "uniquement adulte" (adultOnly).
+     */
+    private suspend fun syncAdultLabels() {
+        val adultIds = imageDao.getAllWithLabels()
+            .filter { it.image.isAdult }
+            .map { it.image.id }
+        if (adultIds.isEmpty()) return
+        // Le label système doit exister pour la FOREIGN KEY de image_labels.
+        if (labelDao.getByName(ADULT_LABEL) == null) {
+            labelDao.insert(DatabaseSeeder.adultLabelEntity())
+        }
+        imageLabelDao.insertAll(adultIds.map { ImageLabelEntity(imageId = it, labelName = ADULT_LABEL) })
     }
 
     fun cancel() = scanEngine.cancel()

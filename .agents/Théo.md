@@ -96,22 +96,28 @@ Développeur front-end — IHM. Branche : agent/théo.
 - ViewModels @HiltViewModel sur interfaces de domaine.
 - Strings FR dans app/src/main/res/values/strings.xml. TOUJOURS vérifier qu'une R.string.* utilisée existe (cause d'échec Kotlin).
 
-## Décisions validées par Zoé
-- Permission scan : ActivityResultContracts.RequestMultiplePermissions, API plateforme, sans Accompanist. READ_MEDIA_IMAGES (API>=33) sinon READ_EXTERNAL_STORAGE (<=32). Bouton scan désactivé tant que non accordée, message si refusée. CODÉ (tâche f4f04627, MR #57, à vérifier).
-- Filtre 'adulte uniquement' = labels=setOf(ADULT_LABEL) dans FilterState, PAS de champ onlyAdult. Jointure DAO à confirmer par Léna.
-- FilterState.labels = Set<String> (NOMS de libellés). ADULT_LABEL="adulte".
+## Filtre adulte (tâche 60787cd8) — CONTRAT FINAL
+- FilterState porte DEUX champs distincts de labels : includeAdult:Boolean=true et adultOnly:Boolean=false.
+- UI = contrôle tri-état (3 FilterChip) mutuellement exclusifs :
+  Tout afficher   = (includeAdult=true,  adultOnly=false)
+  Masquer l'adulte= (includeAdult=false, adultOnly=false)
+  Uniquement adulte=(includeAdult=false, adultOnly=true)
+- Ne touche JAMAIS labels (convention : ne pas exposer labels={adulte} + adultOnly ensemble).
+- DAO (Léna) : observeFiltered(adultOnly:Int 0/1, adultLabel:String=ADULT_LABEL) ; adultOnly = clause EXISTS sur image_labels en ET ; includeAdult géré séparément. Confirmé compatible, rien à changer côté IHM.
+- GalleryViewModel transmet déjà tout FilterState au repository → adultOnly circule automatiquement.
+- Chaînes : filters_adult_section / _show_all / _hide / _only (filters_include_adult conservée mais plus utilisée).
 
-## ScanScreen — état
+## Décisions validées par Zoé
+- Permission scan : ActivityResultContracts.RequestMultiplePermissions, API plateforme. READ_MEDIA_IMAGES (API>=33) sinon READ_EXTERNAL_STORAGE. CODÉ (f4f04627).
+
+## ScanScreen
 - Contrôle + demande de permission runtime IMPLÉMENTÉS (f4f04627, MR #57).
 
 ## À FAIRE (non urgent, après push de Léna)
-- Consommer le nouveau champ report.unclassifiedCount: Int (=0 par défaut) = nombre d'images NON analyseeables (classification adulte échouée), distinct de 'normale'. Afficher sur l'écran de scan un texte discret 'N image(s) non analysée(s)' UNIQUEMENT si N>0, ton neutre. Ajouter chaîne FR (format %1$d). Rien avant que Léna ait poussé le champ.
-
-## workflow release v1.0.0
-- Commit sur agent/théo -> merge_request vers release/v1.0.0 ; Zoé merge ; pull.
+- Consommer report.unclassifiedCount: Int (=0 par défaut) = images NON analyseeables, distinct de 'normale'. Afficher 'N image(s) non analysée(s)' UNIQUEMENT si N>0. Ajouter chaîne FR (format %1$d). Rien avant que Léna ait poussé le champ.
 
 ## LEÇON — outil write_file
-- write_file peut tronquer les contenus longs (>~80 lignes) ; écrire COMPACT et TOUJOURS relire avec read_file après.
+- write_file peut tronquer les contenus longs ; écrire COMPACT et TOUJOURS relire avec read_file après.
 - Bloc action : UNE action par bloc, JSON valide.
 
 ## NE PAS modifier sans prévenir Léna
@@ -121,4 +127,4 @@ Développeur front-end — IHM. Branche : agent/théo.
 - 4060ffc0, 5ee8aef7, e93e44ff, 79906e61, f1d46c78, 10f2b02d, a3be7352.
 
 ## État projet
-- v1.0.0 : 17 tâches terminées. Bug '0 image' (f6eb4edf détection adulte) : cause '0 image' = permission runtime non accordée (confirmé terrain), corrigée côté IHM par f4f04627.
+- v1.0.0 : 17 tâches terminées. Cause '0 image' = permission runtime non accordée, corrigée par f4f04627.

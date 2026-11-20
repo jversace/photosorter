@@ -206,11 +206,12 @@ class AdultClassifier @Inject constructor(
     }
 
     /**
-     * Charge le modele en MappedByteBuffer. Si l'asset est compresse, openFd() echoue
-     * ("can not be opened as a file descriptor; it is probably compressed"). On retombe
-     * alors sur une copie de l'InputStream dans un ByteBuffer direct.
+     * Charge le modele en ByteBuffer. Cas nominal : openFd() + map (asset non compresse).
+     * Si l'asset est compresse, openFd() echoue ("can not be opened as a file descriptor;
+     * it is probably compressed") : repli sur une copie de l'InputStream dans un ByteBuffer direct.
+     * Le type de retour est ByteBuffer (super-type commun de MappedByteBuffer et ByteBuffer).
      */
-    private fun loadModelFile(): MappedByteBuffer {
+    private fun loadModelFile(): ByteBuffer {
         return try {
             context.assets.openFd(MODEL_FILE).use { afd: AssetFileDescriptor ->
                 FileInputStream(afd.fileDescriptor).use { input ->

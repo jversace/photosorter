@@ -89,17 +89,18 @@ Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (~10,3 Mo)+la
 
 Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a. e3a1d1a6/3983405f -> Zoé. c09d3de2/24b6deba : MR validée.
 
-DÉTECTION ADULTE (bug f6eb4edf) — CAUSE RACINE TROUVÉE (logs appareil 2026-11-20) : 'Modele TFLite indisponible : model.tflite' + toutes images Unavailable. Le modèle n'était jamais chargé car assets.openFd() échoue sur asset COMPRESSÉ. Correctif (MR #58, tâche 3a354e9c) : loadModelFile() repli copie InputStream->ByteBuffer direct si openFd lève. RECOMMANDATION BUILD à Zoé : noCompress += 'tflite' dans build.gradle.kts (évite copie mémoire). MR #58 en attente validation. NE PAS dire 'détection réparée' avant vérif log scores réels sur appareil (porn/sexy élevés).
+DÉTECTION ADULTE (bug f6eb4edf) — CAUSE RACINE (logs appareil 2026-11-20) : assets.openFd() échoue sur asset COMPRESSÉ. Correctif (MR #58, tâche 3a354e9c) : loadModelFile() repli copie InputStream->ByteBuffer. MR #58 en attente validation. RECOMMANDATION BUILD à Zoé : noCompress += 'tflite'. NE PAS dire 'détection réparée' avant vérif log scores réels.
 
-Mécanisme AdultClassifier : enum InputScale (ZERO_ONE/ZERO_255/MINUS_ONE_ONE) lu depuis assets/model.config clé scale, défaut ZERO_ONE (hypothèse) ; normalisation pilotée config ; instrumentation logScores (raw+probs+échelle+décision) ; repli FileInputStream(File(uri.path)) ; unavailableCount/resetUnavailableCount ; ScanProgress.Completed.unclassifiedCount. normalize()/softmax et seuil 0.5 INCHANGÉS.
+AdultClassifier : enum InputScale (ZERO_ONE/ZERO_255/MINUS_ONE_ONE) lu depuis assets/model.config clé scale, défaut ZERO_ONE ; instrumentation logScores ; repli FileInputStream ; unavailableCount/resetUnavailableCount ; ScanProgress.Completed.unclassifiedCount. normalize()/softmax et seuil 0.5 INCHANGÉS.
 
-9ec6eb25 (metadata file:// scoped storage) : MR #56 validée, statut 'à vérifier'. MediaMetadataReader : nom/taille/date depuis File(uri.path), contentResolver best-effort, MIME repli URLConnection.guessContentTypeFromName, dimensions inJustDecodeBounds. Test file:// en @Config(sdk=[29]).
+9ec6eb25 (metadata file:// scoped storage) : MR #56 validée.
 
-DÉCISIONS ZOÉ (durables) : (1) Permission via RequestMultiplePermissions, API 26+. (2) FilterState.labels = IDs de libellé, sémantique OU, PAS de onlyAdult. (3) DAO filtré figé NON implémenté : getWithLabelsFiltered(labelIds:Set<String>) jointure image_labels ORDER BY name ASC ; résolution nom->id côté repository. (4) Défaut latent DAO non réactif -> tâche 1er niveau APRÈS correctif IHM. (5) ScanProgress : AJOUTER un champ à défaut OK ; RETRAIT/changement de type = accord requis.
+FILTRE ADULTE (en cours) : contrat figé avec Zoé+Théo. FilterState.adultOnly:Boolean=false ajouté (includeAdult conservé). ImageQueryDao.observeFiltered gagne adultOnly:Int + adultLabel:String ; clause AND (:adultOnly = 0 OR EXISTS(SELECT 1 FROM image_labels ila WHERE ila.image_id=i.id AND ila.label_name=:adultLabel)). AdultOnly s'appuie sur image_labels (PAS is_adult : cache désync après révision label). ImageRepositoryImpl propage adultOnly/adultLabel et matchesFilter gère adultOnly via item.labels. UI 3 états : Tout=(includeAdult=1,adultOnly=0), Masquer=(0,0), Uniquement=(0,1). DETTE Zoé (v1.0.0 non bloquante) : aligner includeAdult sur image_labels (actuellement is_adult) ou garantir synchro is_adult.
 
-ÉTAT ImageDao RÉEL : insertAll(REPLACE)->List<Long>, update, clear, deleteById, getById, getAllWithLabels() (sans filtre).
+SCHÉMA DB RÉEL : image_labels(image_id, label_name) — label_name = CHAÎNE, FK vers labels.name ; PAS d'id numérique de libellé. label système adulte = ADULT_LABEL="adulte" (const dans domain/model/Label.kt). 
 
-CONTRAT back-end : ScanEngine(context, dispatchers, imageDao, mimeDetector, storageRootProvider, metadataReaderFactory=(Context)->MediaMetadataReader, preFilter:PreFilter, adultClassifier:AdultClassifier) ; scan() sans paramètre ; ScanProgress.Completed(count,durationMs,unclassifiedCount=0).
+DÉCISIONS ZOÉ (durables) : (1) Permission via RequestMultiplePermissions, API 26+. (2) FilterState.labels = IDs de libellé — ATTENTION en réalité labels=Set<String> de NOMS. Sémantique OU. (3) DAO filtré : observeFiltered avec adultOnly. (5) ScanProgress : AJOUTER un champ à défaut OK ; RETRAIT/changement type = accord requis.
+
+CONTRAT back-end : ScanEngine(...) ; scan() sans paramètre ; ScanProgress.Completed(count,durationMs,unclassifiedCount=0).
 
 LEÇON MAJEURE : write_file tronque les contenus LONGS -> ÉCRIRE COURT, 1 fichier/action, PUIS RELIRE avant d'annoncer.
-LEÇON : JSON échappé MAIS fichier écrit = source réel. OpenableColumns=DISPLAY_NAME/SIZE. Conflit résolu par Adam.

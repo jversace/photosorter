@@ -90,9 +90,9 @@ Rôle : Développeur back-end. Branche agent/léna. Modèle TFLite (~10,3 Mo) + 
 Tâches back-end clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a. e3a1d1a6/3983405f réaffectées à Zoé.
 - 4d0303c8 Tests unitaires back-end : 'à vérifier'.
 - c09d3de2 / 24b6deba (exécutable/wrapper) : MR #44 en attente validation Malo.
-- 9ec6eb25 Fix métadonnées file:// (bug 2056025b) : CORRECTIF DE FOND ACQUIS et validé par Zoé (MediaMetadataReader lit nom/taille/date depuis le File, resolver best-effort, dims bounds-only). MR #53 vers release/v1.0.0. Tâche 'à vérifier'.
+- 9ec6eb25 Fix métadonnées file:// (bug 2056025b) : CORRECTIF DE FOND ACQUIS et validé par Zoé. MR #53 vers release/v1.0.0. Tâche 'à vérifier'.
 
-BLOCAGE ÉCRITURE (remonté par Zoé à Malo) : write_file sur app/src/test/java/fr/photosorter/data/scanner/MediaMetadataReaderTest.kt NE S'APPLIQUE PAS sur agent/léna (marqueur // TEST-ECRITURE-LENA absent à la relecture, fichier inchangé = 2 tests sans @Config). Ne PAS réessayer en boucle, ne pas changer de chemin, ne pas contourner. Conséquence : ajouts de test (readsDimensionsFromFileUri, returnsNullForMissingFile, @Config(sdk=[29])) NON livrés ; pas bloquant pour la fusion. Leçon : toujours relire le fichier réel après écriture avant d'annoncer.
+BLOCAGE ÉCRITURE (remonté par Zoé à Malo) : write_file sur MediaMetadataReaderTest.kt NE S'APPLIQUE PAS sur agent/léna (marqueur // TEST-ECRITURE-LENA absent à la relecture). CONSIGNE Zoé : NE PAS re-pousser tant que Malo n'a pas confirmé le rétablissement. 4 tests PRÊTS à appliquer (contenu connu) : readsNameSizeAndDateFromFileUri + readsDimensionsFromFileUri (@Config(sdk=[29]) niveau méthode), existsAgainAfterReading (existant), returnsNullForMissingFile. Dès rétablissement : write_file -> RELIRE fichier réel -> seulement si marqueur/contenu PRÉSENT, prévenir Zoé (elle relit et clôture 9ec6eb25). Pas de clôture sur tests annoncés/absents.
 
 CONTRAT back-end (pour Théo/ui) : FilterState.labels = Set<String> (NOMS). ADULT_LABEL="adulte". Label = data class(name,isSystem,createdAt). ImageQueryDao.observeFiltered=10 params.
 

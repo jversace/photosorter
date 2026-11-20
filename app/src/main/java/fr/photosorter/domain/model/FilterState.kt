@@ -6,5 +6,6 @@ data class FilterState(
     val dateTo: Long? = null,
     val minSizeBytes: Long? = null,
     val labels: Set<String> = emptySet(),
-    val includeAdult: Boolean = true
+    val includeAdult: Boolean = true,
+    val adultOnly: Boolean = false,
 )

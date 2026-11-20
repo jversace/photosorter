@@ -39,6 +39,7 @@
     1. Zoé : créer la tâche associée (si échec : demander à l’utilisateur)
     2. Zoé : affecter la tâche à l'agent adapté (si échec : demander à l’utilisateur)
     3. démarrer les tâches prêtes (assignées, à faire, dépendances satisfaites) (si échec : arrêter)
+    4. Zoé : Passer le bug à l'état "en correction" (si échec : arrêter)
 
 ## Mon rôle
 Développeur back-end — Implémente la logique métier, les API et la base de données.

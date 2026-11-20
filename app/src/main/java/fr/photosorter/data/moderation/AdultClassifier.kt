@@ -24,12 +24,12 @@ import javax.inject.Singleton
  * (app/assets/model.tflite, labels app/assets/labels.txt).
  *
  * Labels (ordre) : drawings, neutral, porn, sexy.
- * Image consideree "adulte" si (porn + sexy) >= adultThreshold.
+ * Image consideree adulte si (porn + sexy) >= adultThreshold.
  *
  * 100% local.
  *
  * Normalisation d'entree PILOTEE PAR LA CONFIG du modele (app/assets/model.config,
- * cle 'scale'), jamais codee en dur. Valeurs : ZERO_ONE, ZERO_255, MINUS_ONE_ONE.
+ * cle scale), jamais codee en dur. Valeurs : ZERO_ONE, ZERO_255, MINUS_ONE_ONE.
  * En l'absence de config, on retombe sur DEFAULT_INPUT_SCALE (hypothese a confirmer
  * avec la config d'entrainement reelle du modele).
  */
@@ -74,7 +74,10 @@ class AdultClassifier @Inject constructor(
     @Volatile private var initTried = false
 
     private val unavailableCounter = AtomicInteger(0)
+
+    /** Nombre d'images non classees (Unavailable) depuis le dernier reset. Exploitable par le rapport de scan. */
     val unavailableCount: Int get() = unavailableCounter.get()
+
     fun resetUnavailableCount() { unavailableCounter.set(0) }
 
     val isReady: Boolean get() = interpreter != null
@@ -126,101 +129,89 @@ class AdultClassifier @Inject constructor(
     private fun loadInputScale(): InputScale {
         return runCatching {
             context.assets.open(CONFIG_FILE).bufferedReader().use { reader ->
-                reader.readLines().firstOrNull { it.trim().startsWith("scale") }
-                    ?.substringAfter("=", "")?.let { InputScale.parse(it) }
+                reader.readLines()
+                    .firstOrNull { it.trim().startsWith("scale") }
+                    ?.substringAfter("=", "")
+                    ?.let { InputScale.parse(it) }
             }
         }.getOrNull()?.also { Log.i(TAG, "InputScale lu depuis $CONFIG_FILE : $it") }
             ?: DEFAULT_INPUT_SCALE.also { Log.w(TAG, "Pas de config d'echelle : defaut $it (a confirmer)") }
     }
 
-    private fun decodeScaled(uri: Uri): Bitmap? = try {
-        decodeFromStream(uri) ?: decodeFromFile(uri)
-    } catch (t: Throwable) {
-        Log.w(TAG, "Decodage echoue ($uri) : ${t.message}")
-        try { decodeFromFile(uri) } catch (t2: Throwable) { null }
-    }
-
-    private fun decodeFromStream(uri: Uri): Bitmap? = context.contentResolver.openInputStream(uri)?.use { input ->
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeStream(input, null, bounds)
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
-        val sample = calculateSampleSize(bounds.outWidth, bounds.outHeight, inputSize)
-        context.contentResolver.openInputStream(uri)?.use { input2 ->
-            val opts = BitmapFactory.Options().apply { inSampleSize = sample }
-            BitmapFactory.decodeStream(input2, null, opts)
-        }?.let { Bitmap.createScaledBitmap(it, inputSize, inputSize, true).also { scaled ->
-            if (scaled !== it) it.recycle()
-        } }
-    }
-
-    private fun decodeFromFile(uri: Uri): Bitmap? {
-        if (uri.scheme != "file") return null
-        val path = uri.path ?: return null
-        val file = File(path)
-        if (!file.exists()) return null
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(path, bounds)
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
-        val sample = calculateSampleSize(bounds.outWidth, bounds.outHeight, inputSize)
-        val opts = BitmapFactory.Options().apply { inSampleSize = sample }
-        val decoded = BitmapFactory.decodeFile(path, opts) ?: return null
-        return Bitmap.createScaledBitmap(decoded, inputSize, inputSize, true).also { scaled ->
-            if (scaled !== decoded) decoded.recycle()
+    private fun decodeScaled(uri: Uri): Bitmap? {
+        val fromResolver = runCatching { decodeFromStream(uri) }.getOrNull()
+        if (fromResolver != null) return fromResolver
+        if (uri.scheme == "file") {
+            val path = uri.path
+            if (!path.isNullOrBlank()) {
+                return runCatching {
+                    FileInputStream(File(path)).use { decodeFromStream(it) }
+                }.onFailure { Log.w(TAG, "Repli FileInputStream echoue : ${it.message}") }.getOrNull()
+            }
         }
+        return null
     }
 
-    private fun calculateSampleSize(w: Int, h: Int, target: Int): Int {
+    private fun decodeFromStream(uri: Uri): Bitmap? =
+        context.contentResolver.openInputStream(uri)?.use { decodeFromStream(it) }
+
+    private fun decodeFromStream(input: java.io.InputStream): Bitmap? {
+        val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeStream(input, null, opts)
+        if (opts.outWidth <= 0 || opts.outHeight <= 0) return null
+        val sample = calculateSampleSize(opts.outWidth, opts.outHeight)
+        val decodeOpts = BitmapFactory.Options().apply { inSampleSize = sample }
+        return BitmapFactory.decodeStream(input, null, decodeOpts)
+    }
+
+    private fun calculateSampleSize(width: Int, height: Int): Int {
         var sample = 1
-        var minSide = minOf(w, h)
-        while (minSide / sample > target * 2) sample *= 2
+        while (width / sample > inputSize || height / sample > inputSize) sample *= 2
         return sample
     }
 
     private fun toInputBuffer(bitmap: Bitmap): ByteBuffer {
-        val buffer = ByteBuffer.allocateDirect(inputSize * inputSize * 3 * 4)
-            .order(ByteOrder.nativeOrder())
+        val scaled = Bitmap.createScaledBitmap(bitmap, inputSize, inputSize, true)
+        val buffer = ByteBuffer.allocateDirect(4 * inputSize * inputSize * 3).order(ByteOrder.nativeOrder())
         val pixels = IntArray(inputSize * inputSize)
-        bitmap.getPixels(pixels, 0, inputSize, 0, 0, inputSize, inputSize)
-        val scale = inputScale
-        for (p in pixels) {
-            buffer.putFloat(scale.apply((p shr 16) and 0xFF))
-            buffer.putFloat(scale.apply((p shr 8) and 0xFF))
-            buffer.putFloat(scale.apply(p and 0xFF))
+        scaled.getPixels(pixels, 0, inputSize, 0, 0, inputSize, inputSize)
+        for (pixel in pixels) {
+            buffer.putFloat(inputScale.apply((pixel shr 16) and 0xFF))
+            buffer.putFloat(inputScale.apply((pixel shr 8) and 0xFF))
+            buffer.putFloat(inputScale.apply(pixel and 0xFF))
         }
         buffer.rewind()
+        if (scaled !== bitmap) scaled.recycle()
         return buffer
     }
 
     private fun normalize(raw: FloatArray): FloatArray {
-        var sum = 0f
-        for (v in raw) sum += v
-        if (sum in 0.9f..1.1f) return raw
-        val max = raw.maxOrNull() ?: 0f
-        val exps = FloatArray(raw.size) { kotlin.math.exp((raw[it] - max).toDouble()).toFloat() }
-        val s = exps.sum().coerceAtLeast(1e-6f)
-        return FloatArray(exps.size) { exps[it] / s }
-    }
-
-    private fun loadModelFile(): MappedByteBuffer {
-        context.assets.openFd(MODEL_FILE).use { afd: AssetFileDescriptor ->
-            FileInputStream(afd.fileDescriptor).use { fis: FileInputStream ->
-                return fis.channel.map(
-                    FileChannel.MapMode.READ_ONLY,
-                    afd.startOffset,
-                    afd.declaredLength
-                )
-            }
+        val sum = raw.sum()
+        return if (sum in 0.9f..1.1f && raw.all { it in 0f..1f }) raw
+        else {
+            val exp = raw.map { kotlin.math.exp(it.toDouble()) }
+            val total = exp.sum()
+            FloatArray(raw.size) { (exp[it] / total).toFloat() }
         }
     }
 
-    private companion object {
-        const val TAG = "AdultClassifier"
-        const val MODEL_FILE = "model.tflite"
-        const val CONFIG_FILE = "model.config"
-        val DEFAULT_INPUT_SCALE = InputScale.ZERO_ONE
-        const val LABEL_COUNT = 4
-        const val DEFAULT_INPUT_SIZE = 224
-        const val THREADS = 2
-        const val adultThreshold = 0.5f
+    private fun loadModelFile(): MappedByteBuffer {
+        val afd: AssetFileDescriptor = context.assets.openFd(MODEL_FILE)
+        FileInputStream(afd.fileDescriptor).use { fis ->
+            return fis.channel.map(FileChannel.MapMode.READ_ONLY, afd.startOffset, afd.declaredLength)
+        }
+    }
+
+    companion object {
+        private const val TAG = "AdultClassifier"
+        private const val MODEL_FILE = "model.tflite"
+        private const val CONFIG_FILE = "model.config"
+        private const val LABEL_COUNT = 4
+        private const val DEFAULT_INPUT_SIZE = 224
+        private const val THREADS = 2
+        private const val adultThreshold = 0.5f
+
+        /** A confirmer avec la config d'entrainement reelle du modele (reponse utilisateur en attente). */
+        val DEFAULT_INPUT_SCALE: InputScale = InputScale.ZERO_ONE
     }
 }

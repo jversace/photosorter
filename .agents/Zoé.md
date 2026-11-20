@@ -99,22 +99,22 @@ agent/zoé
 
 ## FILTRES (DÉCISION FINALE alignée schéma réel)
 - FilterState : labels:Set<String> (NOMS, OU/IN) + includeAdult:Boolean + adultOnly:Boolean=false (champ DÉDIÉ, contrainte ET 'uniquement adulte').
-- adultOnly -> EXISTS(image_labels il WHERE il.image_id=i.id AND il.label_name = :adultLabel), :adultLabel=ADULT_LABEL. PAS via is_adult par défaut (cache). Léna vérifie qui écrit is_adult ; si fiable -> raccourci OK sinon image_labels.
-- DAO observeFiltered : garder signature existante (labels noms, includeAdult) + AJOUTER adultOnly. Room ne surcharge pas @Query : une requête avec param adultOnly + clause conditionnelle (:adultOnly=0 OR EXISTS(...)), ou 2 @Query distinctes. NE PAS casser l'appel de Théo.
-- UI Théo : 3 chips Tout/Masquer/Uniquement -> (includeAdult, adultOnly) ; ne touche pas labels. Conforme.
+- adultOnly -> EXISTS(image_labels il WHERE il.image_id=i.id AND il.label_name = :adultLabel), :adultLabel=ADULT_LABEL. PAS via is_adult.
+- DAO observeFiltered : garder signature existante (labels noms, includeAdult) + AJOUTER adultOnly/adultLabel. Room ne surcharge pas @Query : clause conditionnelle (:adultOnly=0 OR EXISTS(...)) ou 2 @Query. NE PAS casser l'appel de Théo.
+- UI Théo : 3 chips Tout(includeAdult=true,adultOnly=false) / Masquer(false,false) / Uniquement(false,true) ; ne touche pas labels. Conforme.
+- DETTE : includeAdult s'appuie sur is_adult (cache) alors qu'adultOnly s'appuie sur image_labels -> risque de divergence 'Tout' vs 'Uniquement' si is_adult désynchronisé. v1.0.0: garder adultOnly=image_labels. Tâche de suivi à proposer (1er niveau, validation utilisateur) : aligner includeAdult sur image_labels OU garantir synchro is_adult à chaque révision.
 
 ## DÉTECTION ADULTE — 2 problèmes
 (1) MODÈLE NON CHARGÉ : openFd échoue si tflite compressé -> noCompress 'tflite' + repli ByteBuffer.
 (2) InputScale paramétrable + model.config + logScores ; valeur finale en attente appareil.
 
 ## ÉTAT release/v1.0.0 — VÉRIFIÉ NON À JOUR
-- ScanScreen.kt base=4974 o (sans permission), AdultClassifier.kt base=6047 o (sans repli).
-- Fusions #60/#61 'aucun fichier modifié' -> n'ont rien apporté. NE PAS rebuilder APK. Malo réécrit les 2 fichiers sur agent/malo ; re-vérifier par lecture base après application réelle.
+- ScanScreen.kt base=4974 o (sans permission), AdultClassifier.kt base=6047 o (sans repli). Fusions #60/#61 'aucun fichier modifié' -> n'ont rien apporté. NE PAS rebuilder APK. Malo réécrit les 2 fichiers sur agent/malo ; re-vérifier par lecture base après application réelle.
 
 ## '0 image au scan' = permission runtime non accordée (confirmé). Correctif = ScanScreen Théo/Malo.
 
 ## DÉFAUT ARCHI LATENT (après stabilisation release)
-ImageDao : vérifier présence Flow réactif pour galerie. À proposer tâche si absent.
+ImageDao sans Flow réactif -> galerie non rafraîchie. Tâche 1er niveau à proposer.
 
 ## Limites d'outil
 - mr_review/resolve_merge renvoient états incohérents ; messages parfois 400 (crédit). TOUJOURS vérifier par read_file sur la base.

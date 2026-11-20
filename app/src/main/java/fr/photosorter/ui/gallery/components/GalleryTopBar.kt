@@ -5,6 +5,8 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Label
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.DropdownMenu
@@ -58,6 +60,9 @@ internal fun GalleryTopBar(
         TopAppBar(
             title = { Text(stringResource(R.string.gallery_title)) },
             actions = {
+                IconButton(onClick = onOpenScan) {
+                    Icon(Icons.Filled.Search, stringResource(R.string.action_open_scan))
+                }
                 IconButton(onClick = onToggleDisplayMode) {
                     Icon(
                         imageVector = if (displayMode == GalleryDisplayMode.GRID) Icons.Filled.ViewList
@@ -67,6 +72,9 @@ internal fun GalleryTopBar(
                 }
                 IconButton(onClick = onOpenFilters) {
                     Icon(Icons.Filled.FilterList, stringResource(R.string.action_filters))
+                }
+                IconButton(onClick = onOpenLabels) {
+                    Icon(Icons.Filled.Label, stringResource(R.string.action_open_labels))
                 }
                 IconButton(onClick = { sortMenuOpen = true }) {
                     Icon(Icons.AutoMirrored.Filled.Sort, stringResource(R.string.action_sort))

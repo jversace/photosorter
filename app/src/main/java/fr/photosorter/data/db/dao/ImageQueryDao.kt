@@ -28,11 +28,18 @@ interface ImageQueryDao {
      * Filtres : formats (liste vide = tous), plage de dates [dateFrom, dateTo],
      * taille min, libellés (OR : image ayant AU MOINS un des libellés demandés),
      * includeAdult = 0 exclut les images adultes.
+     *
+     * adultOnly = 1 => n'afficher QUE les images portant le libellé système adulte.
+     * La source de vérité de l'association image/libellé est la table image_labels
+     * (instruction n°224) : on ne s'appuie PAS sur images.is_adult, qui est un cache
+     * potentiellement désynchronisé après révision du label par l'utilisateur.
+     * La condition est indépendante (ET) des autres filtres libellés.
      */
     @Transaction
     @Query(
         "SELECT * FROM images i " +
         "WHERE (:includeAdult = 1 OR i.is_adult = 0) " +
+        "AND (:adultOnly = 0 OR EXISTS (SELECT 1 FROM image_labels ila WHERE ila.image_id = i.id AND ila.label_name = :adultLabel)) " +
         "AND (:hasFormats = 0 OR i.format IN (:formats)) " +
         "AND (:dateFrom IS NULL OR i.date_modified >= :dateFrom) " +
         "AND (:dateTo IS NULL OR i.date_modified <= :dateTo) " +
@@ -66,6 +73,8 @@ interface ImageQueryDao {
         sort: Int,
         asc: Int,
         includeAdult: Int,
+        adultOnly: Int,
+        adultLabel: String,
         hasFormats: Int,
         formats: List<String>,
         dateFrom: Long?,

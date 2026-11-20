@@ -20,14 +20,14 @@ import javax.inject.Singleton
 
 /**
  * Moteur de scan de bout en bout :
- * 1) Enumère les racines de stockage (interne + carte SD).
- * 2) Parcourt récursivement via [StorageWalker] (exclusions système).
- * 3) Lit les métadonnées (taille, date, format, dimensions, MIME).
- * 4) Modération adulte : pré-filtre screenshots/documents puis classifieur TFLite.
- * 5) Écrit dans Room par lots (batch).
- * 6) Émet [ScanProgress] en temps réel sur un Flow.
+ * 1) Enumere les racines de stockage (interne + carte SD).
+ * 2) Parcourt recursivement via [StorageWalker] (exclusions systeme).
+ * 3) Lit les metadonnees (taille, date, format, dimensions, MIME).
+ * 4) Moderation adulte : pre-filtre screenshots/documents puis classifieur TFLite.
+ * 5) Ecrit dans Room par lots (batch).
+ * 6) Emet [ScanProgress] en temps reel sur un Flow.
  *
- * 100% local : aucun envoi de données à l'extérieur.
+ * 100% local : aucun envoi de donnees a l'exterieur.
  */
 @Singleton
 class ScanEngine @Inject constructor(
@@ -54,7 +54,7 @@ class ScanEngine @Inject constructor(
         cancelled.set(true)
     }
 
-    /** Lance un scan complet. Renvoie l'état final. Idempotent : ignoré si déjà en cours. */
+    /** Lance un scan complet. Renvoie l'etat final. Idempotent : ignore si deja en cours. */
     suspend fun scan(): ScanProgress = withContext(dispatchers.io) {
         if (running) return@withContext _progress.value
         running = true
@@ -64,18 +64,18 @@ class ScanEngine @Inject constructor(
         val buffer = ArrayList<ImageEntity>(BATCH_SIZE)
         var written = 0
 
-        // Initialise le classifieur (dégrade proprement si modèle absent).
+        // Initialise le classifieur (degrade proprement si modele absent).
         adultClassifier.ensureInitialized()
+        // Remet a zero le compteur d'images non classees pour ce scan.
+        adultClassifier.resetUnavailableCount()
 
         try {
             val roots = storageRootProvider.roots()
-            // Passe 1 : collecter les fichiers (total connu pour la progression).
             val files = ArrayList<ScannedFile>(1024)
-            _progress.value = ScanProgress.Running(done = 0, total = 0, current = "Analyse du stockage…")
+            _progress.value = ScanProgress.Running(done = 0, total = 0, current = "Analyse du stockage...")
             walker.walk(roots, cancelled) { files.add(it) }
             val total = files.size
 
-            // Passe 2 : métadonnées + modération + écriture par lots.
             for ((index, file) in files.withIndex()) {
                 if (cancelled.get()) break
                 val meta = reader.read(file.uri) ?: continue
@@ -108,9 +108,13 @@ class ScanEngine @Inject constructor(
 
             val duration = SystemClock.elapsedRealtime() - startedAt
             val result = if (cancelled.get()) {
-                ScanProgress.Error("Scan annulé")
+                ScanProgress.Error("Scan annule")
             } else {
-                ScanProgress.Completed(count = written, durationMs = duration)
+                ScanProgress.Completed(
+                    count = written,
+                    durationMs = duration,
+                    unclassifiedCount = adultClassifier.unavailableCount
+                )
             }
             _progress.value = result
             result
@@ -124,9 +128,9 @@ class ScanEngine @Inject constructor(
     }
 
     /**
-     * Détermine si une image est adulte.
-     * 1) Pré-filtre : screenshots/documents → non adulte (révisable par l'utilisateur).
-     * 2) Sinon classifieur TFLite ; si indisponible, non adulte.
+     * Determine si une image est adulte.
+     * 1) Pre-filtre : screenshots/documents -> non adulte (revisable par l'utilisateur).
+     * 2) Sinon classifieur TFLite ; si indisponible -> non adulte (compte comme non classee).
      */
     private suspend fun detectAdult(uri: Uri, name: String): Boolean {
         return when (preFilter.decide(uri.path, name)) {

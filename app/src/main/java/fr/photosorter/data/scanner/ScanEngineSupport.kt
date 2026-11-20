@@ -58,10 +58,12 @@ internal suspend fun flushImages(
 
 /**
  * Determine si une image est adulte : pre-filtre (screenshots/documents =
- * court-circuit) puis classifieur TFLite. Un resultat indisponible est traite
- * comme non-adulte (conservateur) ; le compteur est gere par le classifieur.
+ * court-circuit SYNCHRONE) puis classifieur TFLite (classify() est suspend,
+ * d'ou le detectAdult suspend ; il s'execute dans la coroutine de scan).
+ * Un resultat indisponible est traite comme non-adulte (conservateur) ; le
+ * compteur est gere par le classifieur.
  */
-internal fun detectAdult(uri: Uri, name: String, preFilter: PreFilter, classifier: AdultClassifier): Boolean {
+internal suspend fun detectAdult(uri: Uri, name: String, preFilter: PreFilter, classifier: AdultClassifier): Boolean {
     when (preFilter.decide(uri.toString(), name)) {
         PreFilterDecision.SKIP -> return false
         PreFilterDecision.ANALYZE -> Unit

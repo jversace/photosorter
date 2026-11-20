@@ -89,7 +89,9 @@ class AdultClassifier @Inject constructor(
             interpreter = runCatching {
                 val model = loadModelFile()
                 Interpreter(model, Interpreter.Options().apply { setNumThreads(THREADS) })
-            }.onFailure { Log.w(TAG, "Modele TFLite indisponible : ${it.message}") }.getOrNull()
+            }.onFailure { e ->
+                Log.w(TAG, "Modele TFLite indisponible : ${e.javaClass.simpleName}: ${e.message}")
+            }.getOrNull()
             interpreter?.let { interp ->
                 val shape = interp.getInputTensor(0).shape()
                 if (shape.size == 4 && shape[1] > 0) inputSize = shape[1]
@@ -111,7 +113,7 @@ class AdultClassifier @Inject constructor(
             val adultScore = (probs[2] + probs[3]).coerceIn(0f, 1f)
             Result.Scored(isAdult = adultScore >= ADULT_THRESHOLD)
         } catch (t: Throwable) {
-            Log.w(TAG, "Inference echouee : ${t.message}")
+            Log.w(TAG, "Inference echouee : ${t.javaClass.simpleName}: ${t.message}")
             markUnavailable("inference: ${t.message}")
         } finally {
             bitmap.recycle()
@@ -207,7 +209,8 @@ class AdultClassifier @Inject constructor(
     /**
      * Charge le modele en ByteBuffer. Cas nominal : openFd() + map (asset non compresse).
      * Si l'asset est compresse, openFd() echoue ("can not be opened as a file descriptor;
-     * it is probably compressed") : repli sur une copie de l'InputStream dans un ByteBuffer direct.
+     * it is probably compressed") : repli sur une copie de l'InputStream dans un ByteBuffer
+     * DIRECT (obligatoire pour TFLite, un buffer heap serait rejete).
      * Le type de retour est ByteBuffer (super-type commun de MappedByteBuffer et ByteBuffer).
      */
     private fun loadModelFile(): ByteBuffer {
@@ -218,12 +221,12 @@ class AdultClassifier @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Log.w(TAG, "openFd a echoue (asset compresse ?), repli copie flux : ${e.message}")
+            Log.w(TAG, "openFd a echoue (${e.javaClass.simpleName}: ${e.message}), repli copie flux direct : $MODEL_FILE")
             val bytes = context.assets.open(MODEL_FILE).use { it.readBytes() }
-            val buffer = ByteBuffer.allocateDirect(bytes.size).order(ByteOrder.nativeOrder())
-            buffer.put(bytes)
-            buffer.rewind()
-            buffer
+            val direct = ByteBuffer.allocateDirect(bytes.size).order(ByteOrder.nativeOrder())
+            direct.put(bytes)
+            direct.rewind()
+            direct
         }
     }
 

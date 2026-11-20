@@ -93,19 +93,19 @@ Développeur front-end — IHM. Branche : agent/théo.
 ## Décisions durables (IHM)
 - Jetpack Compose + Material 3, mono-activity, API 26.
 - Structure ui/ : theme/, navigation/, screens/, gallery/, detail/, labels/, scan/.
-- ViewModels @HiltViewModel sur interfaces de domaine (ImageRepository, LabelRepository).
+- ViewModels @HiltViewModel sur interfaces de domaine.
 - Strings FR dans app/src/main/res/values/strings.xml. TOUJOURS vérifier qu'une R.string.* utilisée existe (cause d'échec Kotlin).
 
 ## Décisions validées par Zoé
-- Permission scan : ActivityResultContracts.RequestMultiplePermissions, API plateforme, sans Accompanist. READ_MEDIA_IMAGES (API>=33) sinon READ_EXTERNAL_STORAGE (<=32). Bouton scan désactivé tant que non accordée, message si refusée. PAS ENCORE CODÉ (attente décision n°1 : cause (a) rebuild vs (b) permission).
-- Filtre 'adulte uniquement' = labels=setOf(ADULT_LABEL) dans FilterState, PAS de champ onlyAdult. Léna confirme que observeFiltered le supporte (hasLabels + labels). Jointure DAO à confirmer par Léna.
-- FilterState.labels = Set<String> (NOMS de libellés, pas d'IDs). ADULT_LABEL="adulte", Label(name,isSystem,createdAt). Pas de Label Int côté IHM.
+- Permission scan : ActivityResultContracts.RequestMultiplePermissions, API plateforme, sans Accompanist. READ_MEDIA_IMAGES (API>=33) sinon READ_EXTERNAL_STORAGE (<=32). Bouton scan désactivé tant que non accordée, message si refusée. CODÉ (tâche f4f04627, MR #57, à vérifier).
+- Filtre 'adulte uniquement' = labels=setOf(ADULT_LABEL) dans FilterState, PAS de champ onlyAdult. Jointure DAO à confirmer par Léna.
+- FilterState.labels = Set<String> (NOMS de libellés). ADULT_LABEL="adulte".
 
-## État ScanScreen
-- AUCUN contrôle de permission : bouton appelle directement startScan(). Lacune confirmée à Zoé+Léna. Fix planifié, non codé.
+## ScanScreen — état
+- Contrôle + demande de permission runtime IMPLÉMENTÉS (f4f04627, MR #57).
 
-## Correctif GalleryTopBar
-- onOpenScan/onOpenLabels étaient reçus mais jamais utilisés -> boutons ajoutés. R.string.action_scan inexistante -> corrigée en action_open_scan. À committer.
+## À FAIRE (non urgent, après push de Léna)
+- Consommer le nouveau champ report.unclassifiedCount: Int (=0 par défaut) = nombre d'images NON analyseeables (classification adulte échouée), distinct de 'normale'. Afficher sur l'écran de scan un texte discret 'N image(s) non analysée(s)' UNIQUEMENT si N>0, ton neutre. Ajouter chaîne FR (format %1$d). Rien avant que Léna ait poussé le champ.
 
 ## workflow release v1.0.0
 - Commit sur agent/théo -> merge_request vers release/v1.0.0 ; Zoé merge ; pull.
@@ -121,4 +121,4 @@ Développeur front-end — IHM. Branche : agent/théo.
 - 4060ffc0, 5ee8aef7, e93e44ff, 79906e61, f1d46c78, 10f2b02d, a3be7352.
 
 ## État projet
-- v1.0.0 : 17 tâches terminées. Bug 2056025b '0 image' : correctif back-end sur release ; causes possibles (a) APK ancien, (b) permission non accordée. Attente décision n°1.
+- v1.0.0 : 17 tâches terminées. Bug '0 image' (f6eb4edf détection adulte) : cause '0 image' = permission runtime non accordée (confirmé terrain), corrigée côté IHM par f4f04627.

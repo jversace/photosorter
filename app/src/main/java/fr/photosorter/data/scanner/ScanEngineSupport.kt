@@ -22,7 +22,7 @@ internal const val MSG_ERROR = "Erreur de scan"
 /**
  * Insere un lot d'images ET les associations au libelle systeme 'adulte' de
  * facon ATOMIQUE (meme transaction Room). Le libelle 'adulte' est cree s'il
- * n'existe pas encore, puis les liens image->adulte sont inseres.
+ * n'existe pas encore, puis les liens image->adulte sont inseres (IGNORE).
  * @return le nombre d'images reellement inserees.
  */
 internal suspend fun flushImages(
@@ -44,7 +44,9 @@ internal suspend fun flushImages(
         inserted = ids.count { it > 0L }
         if (adultIds.isNotEmpty()) {
             if (labelDao.getByName(ADULT_LABEL) == null) {
-                labelDao.insert(LabelEntity(name = ADULT_LABEL, isSystem = true))
+                labelDao.insert(
+                    LabelEntity(name = ADULT_LABEL, isSystem = true, createdAt = System.currentTimeMillis())
+                )
             }
             imageLabelDao.insertAll(
                 adultIds.map { ImageLabelEntity(imageId = it, labelName = ADULT_LABEL) }

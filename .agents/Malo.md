@@ -105,22 +105,17 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - task_status 'en validation' n'existe pas dans l'outil : utiliser 'à vérifier'.
 - mr_review et task_review renvoient souvent 'pas en attente' même quand get_blockers les liste : normal, déjà traité automatiquement. Ne pas réessayer indéfiniment.
 - isMinifyEnabled=false pour v1.0.0. R8/ProGuard à réactiver en v1.1+ après test d'un APK release signé sur appareil physique avec règles ProGuard adaptées (Room/Hilt/TFLite/coroutines).
-- noCompress += "tflite" confirmé par Zoé et Léna : model.tflite non compressé dans l'APK. openFd() fonctionne. Repli ByteBuffer conservé comme filet de sécurité. Taille APK légèrement supérieure : normal.
+- noCompress += "tflite" confirmé par Zoé et Léna : model.tflite non compressé dans l'APK. openFd() fonctionne. Repli ByteBuffer conservé comme filet de sécurité.
 - InputScale (normalisation TFLite) : paramétrable via app/assets/model.config (clé scale=). Défaut : ZERO_ONE.
 
 ## État actuel
 
-- Toutes tâches back-end Léna : terminées ✓
-- Tâche 3a354e9c (log enrichi + normalisation paramétrable + repli DirectByteBuffer) : acceptée ✓
-  - MR #62 fusionnée dans release/v1.0.0 ✓
-  - Code final : InputScale enum, loadInputScale() lecture model.config, repli FileInputStream uri file://, comptage Unavailable, log scores bruts+normalisés
-- **Blocage actuel** : TFLite refuse toujours le modèle sur appareil (openFd échoue + repli échoue)
-  - Log enrichi disponible dans le build actuel → rebuild APK nécessaire pour obtenir le type d'exception réel
-  - En attente log utilisateur : 'Modele TFLite indisponible : XXX: ...'
-- Tâches corrections ouvertes : 1c5cab0a (Scanneur), 7445b925 (IHM) — sans sous-tâches actives
-- Sous-tâche 3983405f (URI content:// FileActions) : terminée ✓
-- Sous-tâche 9ec6eb25 (métadonnées file://) : terminée ✓
-- Sous-tâche 3222873d (normalisation paramétrable + repli FileInputStream) : terminée ✓
+- Tâche dc4d6e94 (SAF OpenDocumentTree copier/déplacer) : acceptée, MR #66 fusionnée
+- Tâche 87c5f661 (filtre adultOnly) : acceptée (test unitaire DAO ajouté), MR #67 fusionnée
+- Bug a65dffe2 (filtre adulte) : corrigé
+- Tâche 4f0b27e5 (FOREIGN KEY ImageLabelDao) : en cours chez Léna
+- Bug 4cd6654d (crash FOREIGN KEY) : en correction
+- Tâches corrections ouvertes : 1c5cab0a (Scanneur), 7445b925 (IHM)
 
 ## Modèle Label (confirmé)
 - Label : name, isSystem, createdAt
@@ -136,25 +131,26 @@ model.config (clé scale=) à créer par l'utilisateur si normalisation non ZERO
 - app/build.gradle.kts : signingConfigs release, isMinifyEnabled=false
 - keystore.properties.example fourni, keystore.properties dans .gitignore
 - docs/installation.md : guide complet sideloading + ADB
-- MR #34 fusionnée dans release/v1.0.0 ✓
+- MR #34 fusionnée dans release/v1.0.0
 
 ## Wrapper Gradle (tâche 24b6deba — terminée)
 - gradlew, gradlew.bat, gradle/wrapper/gradle-wrapper.properties (Gradle 8.9) dans release/v1.0.0
 - .gitignore : exception !gradle-wrapper.jar, exclusions keystore/APK/AAB
-- docs/installation.md : section 1bis + dépannage ClassNotFoundException
 - Réserve : gradle-wrapper.jar (~60 Ko binaire) à générer depuis un poste Gradle
-- MR #44 fusionnée dans release/v1.0.0 ✓
+- MR #44 fusionnée dans release/v1.0.0
 
 ## MR fusionnées
-- MR #34 (Malo, packaging) ✓
-- MR #41 (Léna, Room aliases) ✓
-- MR #44 (Léna, wrapper + exécutable) ✓
-- MR #45 (Léna, Room ORDER BY + FileActions + MimeTypeDetector + lifecycle) ✓
-- MR #46 (Léna, DataModule.kt) ✓
-- MR #48 (Léna, ScannerModule supprimé) ✓
-- MR #49 (Malo, @JvmSuppressWildcards) ✓
-- MR #53 (Léna, MediaMetadataReader fix) ✓
-- MR #54 (Léna, MediaMetadataReader fix v2) ✓
-- MR #56 (Léna, détection adulte normalisation) ✓
-- MR #58 (Léna, chargement modèle tolerant asset compressé) ✓
-- MR #62 (Léna, log enrichi AdultClassifier) ✓
+- MR #34 (Malo, packaging)
+- MR #41 (Léna, Room aliases)
+- MR #44 (Léna, wrapper + exécutable)
+- MR #45 (Léna, Room ORDER BY + FileActions + MimeTypeDetector + lifecycle)
+- MR #46 (Léna, DataModule.kt)
+- MR #48 (Léna, ScannerModule supprimé)
+- MR #49 (Malo, @JvmSuppressWildcards)
+- MR #53 (Léna, MediaMetadataReader fix)
+- MR #54 (Léna, MediaMetadataReader fix v2)
+- MR #56 (Léna, détection adulte normalisation)
+- MR #58 (Léna, chargement modèle tolerant asset compressé)
+- MR #62 (Léna, log enrichi AdultClassifier)
+- MR #66 (Théo, SAF OpenDocumentTree)
+- MR #67 (Léna, syncAdultLabels)

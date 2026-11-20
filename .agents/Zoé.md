@@ -48,7 +48,7 @@ agent/zoé
 - Valider (fusionner) ou refuser les merge requests des autres agents : libre
 - Associer tâches et bugs à des modules : libre
 - Niveau d'autonomie du projet : équilibré
-- Agents joignables : Malo, Adam, Léna, Théo
+- Agents joignables : Malo, Léna, Théo
 
 ## Actions (un objet JSON par bloc ```action ... ```) :
 {"do":"list_files","path":"<dossier, vide pour la racine>","agent":"<prénom ou base, facultatif>"} : lister un dossier du dépôt (ta branche, ou en lecture seule celle d’un autre agent)
@@ -99,25 +99,29 @@ agent/zoé
 
 ## DÉCISIONS ARCHI
 - Permission runtime IHM : ActivityResultContracts.RequestMultiplePermissions, SANS Accompanist. READ_MEDIA_IMAGES (≥33) sinon READ_EXTERNAL_STORAGE (≤32). Bouton scan désactivé, message si refus. Code Théo (ScanScreen.kt) CONFORME au contrat (vérifié).
-- FilterState.labels = IDs (Set<String>). Sémantique OU (IN). Filtre adulte = labels = setOf(ADULT_LABEL_ID), pas de bool onlyAdult.
-- getWithLabelsFiltered(labelIds: Set<String>) : signature validée (OU) MAIS PAS ENCORE écrite dans ImageDao. Ne pas présenter comme en place.
+- FilterState.labels = IDs (Set<String>). Sémantique OU (IN). Filtre adulte = labels = setOf(ADULT_LABEL_ID).
+- getWithLabelsFiltered(labelIds: Set<String>) : signature validée (OU) MAIS PAS ENCORE écrite dans ImageDao.
 
-## DÉTECTION ADULTE (bug f6eb4edf)
-DEUX problèmes distincts, ne pas confondre :
-(1) MODÈLE NON CHARGÉ (cause racine réelle, logs appareil) : assets.openFd() échoue car AGP compresse model.tflite. Correctif : noCompress += "tflite" dans app/build.gradle.kts (TRANCHE par moi, en place) + repli loadModelFile() par copie ByteBuffer (défense en profondeur, gardé). Tâche 3a354e9c 'à vérifier', MR #58.
-(2) InputScale (normalisation [0,1]/[0,255]/[-1,1]) : mécanisme paramétrable + assets/model.config + défaut documenté livré ; VALEUR FINALE en attente réponse utilisateur (config d'entraînement du modèle). Ne pas dire 'détection réparée' tant que scores non vérifiés sur appareil.
-- unavailableCount:Int=0 ajouté au rapport de scan (ScanProgress.Completed), KDoc 'non classée ≠ normale'. Théo le consommera (affichage discret si >0) après push.
+## DÉTECTION ADULTE (bug f6eb4edf) — DEUX problèmes distincts
+(1) MODÈLE NON CHARGÉ (cause racine, logs appareil) : assets.openFd() échoue car model.tflite compressé par AGP. Correctif : noCompress += "tflite" dans app/build.gradle.kts (TRANCHE) + repli loadModelFile() copie ByteBuffer (agent/malo).
+(2) InputScale : mécanisme paramétrable + model.config + logScores livrés (agent/malo) ; VALEUR FINALE en attente config d'entraînement. Ne pas dire 'détection réparée' tant que scores non vérifiés appareil.
+
+## ÉTAT RÉEL DE release/v1.0.0 (vérifié par lecture, à re-vérifier)
+AU 2025-xx : release/v1.0.0 N'EST PAS COMPLET. Constat lecture directe base :
+- ScanScreen.kt base = 4974 o = ANCIENNE version SANS permission (version Théo=7558 o NON fusionnée). MR #57 NON mergée.
+- AdultClassifier.kt base = 6047 o = ANCIENNE version sans repli (openFd seul + map). MR #58 NON mergée.
+- Conflit n°249 (AdultClassifier.kt agent/malo vs release) : resolve_merge m'a refusé ('aucun conflit confié sous cet id'). MR bloquée côté outil. Malo -> application MANUELLE des 2 fichiers par l'utilisateur (décision n°249 en attente). NE PAS recréer. Après application, re-vérifier par lecture (ScanScreen ~7558 o ; AdultClassifier avec repli ByteBuffer).
+- Règle de résolution 249 : garder INTÉGRALEMENT la version agent/malo.
 
 ## '0 image au scan' — CAUSE TRANCHÉE
-Permission runtime non accordée (confirmé utilisateur). Correctif = IHM ScanScreen (Théo, f4f04627, MR #57). Code vérifié conforme. Symptôme levé après merge #57.
+Permission runtime non accordée (confirmé utilisateur). Correctif = IHM ScanScreen (Théo, f4f04627, MR #57). Code vérifié conforme mais PAS sur release (cf état réel).
 
-## DÉFAUT ARCHI LATENT (à proposer APRÈS clôture correctif IHM)
-ImageDao n'expose AUCUN Flow réactif (getAllWithLabels suspend). ScanRepositoryImpl.launchScan renvoie flowOf(cached) figé -> galerie non rafraîchie. Correctif : DAO Flow + observeImages réactif. Créer tâche 1er niveau (validation utilisateur) après.
+## DÉFAUT ARCHI LATENT (à proposer APRÈS clôture correctif permission + merge #57)
+ImageDao n'expose AUCUN Flow réactif (getAllWithLabels suspend). ScanRepositoryImpl.launchScan renvoie flowOf(cached) figé -> galerie non rafraîchie. Correctif : DAO Flow + observeImages réactif. Tâche 1er niveau (validation utilisateur), à créer quand l'état de release sera stabilisé.
 
 ## MR — INCOHÉRENCE D'ÉTAT DES OUTILS (durable)
-mr_review échoue 'pas en attente de validation' sur #56 ET #57 (2 tentatives chacun) alors que get_blockers les liste en attente. Ne plus réessayer. J'ai signalé à Malo de forcer la validation côté agent principal. Contenu #56 (Léna) déjà sur release, sans impact ; #57 (Théo) correctif permission, avis favorable donné.
+mr_review renvoie 'pas en attente de validation' sur #56/#57 ; resolve_merge 'aucun conflit confié' sur 249, alors que messages/Malo disent le contraire. Ne pas s'acharner. Malo gère la validation manuelle des correctifs. Toujours vérifier l'état réel par read_file sur la base avant d'affirmer qu'un correctif est livré.
 
 ## Limites d'outil
 - Messages parfois non délivrés ; profondeur max atteinte.
-- write_file sur docs/ échoue parfois. list_files/read_file sur release/v1.0.0 parfois refusé : passer par branche agent.
-- mr_review échoue si MR 'pas en attente' (cf #56/#57).
+- write_file sur docs/ échoue parfois. list_files/read_file sur release parfois refusé : passer par branche agent.

@@ -7,7 +7,6 @@ import fr.photosorter.core.dispatchers.DispatchersProvider
 import fr.photosorter.data.db.AppDatabase
 import fr.photosorter.data.moderation.AdultClassifier
 import fr.photosorter.data.moderation.PreFilter
-import fr.photosorter.domain.model.ImageFormat
 import fr.photosorter.domain.model.ScanProgress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
@@ -69,6 +68,6 @@ class ScanEngineIntegrationTest {
         assertTrue("attendu Completed, obtenu $result", result is ScanProgress.Completed)
         val completed = result as ScanProgress.Completed
         assertTrue("count attendu > 0, obtenu ${completed.count}", completed.count > 0)
-        assertTrue("images persistées attendues > 0", db.imageDao().getAll().isNotEmpty())
+        assertTrue("images persistées attendues > 0", db.imageDao().getAllWithLabels().isNotEmpty())
     }
 }

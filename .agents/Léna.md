@@ -89,16 +89,12 @@ Rôle : Développeur back-end. Branche agent/léna.
 
 Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a, 87c5f661, 4f0b27e5. 3222873d/3a354e9c/e9e95a30 OK. c09d3de2/24b6deba MR validée.
 
-TÂCHE 4e517524 (bug dd7f6f6c volet 2) : À VÉRIFIER. MR #71 ouverte vers release/v1.0.0, Zoé a review (2 allers-retours), correctifs appliqués, sera validée.
+DÉCISION ZOÉ (scission ScanEngine, option A) : ScanEngine.kt = classe private fields + scan() ; ScanEngineSupport.kt = internal const val BATCH_SIZE/MSG_* top-level + extensions PARAMÉTRÉES flushImages(batch,db,imageDao,imageLabelDao,labelDao):Int et detectAdult(uri,name,preFilter,classifier):Boolean. Champs de la classe restent private.
 
-DÉCISION SCISSION ScanEngine (option A) : ScanEngine.kt = classe private fields + scan() ; ScanEngineSupport.kt = internal const val BATCH_SIZE/MSG_* top-level + extensions PARAMÉTRÉES flushImages(batch,db,imageDao,imageLabelDao,labelDao):Int et detectAdult(uri,name,preFilter,classifier):Boolean.
+BUG dd7f6f6c volet 2 (tâche 4e517524, à vérifier) : flushImages crée le libellé 'adulte' si absent PUIS ImageLabelEntity(imageId,ADULT_LABEL) via ImageLabelDao.insertAll(IGNORE), atomiquement avec ImageDao.insertAll dans db.withTransaction. Unavailable=>false, aucune insertion.
 
-flushImages : crée 'adulte' si absent (LabelEntity(name,isSystem,createdAt=System.currentTimeMillis()) -> createdAt OBLIGATOIRE, pas de défaut) PUIS ImageLabelEntity(imageId,ADULT_LABEL) via ImageLabelDao.insertAll(IGNORE), atomiquement avec ImageDao.insertAll(List<Long>, REPLACE) dans db.withTransaction. Unavailable=>false, aucune insertion.
+CONTRATS DB VÉRIFIÉS : LabelEntity(name PK, isSystem, createdAt:Long SANS défaut -> OBLIGER createdAt=System.currentTimeMillis()). ImageDao.insertAll->List<Long> (REPLACE, ids peuvent changer au re-scan). ImageLabelDao.insertAll(List)->Unit IGNORE ; unassign/clearForImage. ImageLabelEntity(imageId,labelName) 2 FK CASCADE : label_name->LabelEntity.name => 'adulte' DOIT exister avant insert.
 
-detectAdult : when(preFilter.decide(...)) { PreFilterDecision.SKIP -> false ; PreFilterDecision.ANALYZE -> Unit } puis classifier.classify(Uri)->Result.Scored(isAdult)/Unavailable. ENUM RÉEL = SKIP/ANALYZE (majuscules, PAS Skip/Classify).
+WRITE_FILE : contenu >~5000 car. tronqué -> scinder en petits fichiers, read_file systématique après écriture. JSON action = \n échappés.
 
-FK CRITIQUE : ImageLabelEntity(imageId,labelName) 2 FK CASCADE (image_id->ImageEntity.id ; label_name->LabelEntity.name) => 'adulte' DOIT exister dans labels AVANT insert (garanti par getByName/insert).
-
-WRITE_FILE tronque les contenus longs -> petits fichiers + read_file systématique. JSON action = \n échappés.
-
-AdultClassifier : isReady, ensureInitialized, unavailableCount/resetUnavailableCount, classify(Uri). Assets model.tflite+labels.txt+model.config.
+DÉTECTION ADULTE : AdultClassifier.isReady (pas isAvailable), ensureInitialized, unavailableCount/resetUnavailableCount, classify(Uri)->Result.Scored(isAdult)/Unavailable. model.config InputScale. Assets model.tflite+labels.txt.

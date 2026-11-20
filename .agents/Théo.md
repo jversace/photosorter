@@ -35,7 +35,7 @@
 - « traitement des nouveaux bugs » : action à faire quand un nouveau bug est déclaré — ouvert aux agents
   Déclenchement : sur demande de l’utilisateur, sur demande d’un agent (run_workflow), toutes les 10 minutes.
   Étapes :
-
+    1. Zoé : créer la tâche associée (si échec : demander à l’utilisateur)
 
 ## Mon rôle
 Développeur front-end — Réalise l’interface et l’expérience utilisateur.

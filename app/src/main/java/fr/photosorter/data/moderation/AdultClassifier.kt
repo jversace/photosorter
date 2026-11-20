@@ -13,7 +13,6 @@ import java.io.File
 import java.io.FileInputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
@@ -206,11 +205,13 @@ class AdultClassifier @Inject constructor(
     }
 
     /**
-     * Charge le modele en MappedByteBuffer. Si l'asset est compresse, openFd() echoue
+     * Charge le modele en ByteBuffer. Si l'asset est compresse, openFd() echoue
      * ("can not be opened as a file descriptor; it is probably compressed"). On retombe
      * alors sur une copie de l'InputStream dans un ByteBuffer direct.
+     * noCompress += "tflite" dans build.gradle.kts permet a openFd() de reussir
+     * et evite la copie memoire.
      */
-    private fun loadModelFile(): MappedByteBuffer {
+    private fun loadModelFile(): ByteBuffer {
         return try {
             context.assets.openFd(MODEL_FILE).use { afd: AssetFileDescriptor ->
                 FileInputStream(afd.fileDescriptor).use { input ->

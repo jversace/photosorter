@@ -1,10 +1,16 @@
 package fr.photosorter.data.scanner
 
+import android.net.Uri
 import androidx.room.withTransaction
+import fr.photosorter.data.db.AppDatabase
+import fr.photosorter.data.db.dao.ImageDao
+import fr.photosorter.data.db.dao.ImageLabelDao
+import fr.photosorter.data.db.dao.LabelDao
 import fr.photosorter.data.db.entity.ImageEntity
 import fr.photosorter.data.db.entity.ImageLabelEntity
 import fr.photosorter.data.db.entity.LabelEntity
 import fr.photosorter.data.moderation.AdultClassifier
+import fr.photosorter.data.moderation.PreFilter
 import fr.photosorter.data.moderation.PreFilterDecision
 import fr.photosorter.domain.model.ADULT_LABEL
 
@@ -19,10 +25,14 @@ internal const val MSG_ERROR = "Erreur de scan"
  * n'existe pas encore, puis les liens image->adulte sont inseres.
  * @return le nombre d'images reellement inserees.
  */
-internal suspend fun ScanEngine.flush(buffer: MutableList<ImageEntity>): Int {
-    if (buffer.isEmpty()) return 0
-    val batch = ArrayList(buffer)
-    buffer.clear()
+internal suspend fun flushImages(
+    batch: List<ImageEntity>,
+    db: AppDatabase,
+    imageDao: ImageDao,
+    imageLabelDao: ImageLabelDao,
+    labelDao: LabelDao
+): Int {
+    if (batch.isEmpty()) return 0
     var inserted = 0
     db.withTransaction {
         val ids = imageDao.insertAll(batch)
@@ -36,7 +46,9 @@ internal suspend fun ScanEngine.flush(buffer: MutableList<ImageEntity>): Int {
             if (labelDao.getByName(ADULT_LABEL) == null) {
                 labelDao.insert(LabelEntity(name = ADULT_LABEL, isSystem = true))
             }
-            imageLabelDao.insertAll(adultIds.map { ImageLabelEntity(imageId = it, labelName = ADULT_LABEL) })
+            imageLabelDao.insertAll(
+                adultIds.map { ImageLabelEntity(imageId = it, labelName = ADULT_LABEL) }
+            )
         }
     }
     return inserted
@@ -47,12 +59,12 @@ internal suspend fun ScanEngine.flush(buffer: MutableList<ImageEntity>): Int {
  * court-circuit) puis classifieur TFLite. Un resultat indisponible est traite
  * comme non-adulte (conservateur) ; le compteur est gere par le classifieur.
  */
-internal fun ScanEngine.detectAdult(uri: String, name: String): Boolean {
-    when (preFilter.decide(uri, name)) {
+internal fun detectAdult(uri: Uri, name: String, preFilter: PreFilter, classifier: AdultClassifier): Boolean {
+    when (preFilter.decide(uri.toString(), name)) {
         PreFilterDecision.Skip -> return false
         PreFilterDecision.Classify -> Unit
     }
-    return when (val r = adultClassifier.classify(android.net.Uri.parse(uri))) {
+    return when (val r = classifier.classify(uri)) {
         is AdultClassifier.Result.Scored -> r.isAdult
         AdultClassifier.Result.Unavailable -> false
     }

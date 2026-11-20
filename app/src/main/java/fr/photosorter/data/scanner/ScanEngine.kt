@@ -2,20 +2,14 @@ package fr.photosorter.data.scanner
 
 import android.content.Context
 import android.os.SystemClock
-import androidx.room.withTransaction
 import fr.photosorter.core.dispatchers.DispatchersProvider
 import fr.photosorter.data.db.AppDatabase
 import fr.photosorter.data.db.dao.ImageDao
 import fr.photosorter.data.db.dao.ImageLabelDao
 import fr.photosorter.data.db.dao.LabelDao
 import fr.photosorter.data.db.entity.ImageEntity
-import fr.photosorter.data.db.entity.ImageLabelEntity
-import fr.photosorter.data.db.entity.LabelEntity
 import fr.photosorter.data.moderation.AdultClassifier
-import fr.photosorter.data.moderation.AdultClassifier.Result
 import fr.photosorter.data.moderation.PreFilter
-import fr.photosorter.data.moderation.PreFilterDecision
-import fr.photosorter.domain.model.ADULT_LABEL
 import fr.photosorter.domain.model.ScanProgress
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,7 +24,7 @@ import javax.inject.Singleton
  * (exclusions systeme), lit les metadonnees, applique la moderation adulte
  * (pre-filtre + classifieur TFLite) puis ecrit dans Room par lots atomiques :
  * images ET libelle systeme 'adulte' (image_labels) dans la meme transaction.
- * 100% local.
+ * 100% local. La logique de lot et de detection est dans ScanEngineSupport.kt.
  */
 @Singleton
 class ScanEngine @Inject constructor(
@@ -49,11 +43,16 @@ class ScanEngine @Inject constructor(
 
     private val _progress = MutableStateFlow<ScanProgress>(ScanProgress.Idle)
     val progress: Flow<ScanProgress> = _progress.asStateFlow()
+
     private val cancelled = AtomicBoolean(false)
+
     @Volatile private var running = false
+
     private val walker = StorageWalker(mimeDetector)
 
-    fun cancel() { cancelled.set(true) }
+    fun cancel() {
+        cancelled.set(true)
+    }
 
     suspend fun scan(): ScanProgress = withContext(dispatchers.io) {
         if (running) return@withContext _progress.value
@@ -63,26 +62,47 @@ class ScanEngine @Inject constructor(
         val reader = metadataReaderFactory(context)
         val buffer = ArrayList<ImageEntity>(BATCH_SIZE)
         var written = 0
+
         adultClassifier.ensureInitialized()
         adultClassifier.resetUnavailableCount()
+
         try {
             val roots = storageRootProvider.roots()
             val files = ArrayList<ScannedFile>(1024)
-            _progress.value = ScanProgress.Running(0, 0, MSG_ANALYZING)
+            _progress.value = ScanProgress.Running(done = 0, total = 0, current = MSG_ANALYZING)
             walker.walk(roots, cancelled) { files.add(it) }
             val total = files.size
+
             for ((index, file) in files.withIndex()) {
                 if (cancelled.get()) break
                 val meta = reader.read(file.uri) ?: continue
                 val format = mimeDetector.detectFormat(meta.name, meta.mimeType) ?: continue
-                val isAdult = detectAdult(file.uri.toString(), meta.name)
-                buffer.add(ImageEntity(uri = file.uri.toString(), name = meta.name, format = format.name, sizeBytes = meta.sizeBytes, dateTaken = null, dateModified = meta.dateModified, width = meta.width, height = meta.height, isAdult = isAdult, thumbnailHint = null))
-                if (buffer.size >= BATCH_SIZE) written += flush(buffer)
-                _progress.value = ScanProgress.Running(index + 1, total, meta.name)
+                val isAdult = detectAdult(file.uri, meta.name, preFilter, adultClassifier)
+                buffer.add(
+                    ImageEntity(
+                        uri = file.uri.toString(),
+                        name = meta.name,
+                        format = format.name,
+                        sizeBytes = meta.sizeBytes,
+                        dateTaken = null,
+                        dateModified = meta.dateModified,
+                        width = meta.width,
+                        height = meta.height,
+                        isAdult = isAdult,
+                        thumbnailHint = null
+                    )
+                )
+                if (buffer.size >= BATCH_SIZE) written += flushImages(buffer, db, imageDao, imageLabelDao, labelDao)
+                _progress.value = ScanProgress.Running(done = index + 1, total = total, current = meta.name)
             }
-            if (buffer.isNotEmpty()) written += flush(buffer)
+            if (buffer.isNotEmpty()) written += flushImages(buffer, db, imageDao, imageLabelDao, labelDao)
+
             val duration = SystemClock.elapsedRealtime() - startedAt
-            val result = if (cancelled.get()) ScanProgress.Error(MSG_CANCELLED) else ScanProgress.Completed(written, duration, adultClassifier.unavailableCount)
+            val result = if (cancelled.get()) {
+                ScanProgress.Error(MSG_CANCELLED)
+            } else {
+                ScanProgress.Completed(count = written, durationMs = duration, unclassifiedCount = adultClassifier.unavailableCount)
+            }
             _progress.value = result
             result
         } catch (t: Throwable) {
@@ -93,42 +113,5 @@ class ScanEngine @Inject constructor(
             running = false
             buffer.clear()
         }
-    }
-
-    private suspend fun flush(buffer: MutableList<ImageEntity>): Int {
-        if (buffer.isEmpty()) return 0
-        val batch = ArrayList(buffer)
-        buffer.clear()
-        var inserted = 0
-        db.withTransaction {
-            val ids = imageDao.insertAll(batch)
-            val adultLinks = ArrayList<ImageLabelEntity>()
-            for (i in batch.indices) {
-                val id = ids.getOrNull(i)?.takeIf { it > 0L } ?: continue
-                inserted++
-                if (batch[i].isAdult) adultLinks.add(ImageLabelEntity(id, ADULT_LABEL))
-            }
-            if (adultLinks.isNotEmpty()) {
-                if (labelDao.getByName(ADULT_LABEL) == null) labelDao.insert(LabelEntity(name = ADULT_LABEL, isSystem = true))
-                imageLabelDao.insertAll(adultLinks)
-            }
-        }
-        return inserted
-    }
-
-    private fun detectAdult(uri: String, name: String): Boolean {
-        if (preFilter.decide(name, uri) == PreFilterDecision.Exclude) return false
-        if (!adultClassifier.isReady()) return false
-        return when (val r = adultClassifier.classify(android.net.Uri.parse(uri))) {
-            is Result.Scored -> r.isAdult
-            is Result.Unavailable -> false
-        }
-    }
-
-    private companion object {
-        const val BATCH_SIZE = 50
-        const val MSG_ANALYZING = "Analyse du stockage..."
-        const val MSG_CANCELLED = "Scan annule"
-        const val MSG_ERROR = "Erreur de scan"
     }
 }

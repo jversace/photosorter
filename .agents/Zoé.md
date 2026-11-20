@@ -100,29 +100,30 @@ agent/zoé
 - image_labels.image_id + image_labels.label_name (FK -> labels.name) = SOURCE DE VÉRITÉ (n°224).
 - images.is_adult = cache ; ne pas s'y fier seul.
 - ADULT_LABEL = "adulte" défini dans fr.photosorter.domain.model (Label.kt).
-- ImageLabelEntity(imageId, labelName) avec FK CASCADE (image_id->images.id, label_name->labels.name). La FK label_name IMPOSE que le libellé existe dans labels AVANT insert.
+- FK label_name IMPOSE que le libellé existe dans labels AVANT insert.
 
 ## FILTRES (validé)
 - ImageQueryDao.observeFiltered : adultOnly via EXISTS corrélé. CORRECT.
 - ImageRepositoryImpl.observeImages transmet adultOnly+adultLabel ; matchesFilter gère adultOnly. CORRECT.
 
-## BUG dd7f6f6c (filtre 'uniquement adulte')
-- Volet 1 (DAO adultOnly/chaîne) corrigé et accepté.
-- Volet 2 (ScanEngine insère 'adulte') : MR #71 Léna. REVIEW FAITE PAR MOI = CODE BON.
-  - Scission : ScanEngine.kt (classe/scan) + ScanEngineSupport.kt (extensions flushImages/detectAdult, consts top-level internal).
-  - flushImages : withTransaction { imageDao.insertAll (REPLACE) ; ensure label 'adulte' via labelDao.getByName/insert ; imageLabelDao.insertAll (IGNORE) }. Unavailable => pas d'insertion de libellé.
-  - detectAdult : PreFilterDecision.SKIP -> non-adulte ; ANALYZE -> classifieur. (CORRIGÉ : avant c'était Skip/Classify = ne compilait pas).
-- STATUT MR #71 : en attente de validation (get_blockers), mais mr_review renvoie 'pas en attente' (décalage outil). FUSION À FAIRE CÔTÉ APPLICATION/Malo. Message à Malo NON délivré (profondeur max). Après fusion : rebuild puis bug dd7f6f6c -> corrigé, puis vérif (réassigner label adulte sur images déjà scannées).
+## BUG dd7f6f6c + 61ea13d4 (volet 2 / detectAdult suspend)
+- Volet 1 (DAO adultOnly) corrigé/accepted.
+- FICHIER : app/src/main/java/fr/photosorter/data/scanner/ScanEngineSupport.kt
+  (PAS fr/photosorter/scanner ; le scanner est sous data/scanner).
+- flushImages : withTransaction { imageDao.insertAll (REPLACE) ; ensure 'adulte' via labelDao ; imageLabelDao.insertAll (IGNORE) }.
+- detectAdult : internal suspend (classify() est suspend, appelé dans la coroutine de scan déjà withContext(io)). SKIP = court-circuit SYNCHRONE ; Unavailable => false (conservateur).
+- ORDRE DE FUSION TRANCHÉ : MR #73 (Léna) absorbe volet 2 + detectAdult suspend. #73 FUSIONNÉE EN PREMIER. => #71 devient REDONDANTE, à FERMER (sans fusionner) côté application pour éviter conflit dans ScanEngineSupport.kt.
+- Après fusion #73 : dd7f6f6c et 61ea13d4 -> 'corrigé' (via #73), puis vérification terrain.
 
 ## PRÉFILTRE / MODÉRATION
-- PreFilterDecision enum : SKIP / ANALYZE (PAS Skip/Classify). À vérifier systématiquement dans les reviews.
-- Détection adulte : normalisation pilotée par config + logScores (n°248 en attente valeur appareil).
+- PreFilterDecision enum : SKIP / ANALYZE (PAS Skip/Classify). Vérifier dans chaque review.
+- Détection adulte : normalisation pilotée par config + logScores (n°248 en attente).
 
 ## AUTRES
 - Packaging v1.0.0 : isMinifyEnabled=false (n°227).
 - Wrapper Gradle : jar à générer par l'utilisateur (n°228).
 
 ## Limites d'outil
-- mr_review 'pas en attente' alors que get_blockers liste la MR : décalage outil récurrent. Faire fusionner côté application (Malo/utilisateur).
-- message vers agent principal peut échouer 'profondeur max atteinte' en fin de conversation : consigner l'info dans le contexte.
+- mr_review renvoie parfois 'pas en attente' alors que get_blockers liste la MR : décalage récurrent. Faire fusionner/clore côté application (Malo/utilisateur).
+- message vers agent principal peut échouer 'profondeur max atteinte' : consigner dans le contexte.
 - bug_status : workflow corrigé -> QA vérifie.

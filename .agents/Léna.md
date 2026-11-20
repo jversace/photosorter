@@ -36,6 +36,7 @@
   Déclenchement : sur demande de l’utilisateur, sur demande d’un agent (run_workflow), toutes les 10 minutes.
   Étapes :
     1. Zoé : créer la tâche associée (si échec : demander à l’utilisateur)
+    2. Zoé : affecter la tâche à l'agent adapté (si échec : demander à l’utilisateur)
 
 ## Mon rôle
 Développeur back-end — Implémente la logique métier, les API et la base de données.

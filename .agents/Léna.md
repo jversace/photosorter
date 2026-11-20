@@ -98,11 +98,11 @@ Rôle : Développeur back-end. Branche agent/léna.
 
 Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a, 87c5f661, 4f0b27e5. 3222873d/3a354e9c/e9e95a30 OK. c09d3de2/24b6deba MR validée.
 
-DOUBLON : tâche e96bcb5e == volet 2 de dd7f6f6c == tâche 4e517524. Code identique couvert par MR #71. Ne PAS re-coder ni créer de MR. e96bcb5e mise 'à vérifier' en la référençant à #71 (clôture par agent principal/vérification).
+BASCULE MR : initialement #71 (volet 2 dd7f6f6c) était en attente. J'ai ensuite corrigé a285b8eb (bug 61ea13d4 : detectAdult suspend) et soumis MR #73, qui CONTIENT AUSSI le volet 2 (même fichier ScanEngineSupport.kt). Zoé a décidé de VALIDER #73 EN PRIORITÉ : elle absorbe le volet 2 et évite le conflit. => #71 devient REDONDANTE, à FERMER SANS FUSION côté application. dd7f6f6c passera 'corrigé' via #73.
 
-TÂCHE 4e517524 (bug dd7f6f6c volet 2) : À VÉRIFIER. MR #71 ouverte vers release/v1.0.0, Zoé a review+validé le code. Seule la FUSION reste à faire côté application (Malo).
+a285b8eb (à vérifier) : detectAdult() rendu 'internal suspend fun' (classify() est suspend). Appelant unique ScanEngine.scan() suspend/withContext(io) -> valide. SKIP court-circuit synchrone. Scored->isAdult / Unavailable->false conservateur.
 
-DÉCISION SCISSION ScanEngine (option A) : ScanEngine.kt = classe private fields + scan() ; ScanEngineSupport.kt = internal const val BATCH_SIZE/MSG_* + extensions PARAMÉTRÉES flushImages(batch,db,imageDao,imageLabelDao,labelDao):Int et detectAdult(uri,name,preFilter,classifier):Boolean.
+DÉCISION SCISSION ScanEngine (option A) : ScanEngine.kt = classe private fields + scan() ; ScanEngineSupport.kt = internal const val BATCH_SIZE/MSG_* + extensions PARAMÉTRÉES flushImages(batch,db,imageDao,imageLabelDao,labelDao):Int (suspend) et detectAdult(uri,name,preFilter,classifier):Boolean (suspend).
 
 flushImages : crée 'adulte' si absent (LabelEntity(name,isSystem,createdAt=System.currentTimeMillis()) -> createdAt OBLIGATOIRE) PUIS ImageLabelEntity(imageId,ADULT_LABEL) via ImageLabelDao.insertAll(IGNORE), atomiquement avec ImageDao.insertAll(List<Long>, REPLACE) dans db.withTransaction. Unavailable=>false, aucune insertion.
 
@@ -110,7 +110,7 @@ detectAdult : when(preFilter.decide(...)) { PreFilterDecision.SKIP -> false ; Pr
 
 FK CRITIQUE : ImageLabelEntity(imageId,labelName) 2 FK CASCADE (image_id->ImageEntity.id ; label_name->LabelEntity.name) => 'adulte' DOIT exister dans labels AVANT insert.
 
-APRÈS FUSION #71 : passer dd7f6f6c à 'corrigé' puis vérification terrain (libellé 'adulte' sur images déjà scannées -> envisager backfill/images déjà scannées, décision Zoé).
+APRÈS FUSION #73 : dd7f6f6c 'corrigé', bug 61ea13d4 'corrigé' ; puis vérification terrain (libellé 'adulte' sur images déjà scannées -> envisager backfill, décision Zoé).
 
 WRITE_FILE tronque les contenus longs -> petits fichiers + read_file systématique. JSON action = \n échappés.
 

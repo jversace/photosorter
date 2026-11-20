@@ -98,30 +98,31 @@ agent/zoé
 - Agent pousse -> merge_request vers release/v1.0.0 -> agent principal valide -> agents pull. Merges main = utilisateur.
 - Conflits : Adam (non joignable), réassignable Zoé.
 
-## Diagnostic '0 image au scan' (tâche 9ec6eb25) — état au cycle courant
-Chaîne vérifiée maillon par maillon, TOUS SAINS :
-- StorageRootProvider.roots() : interne + SD, OK.
-- StorageWalker : normalisation, exclusions limitées android/data|obb|media, filtre extension OK, Uri.fromFile (=> file://).
-- SystemExclusions, MimeTypeDetector : OK. NOTE mimeFromFile() renvoie 'application/octet-stream' par défaut si extension hors MimeTypeMap (n'affecte PAS detectFormat jpg/png).
-- MediaMetadataReader CORRIGÉ sur release : File d'abord, return null UNIQUEMENT si name vide après File+resolver. Sur file:// existant -> name=f.name non vide -> jamais null.
-- ImageDao.insertAll @Insert(REPLACE) -> rowIds>0. ScanEngine count=nb rowIds>0.
-- ScanViewModel/ScanScreen affichent ScanProgress.Completed(count).
+## DÉCISIONS ARCHI (validées ce cycle, à répercuter si message non délivré)
+- Permission runtime IHM : ActivityResultContracts.RequestMultiplePermissions, SANS Accompanist (API plateforme, API 26+). READ_MEDIA_IMAGES (≥33) sinon READ_EXTERNAL_STORAGE (≤32). Bouton scan désactivé tant que non accordée, message si refus. ScanScreen n'a AUCUNE gestion de permission aujourd'hui (confirmé Théo).
+- FilterState.labels porte des IDs de libellé (Set<String> d'ids), PAS des noms. Résolution nom->id côté repository. Nom modifiable (renommage) vs id stable.
+- Sémantique filtre libellés = OU (IN, au moins un). Pas de ET en v1 (un mode ET GROUP BY/HAVING serait distinct, hors périmètre).
+- Filtre 'adulte uniquement' = labels = setOf(ADULT_LABEL_ID), PAS de champ booléen onlyAdult dédié.
+- ImageDao actuel n'a AUCUN filtre libellé. Signature proposée par Léna : @Transaction @Query("SELECT DISTINCT i.* FROM images i INNER JOIN image_labels il ON il.imageId=i.id WHERE il.labelId IN (:labelIds) ORDER BY i.name ASC") suspend fun getWithLabelsFiltered(labelIds: Set<String>): List<ImageWithLabels>. Validée dans sa forme (OU).
 
-Deux causes restantes, non tranchées sans réponse utilisateur (question posée, onglet Décisions) :
-(a) APK testé contient l'ANCIEN MediaMetadataReader -> rebuild release nécessaire (utilisateur).
-(b) permission runtime non accordée -> listFiles() vide scoped storage -> 0 fichier = correctif IHM (ScanScreen contrôle/redemande READ_MEDIA_IMAGES API33+ / READ_EXTERNAL_STORAGE <33 avant launchScan).
-NE PAS clôturer 9ec6eb25 avant réponse.
+## Diagnostic '0 image au scan' (tâche 9ec6eb25)
+Chaîne vérifiée, tous maillons sains SAUF cause non tranchée :
+- MediaMetadataReader CORRIGÉ sur release (File d'abord, return null seulement si name vide après File+resolver). Sur file:// existant -> jamais null.
+- ImageDao.insertAll @Insert(REPLACE) -> rowIds>0 ; ScanEngine count=nb rowIds>0.
+- MimeTypeDetector : mimeFromFile() défaut 'application/octet-stream' possible (n'affecte pas detectFormat jpg/png).
+Deux causes restantes (question utilisateur en attente, onglet Décisions) :
+(a) APK contient l'ANCIEN MediaMetadataReader -> rebuild release (utilisateur).
+(b) permission runtime non accordée -> listFiles() vide scoped storage -> 0 fichier = correctif IHM (ScanScreen). Théo confirme ScanScreen ne gère AUCUNE permission.
+NE PAS clôturer 9ec6eb25 avant réponse. Back-end complet + couvert (MR soumise, tests dont ScanEngineIntegrationTest collecte->insertAll>0).
 
-## DÉFAUT ARCHI LATENT identifié (à proposer APRÈS résolution du 0)
-ImageDao n'expose AUCUN Flow réactif (seulement getAllWithLabels suspend). ScanRepositoryImpl.launchScan renvoie flowOf(cached) figé -> galerie non rafraîchie de façon fiable (lecture unique, non réactive ; écritures post-lecture ou non commitées => 0 figé à perpétuité). Correctif : DAO @Query observant (Flow) + observeImages réactif. Créer tâche 1er niveau (validation utilisateur) après résolution.
+## DÉFAUT ARCHI LATENT (à proposer APRÈS résolution du 0)
+ImageDao n'expose AUCUN Flow réactif (seulement getAllWithLabels suspend). ScanRepositoryImpl.launchScan renvoie flowOf(cached) figé -> galerie non rafraîchie de façon fiable. Correctif : DAO @Query observant (Flow) + observeImages réactif. Créer tâche 1er niveau (validation utilisateur) après résolution.
 
 ## MR #56 (métadonnées)
-Contenu déjà sur release + tests présents. mr_review #56 a échoué 'pas en attente de validation' alors que blocages la listent en attente = INCOHÉRENCE D'ÉTAT DES OUTILS, ne pas s'appuyer dessus. Pas d'impact (contenu sur release).
-
-## FileActions.kt (3983405f)
-app/src/main/java/fr/photosorter/data/repository/FileActions.kt, package data.repository, data/di/FileActionsModule @Singleton. Correctif content:// via OpenableColumns.DATA + fallback DISPLAY_NAME.
+Contenu déjà sur release + tests présents. mr_review #56 échoue 'pas en attente de validation' alors que blocages la listent en attente = INCOHÉRENCE D'ÉTAT DES OUTILS. Pas d'impact (contenu sur release).
 
 ## Limites d'outil
-- Messages parfois non délivrés ; write_file sur docs/ échoue parfois.
+- Messages parfois non délivrés ; profondeur max d'échanges atteinte (messages finaux non délivrés à Léna/Théo ce cycle — décisions consignées ici).
+- write_file sur docs/ échoue parfois.
 - list_files/read_file sur release/v1.0.0 parfois refusé : passer par pull/branche agent.
 - mr_review échoue si MR pas 'en attente de validation'.

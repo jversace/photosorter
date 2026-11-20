@@ -106,16 +106,21 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - mr_review et task_review renvoient souvent 'pas en attente' même quand get_blockers les liste : normal, déjà traité automatiquement. Ne pas réessayer indéfiniment.
 - isMinifyEnabled=false pour v1.0.0. R8/ProGuard à réactiver en v1.1+ après test d'un APK release signé sur appareil physique avec règles ProGuard adaptées (Room/Hilt/TFLite/coroutines).
 - Blocage write_file sur agent/léna (signalé par Zoé) : résolu via nouvelle MR #54 avec commits directs. Mécanisme opérationnel.
+- noCompress += "tflite" déjà présent dans app/build.gradle.kts (bloc androidResources) : model.tflite non compressé, openFd() devrait fonctionner. Repli ByteBuffer dans AdultClassifier.kt reste comme filet de sécurité (MR #58).
 
 ## État actuel
 
 - Toutes tâches back-end Léna : terminées ✓
-- Bug 2056025b (scan 0 image URI file:// API>=29) : corrigé et vérifié ✓ (MR #54 fusionnée)
-- Tâche 9ec6eb25 : terminée ✓
-- Conflit n°175 sur .agents/Zoé.md : en pause, l'utilisateur le résout à la main
-- Tâches corrections ouvertes : 1c5cab0a (Scanneur), 7445b925 (IHM)
+- Bug f6eb4edf (détection adulte classifie tout en 'normales') : corrigé ✓
+  - Cause racine : openFd() échouait sur asset compressé → modèle jamais chargé → Unavailable → classées normales
+  - Correctif : loadModelFile() avec repli ByteBuffer + noCompress tflite déjà en place
+  - MR #58 (Léna) : approuvée, en attente de fusion dans release/v1.0.0
+  - Action restante : rebuild APK pour embarquer le modèle non compressé
+- Tâches corrections ouvertes : 1c5cab0a (Scanneur), 7445b925 (IHM) — sans sous-tâches actives
 - Sous-tâche 3983405f (URI content:// FileActions) : terminée ✓
 - Sous-tâche 9ec6eb25 (métadonnées file://) : terminée ✓
+- Sous-tâche 3222873d (normalisation paramétrable + repli FileInputStream) : terminée ✓
+- Sous-tâche 3a354e9c (idem + instrumentation + correctif chargement) : terminée ✓
 
 ## Modèle Label (confirmé)
 - Label : name, isSystem, createdAt
@@ -124,6 +129,7 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 
 ## Assets modèle TFLite
 model.tflite + labels.txt présents sur main/app/assets — vérifiés dans release/v1.0.0.
+noCompress += "tflite" déjà dans app/build.gradle.kts.
 
 ## Packaging (tâche 8118fe45 — terminée)
 - app/build.gradle.kts : signingConfigs release, isMinifyEnabled=false
@@ -138,14 +144,15 @@ model.tflite + labels.txt présents sur main/app/assets — vérifiés dans rele
 - Réserve : gradle-wrapper.jar (~60 Ko binaire) à générer depuis un poste Gradle
 - MR #44 fusionnée dans release/v1.0.0 ✓
 
-## Bug a3052590 (libs.versions.toml Room — corrigé)
-- 4 alias Room ajoutés : room-runtime, room-ktx, room-compiler, room-testing (v2.6.1)
-- MR #41 fusionnée dans release/v1.0.0 ✓
-
-## Tâches corrections build
-- MR #45 (Léna) : corrections Room ORDER BY, FileActions, MimeTypeDetector, lifecycle-runtime-compose — fusionnée ✓
-- MR #46 (Léna, DataModule.kt) : fusionnée ✓
-- MR #48 (Léna, ScannerModule supprimé) : fusionnée ✓
-- MR #49 (Malo, @JvmSuppressWildcards) : fusionnée ✓
-- MR #44 (Léna, wrapper + exécutable) : fusionnée ✓
-- MR #54 (Léna, MediaMetadataReader fix) : fusionnée ✓
+## MR fusionnées
+- MR #34 (Malo, packaging) ✓
+- MR #41 (Léna, Room aliases) ✓
+- MR #44 (Léna, wrapper + exécutable) ✓
+- MR #45 (Léna, Room ORDER BY + FileActions + MimeTypeDetector + lifecycle) ✓
+- MR #46 (Léna, DataModule.kt) ✓
+- MR #48 (Léna, ScannerModule supprimé) ✓
+- MR #49 (Malo, @JvmSuppressWildcards) ✓
+- MR #53 (Léna, MediaMetadataReader fix) ✓
+- MR #54 (Léna, MediaMetadataReader fix v2) ✓
+- MR #56 (Léna, détection adulte normalisation) ✓
+- MR #58 (Léna, chargement modèle tolerant asset compressé) : approuvée, fusion en attente

@@ -95,7 +95,6 @@ class ScanEngine @Inject constructor(
         }
     }
 
-    /** Insere un lot d'images ET les liens au libelle 'adulte' atomiquement. */
     private suspend fun flush(buffer: MutableList<ImageEntity>): Int {
         if (buffer.isEmpty()) return 0
         val batch = ArrayList(buffer)
@@ -105,35 +104,31 @@ class ScanEngine @Inject constructor(
             val ids = imageDao.insertAll(batch)
             val adultLinks = ArrayList<ImageLabelEntity>()
             for (i in batch.indices) {
-                val id = ids.getOrNull(i) ?: continue
-                if (id > 0L && batch[i].isAdult) adultLinks.add(ImageLabelEntity(imageId = id, labelName = ADULT_LABEL))
+                val id = ids.getOrNull(i)?.takeIf { it > 0L } ?: continue
+                inserted++
+                if (batch[i].isAdult) adultLinks.add(ImageLabelEntity(id, ADULT_LABEL))
             }
             if (adultLinks.isNotEmpty()) {
                 if (labelDao.getByName(ADULT_LABEL) == null) labelDao.insert(LabelEntity(name = ADULT_LABEL, isSystem = true))
                 imageLabelDao.insertAll(adultLinks)
             }
-            inserted = ids.count { it != null && it > 0L }
         }
         return inserted
     }
 
-    /** Moderation adulte : pre-filtre puis classifieur. Unavailable => normale (conservateur). */
-    private suspend fun detectAdult(uri: String, name: String): Boolean {
-        return when (preFilter.decide(uri, name)) {
-            PreFilterDecision.SKIP_NOT_PHOTO -> false
-            PreFilterDecision.ANALYZE -> {
-                if (!adultClassifier.isReady()) false else when (val r = adultClassifier.classify(android.net.Uri.parse(uri))) {
-                    is Result.Scored -> r.isAdult
-                    is Result.Unavailable -> false
-                }
-            }
+    private fun detectAdult(uri: String, name: String): Boolean {
+        if (preFilter.decide(name, uri) == PreFilterDecision.Exclude) return false
+        if (!adultClassifier.isReady()) return false
+        return when (val r = adultClassifier.classify(android.net.Uri.parse(uri))) {
+            is Result.Scored -> r.isAdult
+            is Result.Unavailable -> false
         }
     }
 
-    companion object {
-        private const val BATCH_SIZE = 50
-        private const val MSG_ANALYZING = "Analyse du stockage..."
-        private const val MSG_CANCELLED = "Scan annule"
-        private const val MSG_ERROR = "Erreur de scan"
+    private companion object {
+        const val BATCH_SIZE = 50
+        const val MSG_ANALYZING = "Analyse du stockage..."
+        const val MSG_CANCELLED = "Scan annule"
+        const val MSG_ERROR = "Erreur de scan"
     }
 }

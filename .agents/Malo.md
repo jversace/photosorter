@@ -116,12 +116,16 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - Tâche 4f0b27e5 (FOREIGN KEY ImageLabelDao) : acceptée
 - Bug a65dffe2 (filtre adulte) : corrigé
 - Bug 4cd6654d (crash FOREIGN KEY) : corrigé
-- Bug 1e0fc60c (copier/déplacer tree URI -> File échec) : OUVERT — ensureDestDir convertit tree URI en File, échec. Léna traite la sous-tâche 826b1ea6 (FileActions DocumentFile tree URI).
+- Bug 1e0fc60c (copier/déplacer tree URI -> File échec) : OUVERT — en attente fusion MR #68
+- Tâche 826b1ea6 (FileActions DocumentFile tree URI) : ACCEPTÉE (task_review ok)
+- MR #68 (Léna, FileActions SAF + libs.versions.toml complet) : approuvée par Zoé et Malo, mr_review bloqué outil. EN ATTENTE FUSION MANUELLE PAR L'UTILISATEUR.
+- libs.versions.toml de release/v1.0.0 incomplet (manque room-*, lifecycle-runtime-compose, documentfile) : corrigé dans MR #68
 - Tâches corrections ouvertes : 1c5cab0a (Scanneur), 7445b925 (IHM)
-- Tâche 826b1ea6 (FileActions DocumentFile tree URI) : à faire, Léna
 
-## Prochaine action Léna
-- 826b1ea6 : FileActions consommer tree URI via DocumentFile.fromTreeUri + createDocument/createFile pour copier/déplacer
+## Prochaine action après MR #68 fusionnée
+- Rebuild release, vérifier build OK
+- Bug 1e0fc60c : passer à corrigé/vérifié
+- Vérifier s'il reste des tâches ouvertes dans 1c5cab0a et 7445b925
 
 ## Modèle Label (confirmé)
 - Label : name, isSystem, createdAt
@@ -160,3 +164,4 @@ model.config (clé scale=) à créer par l'utilisateur si normalisation non ZERO
 - MR #62 (Léna, log enrichi AdultClassifier)
 - MR #66 (Théo, SAF OpenDocumentTree)
 - MR #67 (Léna, syncAdultLabels + test adultOnly)
+- MR #68 (Léna, FileActions SAF + libs.versions.toml) : APPROUVÉE, en attente fusion manuelle utilisateur

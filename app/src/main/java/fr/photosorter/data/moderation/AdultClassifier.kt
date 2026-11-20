@@ -205,11 +205,10 @@ class AdultClassifier @Inject constructor(
     }
 
     /**
-     * Charge le modele en ByteBuffer. Si l'asset est compresse, openFd() echoue
-     * ("can not be opened as a file descriptor; it is probably compressed"). On retombe
-     * alors sur une copie de l'InputStream dans un ByteBuffer direct.
-     * noCompress += "tflite" dans build.gradle.kts permet a openFd() de reussir
-     * et evite la copie memoire.
+     * Charge le modele en ByteBuffer. Cas nominal : openFd() + map (asset non compresse).
+     * Si l'asset est compresse, openFd() echoue ("can not be opened as a file descriptor;
+     * it is probably compressed") : repli sur une copie de l'InputStream dans un ByteBuffer direct.
+     * Le type de retour est ByteBuffer (super-type commun de MappedByteBuffer et ByteBuffer).
      */
     private fun loadModelFile(): ByteBuffer {
         return try {

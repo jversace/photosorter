@@ -105,17 +105,18 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - task_status 'en validation' n'existe pas dans l'outil : utiliser 'à vérifier'.
 - mr_review et task_review renvoient souvent 'pas en attente' même quand get_blockers les liste : normal, déjà traité automatiquement. Ne pas réessayer indéfiniment.
 - isMinifyEnabled=false pour v1.0.0. R8/ProGuard à réactiver en v1.1+ après test d'un APK release signé sur appareil physique avec règles ProGuard adaptées (Room/Hilt/TFLite/coroutines).
-- Blocage write_file sur agent/léna (signalé par Zoé) : résolu via nouvelle MR #54 avec commits directs. Mécanisme opérationnel.
-- noCompress += "tflite" déjà présent dans app/build.gradle.kts (bloc androidResources) : model.tflite non compressé, openFd() devrait fonctionner. Repli ByteBuffer dans AdultClassifier.kt reste comme filet de sécurité (MR #58).
+- noCompress += "tflite" confirmé par Zoé et Léna : model.tflite non compressé dans l'APK. openFd() fonctionne. Repli ByteBuffer conservé comme filet de sécurité. Taille APK légèrement supérieure : normal.
+- InputScale (normalisation TFLite) : en attente réponse utilisateur sur config d'entraînement du modèle (décision n°248).
 
 ## État actuel
 
 - Toutes tâches back-end Léna : terminées ✓
 - Bug f6eb4edf (détection adulte classifie tout en 'normales') : corrigé ✓
-  - Cause racine : openFd() échouait sur asset compressé → modèle jamais chargé → Unavailable → classées normales
-  - Correctif : loadModelFile() avec repli ByteBuffer + noCompress tflite déjà en place
-  - MR #58 (Léna) : approuvée, en attente de fusion dans release/v1.0.0
-  - Action restante : rebuild APK pour embarquer le modèle non compressé
+  - Cause racine : AGP compressait model.tflite → openFd() échouait → modèle jamais chargé → Unavailable → classées normales
+  - Correctifs : (1) noCompress += "tflite" dans build.gradle.kts (Zoé, décision architecture) ; (2) loadModelFile() repli ByteBuffer (Léna, MR #58)
+  - MR #58 (Léna) : approuvée, fusion en attente dans release/v1.0.0
+  - Action restante utilisateur : rebuild APK depuis release/v1.0.0
+  - Justesse des scores : dépend encore de InputScale (réponse utilisateur attendue)
 - Tâches corrections ouvertes : 1c5cab0a (Scanneur), 7445b925 (IHM) — sans sous-tâches actives
 - Sous-tâche 3983405f (URI content:// FileActions) : terminée ✓
 - Sous-tâche 9ec6eb25 (métadonnées file://) : terminée ✓

@@ -54,6 +54,8 @@ class ImageRepositoryImplTest {
         labels = emptySet(), isAdult = false, thumbnailHint = null
     )
 
+    private val treeUri = "content://com.android.externalstorage.documents/tree/primary%3APhotos"
+
     @Test
     fun observeImagesMapsRows() = runTest {
         whenever(
@@ -96,5 +98,46 @@ class ImageRepositoryImplTest {
         assertTrue(result is AppResult.Failure)
         // item 2 a bien été supprimé malgré l'échec du 1
         verify(imageDao).deleteById(2L)
+    }
+
+    @Test
+    fun copyDelegatesToCopyToTreeWithTreeUri() = runTest {
+        whenever(fileActions.copyToTree(eq("uri/1"), eq(treeUri))).thenReturn("newUri/1")
+        whenever(fileActions.copyToTree(eq("uri/2"), eq(treeUri))).thenReturn("newUri/2")
+
+        val result = repo().copy(listOf(item(1), item(2)), treeUri)
+
+        assertTrue(result is AppResult.Success)
+        verify(fileActions).copyToTree(eq("uri/1"), eq(treeUri))
+        verify(fileActions).copyToTree(eq("uri/2"), eq(treeUri))
+    }
+
+    @Test
+    fun copyFailureReturnsFailure() = runTest {
+        whenever(fileActions.copyToTree(eq("uri/1"), eq(treeUri))).thenReturn(null)
+
+        val result = repo().copy(listOf(item(1)), treeUri)
+
+        assertTrue(result is AppResult.Failure)
+    }
+
+    @Test
+    fun moveDelegatesToMoveToTreeAndKeepsRowOnKeepInDb() = runTest {
+        whenever(fileActions.moveToTree(eq("uri/1"), eq(treeUri))).thenReturn("newUri/1")
+
+        val result = repo().move(listOf(item(1)), treeUri)
+
+        assertTrue(result is AppResult.Success)
+        verify(fileActions).moveToTree(eq("uri/1"), eq(treeUri))
+    }
+
+    @Test
+    fun moveFailureReturnsFailureAndDoesNotDeleteRow() = runTest {
+        whenever(fileActions.moveToTree(eq("uri/1"), eq(treeUri))).thenReturn(null)
+
+        val result = repo().move(listOf(item(1)), treeUri)
+
+        assertTrue(result is AppResult.Failure)
+        verify(imageDao, never()).deleteById(any())
     }
 }

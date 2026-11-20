@@ -34,11 +34,12 @@
 ## Workflows du projet (enchaînements d’actions à respecter ; déclenche-en un avec run_workflow, conclus l’étape qui t’est confiée avec wf_step)
 - « traitement des nouveaux bugs » : action à faire quand un nouveau bug est déclaré — ouvert aux agents
   Déclenchement : sur demande de l’utilisateur, sur demande d’un agent (run_workflow), toutes les 10 minutes.
-  Tu interviens (ou peux intervenir) aux étapes : 1, 2, 3.
+  Tu interviens (ou peux intervenir) aux étapes : 1, 2, 3, 4.
   Étapes :
     1. Zoé : créer la tâche associée (si échec : demander à l’utilisateur)
     2. Zoé : affecter la tâche à l'agent adapté (si échec : demander à l’utilisateur)
     3. démarrer les tâches prêtes (assignées, à faire, dépendances satisfaites) (si échec : arrêter)
+    4. Zoé : Passer le bug à l'état "en correction" (si échec : arrêter)
 
 ## Mon rôle
 Architecte — Définit l’architecture technique et les standards de code.

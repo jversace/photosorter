@@ -98,32 +98,22 @@ agent/zoé
 - Agent pousse -> merge_request vers release/v1.0.0 -> agent principal valide -> agents pull. Merges main = utilisateur. Conflits : Adam (non joignable), réassignable Zoé.
 
 ## DÉCISIONS ARCHI
-- Permission runtime IHM : ActivityResultContracts.RequestMultiplePermissions, SANS Accompanist. READ_MEDIA_IMAGES (≥33) sinon READ_EXTERNAL_STORAGE (≤32). Bouton scan désactivé, message si refus. Code Théo (ScanScreen.kt) CONFORME au contrat (vérifié).
-- FilterState.labels = IDs (Set<String>). Sémantique OU (IN). Filtre adulte = labels = setOf(ADULT_LABEL_ID).
-- getWithLabelsFiltered(labelIds: Set<String>) : signature validée (OU) MAIS PAS ENCORE écrite dans ImageDao.
+- Permission runtime IHM : ActivityResultContracts.RequestMultiplePermissions, SANS Accompanist. READ_MEDIA_IMAGES (≥33) sinon READ_EXTERNAL_STORAGE (≤32). Bouton scan désactivé, message si refus.
+- FILTRES : labels:Set<String> = IDs en OU (IN). ET adultOnly:Boolean = false (champ DÉDIÉ) pour 'uniquement adulte' (contrainte ET). RÉVISÉ : la règle 'PAS de onlyAdult' est LEVÉE — justifiée car labels={adulte} en OU ne suffit pas si cumul d'autres libellés. Le toggle UI adulte pilote adultOnly, pas labels.
+- DAO getWithLabelsFiltered(labelIds:Set<String>, adultOnly:Boolean, ...) : labelIds->EXISTS IN (OU) ; adultOnly->AND EXISTS(ADULT_LABEL_ID) ; repository consomme ADULT_LABEL_ID de seed (pas de résolution nom->id). Convention UI : ne pas exposer labels={adulte} + adultOnly=true ensemble.
 
-## DÉTECTION ADULTE (bug f6eb4edf) — DEUX problèmes distincts
-(1) MODÈLE NON CHARGÉ : assets.openFd() échoue si model.tflite compressé. Correctif : noCompress += "tflite" + repli loadModelFile() copie ByteBuffer (agent/malo).
-(2) InputScale : mécanisme paramétrable + model.config + logScores (agent/malo) ; VALEUR FINALE en attente. Ne pas dire 'détection réparée' tant que scores non vérifiés appareil.
+## DÉTECTION ADULTE — 2 problèmes
+(1) MODÈLE NON CHARGÉ : openFd échoue si tflite compressé. Correctif : noCompress += 'tflite' + repli copie ByteBuffer (agent/malo).
+(2) InputScale paramétrable + model.config + logScores ; VALEUR FINALE en attente. Ne pas dire 'réparé' avant scores appareil.
 
-## ÉTAT RÉEL DE release/v1.0.0 (vérifié par lecture)
-- ScanScreen.kt base = 4974 o = ANCIENNE version SANS permission (version Théo/Malo=7558 o NON fusionnée). MR #57 NON mergée.
-- AdultClassifier.kt base = 6047 o = ANCIENNE version sans repli. MR #58 NON mergée.
+## ÉTAT release/v1.0.0 — VÉRIFIÉ NON À JOUR (avant corrections manuelles)
+- ScanScreen.kt base=4974 o = ancienne sans permission. AdultClassifier.kt base=6047 o = ancienne sans repli.
+- Fusions #60/#61 = 'Fichiers modifiés : (aucun)' -> n'ont RIEN apporté. NE PAS rebuilder APK en l'état (reproduit les 2 bugs).
+- Malo réécrit les 2 fichiers sur agent/malo ; re-vérifier par lecture base après application réelle.
 
-## MR #61 (agent/malo -> release) — EN VALIDATION, à surveiller
-- mr_review #61 -> 'pas en attente de validation' (DÉCALAGE OUTIL). Avis contenu = CONFORME (ScanScreen permissions OK ; AdultClassifier repli ByteBuffer+InputScale+logScores+markUnavailable OK).
-- ALERTE : fiche #61 indique 'Fichiers modifiés : (aucun)' + commit unique 'pull release dans agent/malo' => la MR ne contient PROBABLEMENT AUCUN changement de contenu. Fusionner #61 ne corrigerait RIEN. Vérifier diff non vide sur agent/malo ; sinon recommitter les 2 fichiers + nouvelle MR. À re-vérifier par lecture sur release après fusion.
-- Règle 249 : garder INTÉGRALEMENT version agent/malo.
+## '0 image au scan' — cause = permission runtime non accordée (confirmé). Correctif = ScanScreen version Théo/Malo (7558 o).
 
-## '0 image au scan' — CAUSE TRANCHÉE
-Permission runtime non accordée (confirmé utilisateur). Correctif = ScanScreen Théo/Malo (f4f04627). Pas encore sur release.
+## DÉFAUT ARCHI LATENT (après stabilisation release)
+ImageDao sans Flow -> galerie non rafraîchie. Correctif : DAO Flow + observeImages. Tâche 1er niveau à proposer.
 
-## DÉFAUT ARCHI LATENT (à proposer APRÈS stabilisation release)
-ImageDao sans Flow réactif (getAllWithLabels suspend). ScanRepositoryImpl.launchScan renvoie flowOf(cached) figé -> galerie non rafraîchie. Correctif : DAO Flow + observeImages réactif. Tâche 1er niveau (validation utilisateur).
-
-## INCOHÉRENCE D'ÉTAT DES OUTILS (durable)
-mr_review 'pas en attente de validation' (#56/#57/#61) ; resolve_merge 'aucun conflit confié' (249) ; messages parfois en échec (crédit IA épuisé 400). NE PAS s'acharner. Malo gère validation/application manuelle. TOUJOURS vérifier l'état réel par read_file sur la base avant d'affirmer qu'un correctif est livré.
-
-## Limites d'outil
-- Messages en échec possible (crédit IA 400) au moment de la rédaction.
-- write_file sur docs/ échoue parfois. list_files/read_file sur release parfois refusé : passer par branche agent.
+## Limite outil : mr_review/resolve_merge renvoient des états incohérents ; messages parfois en échec (crédit 400). TOUJOURS vérifier par read_file sur la base.

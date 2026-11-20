@@ -36,7 +36,7 @@ class ScanEngine @Inject constructor(
     private val imageDao: ImageDao,
     private val mimeDetector: MimeTypeDetector,
     private val storageRootProvider: StorageRootProvider,
-    private val metadataReaderFactory: (Context) -> MediaMetadataReader,
+    private val metadataReaderFactory: @JvmSuppressWildcards (Context) -> MediaMetadataReader,
     private val preFilter: PreFilter,
     private val adultClassifier: AdultClassifier
 ) {

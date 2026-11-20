@@ -106,24 +106,21 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - mr_review et task_review renvoient souvent 'pas en attente' même quand get_blockers les liste : normal, déjà traité automatiquement. Ne pas réessayer indéfiniment.
 - isMinifyEnabled=false pour v1.0.0. R8/ProGuard à réactiver en v1.1+ après test d'un APK release signé sur appareil physique avec règles ProGuard adaptées (Room/Hilt/TFLite/coroutines).
 - noCompress += "tflite" confirmé par Zoé et Léna : model.tflite non compressé dans l'APK. openFd() fonctionne. Repli ByteBuffer conservé comme filet de sécurité. Taille APK légèrement supérieure : normal.
-- InputScale (normalisation TFLite) : en attente réponse utilisateur sur config d'entraînement du modèle (décision n°248).
+- InputScale (normalisation TFLite) : paramétrable via app/assets/model.config (clé scale=). Défaut : ZERO_ONE.
 
 ## État actuel
 
 - Toutes tâches back-end Léna : terminées ✓
-- Bug f6eb4edf (détection adulte classifie tout en 'normales') : corrigé ✓
-  - Cause racine : AGP compressait model.tflite → openFd() échouait → modèle jamais chargé → Unavailable → classées normales
-  - Correctifs : (1) noCompress += "tflite" dans build.gradle.kts (Zoé) ; (2) loadModelFile() retourne ByteBuffer + repli copyTo (Léna/Malo)
-  - MR de patch (Malo) soumise : conflit sur AdultClassifier.kt résolu manuellement par l'utilisateur
-  - Correction type mismatch MappedByteBuffer→ByteBuffer dans loadModelFile()
-  - Action restante : rebuild APK depuis release/v1.0.0 après fusion
-  - Justesse des scores : dépend encore de InputScale (réponse utilisateur attendue)
+- Tâche 3a354e9c (log enrichi + normalisation paramétrable + repli DirectByteBuffer) : acceptée ✓
+  - MR #62 fusionnée dans release/v1.0.0 ✓
+  - Code final : InputScale enum, loadInputScale() lecture model.config, repli FileInputStream uri file://, comptage Unavailable, log scores bruts+normalisés
+- **Blocage actuel** : TFLite refuse toujours le modèle sur appareil (openFd échoue + repli échoue)
+  - Log enrichi disponible dans le build actuel → rebuild APK nécessaire pour obtenir le type d'exception réel
+  - En attente log utilisateur : 'Modele TFLite indisponible : XXX: ...'
 - Tâches corrections ouvertes : 1c5cab0a (Scanneur), 7445b925 (IHM) — sans sous-tâches actives
 - Sous-tâche 3983405f (URI content:// FileActions) : terminée ✓
 - Sous-tâche 9ec6eb25 (métadonnées file://) : terminée ✓
 - Sous-tâche 3222873d (normalisation paramétrable + repli FileInputStream) : terminée ✓
-- Sous-tâche 3a354e9c (idem + instrumentation + correctif chargement) : terminée ✓
-- MR de patch Malo (AdultClassifier + ScanScreen) : conflit résolu par l'utilisateur, fusion en attente
 
 ## Modèle Label (confirmé)
 - Label : name, isSystem, createdAt
@@ -133,6 +130,7 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 ## Assets modèle TFLite
 model.tflite + labels.txt présents sur main/app/assets — vérifiés dans release/v1.0.0.
 noCompress += "tflite" déjà dans app/build.gradle.kts.
+model.config (clé scale=) à créer par l'utilisateur si normalisation non ZERO_ONE.
 
 ## Packaging (tâche 8118fe45 — terminée)
 - app/build.gradle.kts : signingConfigs release, isMinifyEnabled=false
@@ -158,5 +156,5 @@ noCompress += "tflite" déjà dans app/build.gradle.kts.
 - MR #53 (Léna, MediaMetadataReader fix) ✓
 - MR #54 (Léna, MediaMetadataReader fix v2) ✓
 - MR #56 (Léna, détection adulte normalisation) ✓
-- MR #58 (Léna, chargement modèle tolerant asset compressé) : approuvée, fusion bloquée (conflit)
-- MR Malo patch (AdultClassifier ByteBuffer + ScanScreen permissions) : conflit résolu par l'utilisateur, fusion en attente
+- MR #58 (Léna, chargement modèle tolerant asset compressé) ✓
+- MR #62 (Léna, log enrichi AdultClassifier) ✓

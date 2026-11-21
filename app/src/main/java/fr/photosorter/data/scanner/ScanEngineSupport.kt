@@ -57,6 +57,39 @@ internal suspend fun flushImages(
 }
 
 /**
+ * Reconciliation IDEMPOTENTE des liens image_labels pour le libelle systeme
+ * 'adulte', a executer en fin de scan.
+ *
+ * Probleme adresse (bug c7681760) : ImageDao.insertAll est en REPLACE ; la FK
+ * ON DELETE CASCADE efface a chaque re-scan les liens des images existantes.
+ * Ces liens ne sont recrees par flushImages que pour les images isAdult du lot
+ * COURANT. Les images adultes issues d'un scan anterieur perdent donc leur lien
+ * -> le filtre 'adulte uniquement' devient vide.
+ *
+ * Cette etape garantit l'existence du label 'adulte' puis insere (INSERT OR
+ * IGNORE ... SELECT) un lien pour TOUTES les images ou images.is_adult = 1, y
+ * compris celles hors du lot courant, sans dupliquer les liens deja presents.
+ *
+ * @return le nombre de liens manquants effectivement inseres (0 = rien a faire).
+ */
+internal suspend fun reconcileAdultLabels(
+    db: AppDatabase,
+    imageLabelDao: ImageLabelDao,
+    labelDao: LabelDao
+): Int {
+    var inserted = 0
+    db.withTransaction {
+        if (labelDao.getByName(ADULT_LABEL) == null) {
+            labelDao.insert(
+                LabelEntity(name = ADULT_LABEL, isSystem = true, createdAt = System.currentTimeMillis())
+            )
+        }
+        inserted = imageLabelDao.insertMissingAdultLabels(ADULT_LABEL)
+    }
+    return inserted
+}
+
+/**
  * Determine si une image est adulte : pre-filtre (screenshots/documents =
  * court-circuit SYNCHRONE) puis classifieur TFLite (classify() est suspend,
  * d'ou le detectAdult suspend ; il s'execute dans la coroutine de scan).

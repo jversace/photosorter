@@ -126,18 +126,18 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 
 ## État actuel
 
-- Tâche 1c5cab0a (Corrections Scanneur) : acceptée (task_review ok)
-- Tâche 9dd5d8c1 (réconciliation image_labels adulte) : acceptée (task_review ok), MR #75 en attente fusion manuelle utilisateur
-- Tâche e39a6b4d (insertMissingAdultLabels Long) : acceptée (task_review ok), MR #76 en attente fusion manuelle utilisateur
-- Bug 768b171a (insertMissingAdultLabels Int) : en correction — en attente fusion MR #76
-- Bug c7681760 (filtre adulte vide) : corrigé — en attente fusion MR #75
-- Tâche 7445b925 (Corrections IHM) : à faire — sous-tâches toutes terminées, à passer à vérifier après fusion MR #75/#76
+- Tâche 1c5cab0a (Corrections Scanneur) : terminée
+- Tâche 9dd5d8c1 (réconciliation image_labels adulte) : acceptée, MR #75 fusionnée ✅
+- Tâche e39a6b4d (insertMissingAdultLabels Long) : acceptée, MR #76 fusionnée ✅
+- Bug 768b171a (insertMissingAdultLabels Int) : à passer à 'corrigé' par Zoé
+- Bug c7681760 (filtre adulte vide) : à passer à 'corrigé'/'vérifié' par Zoé
+- Tâche 7445b925 (Corrections IHM) : passée à 'à vérifier'
+- Bugs ouverts nouveaux : 4be2e5e1 (bouton adulte redondant, mineur), 2f1581ee (suppression fichier, critique), 6acd97aa (déplacer = copie, majeur)
 
-## Après fusion MR #75 et #76 par l'utilisateur
-1. Confirmer à Zoé → elle passe bug 768b171a à 'corrigé'
-2. Passer tâche 7445b925 à 'à vérifier'
-3. Vérifier s'il reste des tâches ouvertes
-4. Lancer le workflow 'Suivi bugs' pour clôturer les bugs corrigés
+## Nouveaux bugs à traiter
+- 4be2e5e1 : supprimer bouton 'uniquement l'adulte' → tâche à créer par Zoé → Théo
+- 2f1581ee : suppression fichier non fonctionnelle → tâche à créer par Zoé → Zoé ou Léna
+- 6acd97aa : déplacer = copie sans suppression → tâche à créer par Zoé → Zoé ou Léna
 
 ## Modèle Label (confirmé)
 - Label : name, isSystem, createdAt
@@ -176,6 +176,6 @@ model.config (clé scale=) à créer par l'utilisateur si normalisation non ZERO
 - MR #62 (Léna, log enrichi AdultClassifier)
 - MR #66 (Théo, SAF OpenDocumentTree)
 - MR #67 (Léna, syncAdultLabels + test adultOnly)
-- MR #68 (Léna, FileActions SAF + libs.versions.toml) : fusionnée
-- MR #75 (Léna, contexte) : en attente fusion manuelle utilisateur
-- MR #76 (Léna, insertMissingAdultLabels Long) : en attente fusion manuelle utilisateur
+- MR #68 (Léna, FileActions SAF + libs.versions.toml)
+- MR #75 (Léna, contexte) : fusionnée ✅
+- MR #76 (Léna, insertMissingAdultLabels Long) : fusionnée ✅

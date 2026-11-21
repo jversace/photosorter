@@ -126,21 +126,18 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 
 ## État actuel
 
-- Tâche dc4d6e94 (SAF OpenDocumentTree copier/déplacer IHM) : acceptée, MR #66 fusionnée
-- Tâche 87c5f661 (filtre adultOnly) : acceptée, MR #67 fusionnée
-- Tâche 4f0b27e5 (FOREIGN KEY ImageLabelDao) : acceptée
-- Bug a65dffe2 (filtre adulte) : corrigé
-- Bug 4cd6654d (crash FOREIGN KEY) : corrigé
-- Bug 1e0fc60c (copier/déplacer tree URI -> File échec) : OUVERT — en attente fusion MR #68
-- Tâche 826b1ea6 (FileActions DocumentFile tree URI) : ACCEPTÉE (task_review ok)
-- MR #68 (Léna, FileActions SAF + libs.versions.toml complet) : approuvée par Zoé et Malo, mr_review bloqué outil. EN ATTENTE FUSION MANUELLE PAR L'UTILISATEUR.
-- libs.versions.toml de release/v1.0.0 incomplet (manque room-*, lifecycle-runtime-compose, documentfile) : corrigé dans MR #68
-- Tâches corrections ouvertes : 1c5cab0a (Scanneur), 7445b925 (IHM)
+- Tâche 1c5cab0a (Corrections Scanneur) : acceptée (task_review ok)
+- Tâche 9dd5d8c1 (réconciliation image_labels adulte) : acceptée (task_review ok), MR #75 en attente fusion manuelle utilisateur
+- Tâche e39a6b4d (insertMissingAdultLabels Long) : acceptée (task_review ok), MR #76 en attente fusion manuelle utilisateur
+- Bug 768b171a (insertMissingAdultLabels Int) : en correction — en attente fusion MR #76
+- Bug c7681760 (filtre adulte vide) : corrigé — en attente fusion MR #75
+- Tâche 7445b925 (Corrections IHM) : à faire — sous-tâches toutes terminées, à passer à vérifier après fusion MR #75/#76
 
-## Prochaine action après MR #68 fusionnée
-- Rebuild release, vérifier build OK
-- Bug 1e0fc60c : passer à corrigé/vérifié
-- Vérifier s'il reste des tâches ouvertes dans 1c5cab0a et 7445b925
+## Après fusion MR #75 et #76 par l'utilisateur
+1. Confirmer à Zoé → elle passe bug 768b171a à 'corrigé'
+2. Passer tâche 7445b925 à 'à vérifier'
+3. Vérifier s'il reste des tâches ouvertes
+4. Lancer le workflow 'Suivi bugs' pour clôturer les bugs corrigés
 
 ## Modèle Label (confirmé)
 - Label : name, isSystem, createdAt
@@ -179,4 +176,6 @@ model.config (clé scale=) à créer par l'utilisateur si normalisation non ZERO
 - MR #62 (Léna, log enrichi AdultClassifier)
 - MR #66 (Théo, SAF OpenDocumentTree)
 - MR #67 (Léna, syncAdultLabels + test adultOnly)
-- MR #68 (Léna, FileActions SAF + libs.versions.toml) : APPROUVÉE, en attente fusion manuelle utilisateur
+- MR #68 (Léna, FileActions SAF + libs.versions.toml) : fusionnée
+- MR #75 (Léna, contexte) : en attente fusion manuelle utilisateur
+- MR #76 (Léna, insertMissingAdultLabels Long) : en attente fusion manuelle utilisateur

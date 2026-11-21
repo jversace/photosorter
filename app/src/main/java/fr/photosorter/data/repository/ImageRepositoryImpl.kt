@@ -23,10 +23,10 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Implémentation [ImageRepository] :
- * - Lecture/tri/filtre poussés en SQL via [ImageQueryDao].
+ * Implementation [ImageRepository] :
+ * - Lecture/tri/filtre pousses en SQL via [ImageQueryDao].
  * - Actions fichiers via [FileActions] (SAF + fallback).
- * - Suppression via [MediaStoreDeleter] (scoped storage : confirmation système possible).
+ * - Suppression via [MediaStoreDeleter] (scoped storage : confirmation systeme possible).
  */
 @Singleton
 class ImageRepositoryImpl @Inject constructor(
@@ -66,7 +66,6 @@ class ImageRepositoryImpl @Inject constructor(
             var lastError: AppError? = null
             val pendingUris = mutableListOf<String>()
             var pendingSender: android.content.IntentSender? = null
-            var deletedAny = false
 
             for (item in items) {
                 when (val req = mediaStoreDeleter.requestDelete(item.uri)) {
@@ -75,7 +74,6 @@ class ImageRepositoryImpl @Inject constructor(
                             lastError = req.error
                         } else {
                             imageDao.deleteById(item.id)
-                            deletedAny = true
                         }
                     }
                     is DeleteRequest.NeedsConfirmation -> {
@@ -97,105 +95,8 @@ class ImageRepositoryImpl @Inject constructor(
             val err = mediaStoreDeleter.confirmDelete(uris)
             if (err != null) return@withContext AppResult.Failure(err)
 
-            // Nettoyage DB : on retire les images dont le fichier n'existe plus.
+            // Nettoyage DB : on retire les images dont le fichier n existe plus.
             val gone = imageDao.getAllUris().filter { !File(Uri.parse(it).path.orEmpty()).exists() }
             if (gone.isNotEmpty()) imageDao.deleteByUris(gone)
             AppResult.Success(Unit)
         }
-
-    override suspend fun move(items: List<ImageItem>, destUri: String): AppResult<Unit> =
-        withContext(dispatchers.io) {
-            var lastError: AppError? = null
-            for (item in items) {
-                val err = fileActions.moveToTree(item.uri, destUri)
-                if (err != null) {
-                    lastError = err
-                    continue
-                }
-                // La copie a réussi ; on ne retire de la base que si la source a réellement
-                // disparu, sinon on remonte une erreur claire et on conserve l'image
-                // (pas d'état incohérent base / système de fichiers).
-                if (!sourceStillExists(item.uri)) {
-                    imageDao.deleteById(item.id)
-                } else {
-                    lastError = AppError.Io(
-                        "Déplacement : copie effectuée mais original non supprimé pour ${item.name}"
-                    )
-                }
-            }
-            if (lastError != null) AppResult.Failure(lastError!!) else AppResult.Success(Unit)
-        }
-
-    override suspend fun copy(items: List<ImageItem>, destUri: String): AppResult<Unit> =
-        withContext(dispatchers.io) {
-            var lastError: AppError? = null
-            for (item in items) {
-                when (val res = fileActions.copyToTree(item.uri, destUri)) {
-                    is AppResult.Success -> Unit
-                    is AppResult.Failure -> lastError = res.error
-                    is AppResult.PendingDelete -> Unit
-                }
-            }
-            if (lastError != null) AppResult.Failure(lastError!!) else AppResult.Success(Unit)
-        }
-
-    override suspend fun share(items: List<ImageItem>): AppResult<Unit> =
-        withContext(dispatchers.io) {
-            if (items.isEmpty()) return@withContext AppResult.Success(Unit)
-            val uris = items.map { Uri.parse(it.uri) }
-            val intent = if (uris.size == 1) {
-                Intent(Intent.ACTION_SEND).apply {
-                    type = context.contentResolver.getType(uris.first()) ?: "image/*"
-                    putExtra(Intent.EXTRA_STREAM, uris.first())
-                }
-            } else {
-                Intent(Intent.ACTION_SEND_MULTIPLE).apply {
-                    type = "image/*"
-                    putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
-                }
-            }.apply {
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            runCatching {
-                context.startActivity(Intent.createChooser(intent, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                AppResult.Success(Unit)
-            }.getOrElse { AppResult.Failure(AppError.Io("Partage impossible : ${it.message}")) }
-        }
-
-    /**
-     * Indique si la source d'un déplacement existe encore après la tentative de suppression.
-     * - `file://` (URI issues du scan) : test direct sur le système de fichiers.
-     * - `content://` : tentative d'ouverture via le ContentResolver ; une entrée absente lève
-     *   [FileNotFoundException], interprétée comme « source supprimée ».
-     */
-    private fun sourceStillExists(uri: String): Boolean {
-        val parsed = Uri.parse(uri)
-        return when (parsed.scheme) {
-            "file" -> parsed.path?.let { File(it).exists() } ?: false
-            "content" -> try {
-                context.contentResolver.openInputStream(parsed)?.use { true } ?: false
-            } catch (e: FileNotFoundException) {
-                false
-            } catch (e: SecurityException) {
-                // On ne peut pas conclure : par prudence, on considère la source encore présente.
-                true
-            }
-            else -> parsed.path?.let { File(it).exists() } ?: false
-        }
-    }
-
-    private fun matchesFilter(item: ImageItem, filter: FilterState): Boolean {
-        if (!filter.includeAdult && item.isAdult) return false
-        if (filter.formats.isNotEmpty() && item.format !in filter.formats) return false
-        if (filter.minSizeBytes > 0 && item.sizeBytes < filter.minSizeBytes) return false
-        return true
-    }
-}
-
-private fun SortField.toSortCode(): String = when (this) {
-    SortField.NAME -> "name"
-    SortField.DATE -> "date"
-    SortField.SIZE -> "size"
-    SortField.FORMAT -> "format"
-    SortField.LABEL -> "label"
-}

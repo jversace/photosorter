@@ -43,6 +43,7 @@
   Déclenchement : sur demande de l’utilisateur, sur demande d’un agent (run_workflow), toutes les 30 minutes.
   Étapes :
     1. Zoé : Contrôler pour chaque bug ouvert si la tâche associée est bien terminée. Si elle est terminée passer le bug à "vérifié" (si échec : arrêter)
+    2. Zoé : Contrôler pour chaque bug ouvert si la tâche associée est "a vérifier". Si elle est "a vérifier" passer le bug à "corrigé" (si échec : arrêter)
 
 ## Mon rôle
 Chef de projet — Planifie, priorise, coordonne l’équipe et rend compte de l’avancement.

@@ -38,13 +38,17 @@
   Étapes :
     1. Zoé : créer la tâche associée (si échec : demander à l’utilisateur)
     2. Zoé : affecter la tâche à l'agent adapté (si échec : demander à l’utilisateur)
-    3. Malo : condition : dépendances terminées ET MR fusionnées dans la branche de travail. (si échec : arrêter)
+    3. Malo : condition : dépendances terminées ET MR fusionnées dans la branche de travail.
+Pas besoin de relance automatique, la condition sera peut-être remplie à la prochaine exécution du workflow (si échec : arrêter)
     4. Zoé : Passer le bug à l'état "en correction" (si échec : arrêter)
-- « Suivi bugs » : fermeture des bugs quand la tâche associée est validée — ouvert aux agents
+- « Vérification bugs terminés » : fermeture des bugs quand la tâche associée est validée — ouvert aux agents
   Déclenchement : sur demande de l’utilisateur, sur demande d’un agent (run_workflow), toutes les 30 minutes.
   Étapes :
-    1. Zoé : Contrôler pour chaque bug ouvert si la tâche associée est bien terminée. Si elle est terminée passer le bug à "vérifié" (si échec : arrêter)
-    2. Zoé : Contrôler pour chaque bug ouvert si la tâche associée est "a vérifier". Si elle est "a vérifier" passer le bug à "corrigé" (si échec : arrêter)
+    1. Zoé : Contrôler pour chaque bug "corrigé" si la tâche associée est bien terminée. Si elle est terminée passer le bug à "vérifié" (si échec : arrêter)
+- « Vérifications bugs en cours » : Vérification si des bugs peuvent être changés de statut — ouvert aux agents
+  Déclenchement : sur demande de l’utilisateur, sur demande d’un agent (run_workflow).
+  Étapes :
+    1. Zoé : Contrôler pour chaque bug "en correction" si la tâche associée est "à vérifier", si c'est le cas mettre le bug à "corrigé" (si échec : arrêter)
 
 ## Mon rôle
 Développeur back-end — Implémente la logique métier, les API et la base de données.

@@ -36,21 +36,20 @@ internal suspend fun flushImages(
     var inserted = 0
     db.withTransaction {
         val ids = imageDao.insertAll(batch)
-        val adultIds = ArrayList<Long>()
-        for (i in batch.indices) {
-            val id = ids.getOrNull(i) ?: continue
-            if (id > 0L && batch[i].isAdult) adultIds.add(id)
-        }
         inserted = ids.count { it > 0L }
-        if (adultIds.isNotEmpty()) {
+
+        val adultUris = batch.filter { it.isAdult }.map { it.uri }
+        if (adultUris.isNotEmpty()) {
             if (labelDao.getByName(ADULT_LABEL) == null) {
                 labelDao.insert(
-                    LabelEntity(name = ADULT_LABEL, isSystem = true, createdAt = System.currentTimeMillis())
+                    LabelEntity(
+                        name = ADULT_LABEL,
+                        isSystem = true,
+                        createdAt = System.currentTimeMillis()
+                    )
                 )
             }
-            imageLabelDao.insertAll(
-                adultIds.map { ImageLabelEntity(imageId = it, labelName = ADULT_LABEL) }
-            )
+            imageLabelDao.insertLabelsByUris(adultUris, ADULT_LABEL)
         }
     }
     return inserted
@@ -77,6 +76,7 @@ internal suspend fun flushImages(
  */
 internal suspend fun reconcileAdultLabels(
     db: AppDatabase,
+    imageDao: ImageDao,
     imageLabelDao: ImageLabelDao,
     labelDao: LabelDao
 ): Long {
@@ -84,10 +84,19 @@ internal suspend fun reconcileAdultLabels(
     db.withTransaction {
         if (labelDao.getByName(ADULT_LABEL) == null) {
             labelDao.insert(
-                LabelEntity(name = ADULT_LABEL, isSystem = true, createdAt = System.currentTimeMillis())
+                LabelEntity(
+                    name = ADULT_LABEL,
+                    isSystem = true,
+                    createdAt = System.currentTimeMillis()
+                )
             )
         }
-        inserted = imageLabelDao.insertMissingAdultLabels(ADULT_LABEL)
+        val adultUris = imageDao.getAdultUris()
+        if (adultUris.isNotEmpty()) {
+            android.util.Log.i("Scan", "reconcile adultUris=${adultUris.size}")
+            imageLabelDao.insertLabelsByUris(adultUris, ADULT_LABEL)
+        }
+        inserted = adultUris.size.toLong()
     }
     return inserted
 }

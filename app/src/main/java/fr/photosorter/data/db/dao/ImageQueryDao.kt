@@ -38,7 +38,7 @@ interface ImageQueryDao {
     @Transaction
     @Query(
         "SELECT * FROM images i " +
-        "WHERE (:includeAdult = 1 OR i.is_adult = 0) " +
+        "WHERE (:adultOnly = 1 OR :includeAdult = 1 OR i.is_adult = 0) " +
         "AND (:adultOnly = 0 OR EXISTS (SELECT 1 FROM image_labels ila WHERE ila.image_id = i.id AND ila.label_name = :adultLabel)) " +
         "AND (:hasFormats = 0 OR i.format IN (:formats)) " +
         "AND (:dateFrom IS NULL OR i.date_modified >= :dateFrom) " +

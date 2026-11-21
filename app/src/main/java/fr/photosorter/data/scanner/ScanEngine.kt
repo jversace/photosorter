@@ -102,7 +102,7 @@ class ScanEngine @Inject constructor(
             // Reconciliation idempotente des liens 'adulte' pour TOUTES les images
             // is_adult = 1 (y compris celles hors lot courant) : INSERT OR IGNORE ...
             // SELECT. Compense la perte de liens due au REPLACE + FK CASCADE au re-scan.
-            reconcileAdultLabels(db, imageLabelDao, labelDao)
+            reconcileAdultLabels(db, imageDao, imageLabelDao, labelDao)
 
             val duration = SystemClock.elapsedRealtime() - startedAt
             val result = if (cancelled.get()) {

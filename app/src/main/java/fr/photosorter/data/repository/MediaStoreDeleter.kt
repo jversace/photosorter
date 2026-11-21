@@ -57,6 +57,7 @@ class MediaStoreDeleter(private val context: Context) {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // API 30+ : demande de suppression groupée -> IntentSender à lancer par l'IHM.
             runCatching {
+                android.util.Log.i("MediaStoreDeleter", "requestDelete mediaUri=$mediaUri sdk=${Build.VERSION.SDK_INT}")
                 val pending = MediaStore.createDeleteRequest(resolver, listOf(mediaUri))
                 DeleteRequest.NeedsConfirmation(pending.intentSender, listOf(mediaUri.toString()))
             }.getOrElse { DeleteRequest.Completed(AppError.Io("Demande de suppression impossible : ${it.message}")) }
@@ -85,15 +86,28 @@ class MediaStoreDeleter(private val context: Context) {
         var lastError: AppError? = null
         for (s in uris) {
             val uri = Uri.parse(s)
-            val err: AppError? = if (uri.scheme == ContentResolver.SCHEME_CONTENT) {
-                try {
-                    val deleted = resolver.delete(uri, null, null)
-                    if (deleted > 0) null else AppError.Io("Suppression refusée : $s")
-                } catch (e: SecurityException) {
-                    AppError.PermissionDenied(e.message)
+            val err: AppError? = when (uri.scheme) {
+                ContentResolver.SCHEME_CONTENT -> {
+                    try {
+                        val deleted = resolver.delete(uri, null, null)
+                        android.util.Log.i("MediaStoreDeleter", "confirmDelete uri=$uri deleted=$deleted")
+                        if (deleted > 0) {
+                            null
+                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            // API 30+ : le système a déjà supprimé après confirmation du dialogue.
+                            // resolver.delete retourne 0 mais c'est un succès.
+                            null
+                        } else {
+                            AppError.Io("Suppression refusée : $s")
+                        }
+                    } catch (e: SecurityException) {
+                        AppError.PermissionDenied(e.message)
+                    } catch (e: Exception) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) null
+                        else AppError.Io("Suppression impossible : ${e.message}")
+                    }
                 }
-            } else {
-                deleteFileDirect(uri)
+                else -> deleteFileDirect(uri)
             }
             if (err != null) lastError = err
         }
@@ -116,27 +130,39 @@ class MediaStoreDeleter(private val context: Context) {
      * - `file://` : on retrouve l'id MediaStore via la colonne `_data`.
      */
     private fun toMediaContentUri(uri: Uri): Uri? {
-        if (uri.scheme == ContentResolver.SCHEME_CONTENT) {
-            return uri
-        }
+        if (uri.scheme == ContentResolver.SCHEME_CONTENT) return uri
         if (uri.scheme != ContentResolver.SCHEME_FILE) return null
         val path = uri.path ?: return null
-        // API 29+ : VOLUME_EXTERNAL ; API 26-28 : "external" (uniformité de la résolution _data).
-        val base = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-            MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
-        else
-            MediaStore.Files.getContentUri("external")
-        val projection = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DATA)
-        return runCatching {
-            resolver.query(base, projection, "${MediaStore.MediaColumns.DATA}=?", arrayOf(path), null)
-                ?.use { cursor ->
-                    if (cursor.moveToFirst()) {
-                        val id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID))
-                        ContentUris.withAppendedId(base, id)
-                    } else null
-                }
-        }.getOrNull()
+
+        // API 29+ : les collections "media" (images/) sont requises par createDeleteRequest.
+        // Sur API 30+, une URI files/ fait afficher le dialogue MAIS n'exécute pas la suppression.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val imagesBase = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+            queryMediaUri(imagesBase, path)?.let { return it }
+            // Fallback pour les fichiers qui ne seraient pas indexés comme images (rare)
+            val filesBase = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
+            return queryMediaUri(filesBase, path)
+        }
+
+        // API 26-28 : résolution sur la collection Files (l'appelant fera deleteFileDirect de toute façon)
+        val filesBase = MediaStore.Files.getContentUri("external")
+        return queryMediaUri(filesBase, path)
     }
+
+    private fun queryMediaUri(base: Uri, path: String): Uri? = runCatching {
+        resolver.query(
+            base,
+            arrayOf(MediaStore.MediaColumns._ID),
+            "${MediaStore.MediaColumns.DATA}=?",
+            arrayOf(path),
+            null
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID))
+                ContentUris.withAppendedId(base, id)
+            } else null
+        }
+    }.getOrNull()
 
     /** Retrouve le fichier sous-jacent à l'URI (file:// direct, ou _data sur content://). */
     private fun uriToFile(uri: Uri): File? {

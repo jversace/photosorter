@@ -36,4 +36,16 @@ interface ImageLabelDao {
             "SELECT id, :adultLabel FROM images WHERE is_adult = 1"
     )
     suspend fun insertMissingAdultLabels(adultLabel: String): Long
+
+    /**
+     * Insère les liens (image_id, label_name) pour toutes les images dont l'URI
+     * est dans [uris]. Basé sur l'URI (stable, unique) plutôt que sur les rowIds
+     * retournés par un INSERT ... REPLACE, qui peuvent être -1 ou obsolètes.
+     * INSERT OR IGNORE : idempotent, ne duplique pas les liens existants.
+     */
+    @Query(
+        "INSERT OR IGNORE INTO image_labels (image_id, label_name) " +
+                "SELECT id, :label FROM images WHERE uri IN (:uris)"
+    )
+    suspend fun insertLabelsByUris(uris: List<String>, label: String)
 }

@@ -16,6 +16,7 @@ import fr.photosorter.domain.model.SortField
 import fr.photosorter.domain.repository.ImageRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileNotFoundException
@@ -38,8 +39,12 @@ class ImageRepositoryImpl @Inject constructor(
     private val dispatchers: DispatchersProvider
 ) : ImageRepository {
 
-    override fun observeImages(sort: SortCriteria, filter: FilterState): Flow<List<ImageItem>> =
-        imageQueryDao.observeFiltered(
+    override fun observeImages(sort: SortCriteria, filter: FilterState): Flow<List<ImageItem>> {
+        android.util.Log.i(
+            "GalleryFilter",
+            "includeAdult=${filter.includeAdult} adultOnly=${filter.adultOnly} adultLabel='$ADULT_LABEL'"
+        )
+        return imageQueryDao.observeFiltered(
             sort = sort.field.toSortCode(),
             asc = if (sort.ascending) 1 else 0,
             includeAdult = if (filter.includeAdult) 1 else 0,
@@ -52,7 +57,12 @@ class ImageRepositoryImpl @Inject constructor(
             minSize = filter.minSizeBytes,
             hasLabels = if (filter.labels.isEmpty()) 0 else 1,
             labels = filter.labels.toList()
-        ).map { rows -> rows.map { it.toDomain() } }
+        )
+            .map { rows -> rows.map { it.toDomain() } }
+            .onEach { imgs ->
+                android.util.Log.i("GalleryFilter", "→ résultat : ${imgs.size} image(s)")
+            }
+    }
 
     override suspend fun getImages(filter: FilterState): List<ImageItem> =
         withContext(dispatchers.io) {
@@ -93,12 +103,23 @@ class ImageRepositoryImpl @Inject constructor(
     override suspend fun deleteConfirmed(uris: List<String>): AppResult<Unit> =
         withContext(dispatchers.io) {
             val err = mediaStoreDeleter.confirmDelete(uris)
-            if (err != null) return@withContext AppResult.Failure(err)
 
-            // Nettoyage DB : on retire les images dont le fichier n'existe plus.
-            val gone = imageDao.getAllUris().filter { !File(Uri.parse(it).path.orEmpty()).exists() }
+            // Nettoyage DB basé sur l'existence réelle des fichiers, pas sur le retour
+            // de resolver.delete (faux négatif sur API 30+ après confirmation système).
+            val gone = imageDao.getAllUris().filter { uriStr ->
+                val parsed = Uri.parse(uriStr)
+                val path = parsed.path
+                path == null || !File(path).exists()
+            }
             if (gone.isNotEmpty()) imageDao.deleteByUris(gone)
-            AppResult.Success(Unit)
+
+            android.util.Log.i(
+                "ImageRepository",
+                "deleteConfirmed: demandés=${uris.size} supprimésEnDB=${gone.size} err=${err?.message}"
+            )
+
+            if (err != null && gone.isEmpty()) AppResult.Failure(err)
+            else AppResult.Success(Unit)
         }
 
     override suspend fun move(items: List<ImageItem>, destUri: String): AppResult<Unit> =

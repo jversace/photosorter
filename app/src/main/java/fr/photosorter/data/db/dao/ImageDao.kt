@@ -37,4 +37,8 @@ interface ImageDao {
     @Transaction
     @Query("SELECT * FROM images ORDER BY name ASC")
     suspend fun getAllWithLabels(): List<ImageWithLabels>
+
+    /** URIs des images marquées adultes (pour la réconciliation des liens). */
+    @Query("SELECT uri FROM images WHERE is_adult = 1")
+    suspend fun getAdultUris(): List<String>
 }

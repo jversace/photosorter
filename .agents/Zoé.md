@@ -114,41 +114,29 @@ agent/zoé
 - image_labels.image_id + image_labels.label_name (FK -> labels.name) = SOURCE DE VÉRITÉ (n°224).
 - images.is_adult = cache ; ne pas s'y fier seul.
 - ADULT_LABEL = "adulte" dans fr.photosorter.domain.model (Label.kt).
-- FK label_name IMPOSE que le libellé existe dans labels AVANT insert.
-- Emplacement DAO : app/src/main/java/fr/photosorter/data/db/dao/ImageLabelDao.kt (PAS data/local).
-- FileActions : pas dans data/file/ ; chercher dans data/scanner ou data/di (module Hilt séparé, n°225).
+- Emplacement DAO : app/src/main/java/fr/photosorter/data/db/dao/ (ImageDao, ImageQueryDao, ImageLabelDao).
 
-## DÉCALAGE D'OUTIL (CONFIRMÉ 21/11/2026)
-- mr_review renvoie 'pas en attente de validation' alors que get_blockers liste la MR.
-- get_blockers peut afficher à tort 'Aucun blocage détecté'.
-- Malo a CONFIRMÉ par lecture directe : insertMissingAdultLabels ABSENT sur main ET sur release/v1.0.0.
-- => MR #76 (Léna), #79 (Léna), #80 (Théo) NE SONT PAS FUSIONNÉES malgré l'outil.
-- RÈGLE : ne jamais passer un bug à 'corrigé'/'vérifié' sans vérifier le code réellement présent dans release/v1.0.0.
+## CONTRAT FileActions (confirmé)
+- delete/move/copy/copyToTree/moveToTree renvoient AppError? (null = succès), PAS AppResult.
+- ImageRepositoryImpl doit tester err != null, jamais faire un when sur AppResult pour ces appels.
+- Suppression via MediaStoreDeleter -> DeleteRequest.Completed(NeedConfirmation) + AppResult vers le use case uniquement.
 
-## BUGS — ÉTAT RÉEL
-- 768b171a (insertMissingAdultLabels) : CORRIGÉ côté code, MR #76 NON fusionnée. NE PAS vérifier.
-- c7681760 (réconciliation adultes) : tâche 9dd5d8c1, MR #75 NON fusionnée. NE PAS vérifier.
-- 2f1581ee (suppression) : MR #80 NON fusionnée. 'en correction'. NE PAS passer 'corrigé'.
-- 4be2e5e1 (bouton redondant) : tâche 618fc1a5 'terminée' mais MR non confirmée en release. NE PAS passer 'corrigé' sans preuve.
-- 6acd97aa (move SAF) : MR #79 NON fusionnée. 'corrigé' non vérifiable.
-- 61ea13d4 (detectAdult suspend) : VÉRIFIÉ.
+## TRI/FILTRE
+- ImageQueryDao.observeFiltered(sort: Int, asc:Int, includeAdult:Int, adultOnly:Int, adultLabel:String, hasFormats:Int, formats, dateFrom, dateTo, minSize:Long?, hasLabels:Int, labels) -> Flow<List<ImageWithLabels>>.
+- SortField enum {NAME,DATE,SIZE,FORMAT,LABEL} mappé en Int 0..4 (toSortCode exhaustif).
+- minSizeBytes est Long? -> toujours sécuriser (?.let / != null).
 
-## FILTRES (validé)
-- ImageQueryDao.observeFiltered : adultOnly via EXISTS corrélé. CORRECT.
-- ImageRepositoryImpl.observeImages transmet adultOnly+adultLabel ; matchesFilter gère adultOnly. CORRECT.
+## HISTORIQUE FIX
+- MR #81 (agent/zoé) fusionnée dans release/v1.0.0 : corrige 6 erreurs de compilation d'ImageRepositoryImpl (toSortCode String->Int, copy() AppResult->AppError?, minSizeBytes nullable).
 
-## PRÉFILTRE / MODÉRATION
-- PreFilterDecision enum : SKIP / ANALYZE.
-- Détection adulte : normalisation pilotée par config + logScores (n°248 en attente).
+## DÉCALAGE D'OUTIL (historique 21/11/2026)
+- get_blockers/mr_review ont déjà renvoyé des états erronés ; TOUJOURS vérifier le code réellement présent dans release/v1.0.0 avant de changer un statut de bug.
+
+## Workflow
+- Suivi bugs : ne changer un statut de bug QUE sur l'état réel des fusions. Preuve manquante => wf_step ko + message à Malo.
+- Je ne valide jamais ma propre MR ; c'est Malo (agent principal) qui valide.
 
 ## AUTRES
 - Packaging v1.0.0 : isMinifyEnabled=false (n°227).
-- Wrapper Gradle : jar à générer par l'utilisateur (n°228).
-
-## Workflow
-- Suivi bugs : ne changer un statut de bug QUE sur l'état réel des fusions vérifié par lecture de release/v1.0.0.
-- Quand une preuve de fusion manque => wf_step outcome=ko + message à Malo, ne pas masquer.
-
-## En cours
-- Malo remonte à l'utilisateur pour fusion manuelle des MR #75/#76/#79/#80.
-- Dès fusion confirmée : vérifier 768b171a, c7681760, 6acd97aa ; passer 2f1581ee et 4be2e5e1 'corrigé' après preuve.
+- Wrapper Gradle : gradle-wrapper.jar à générer par l'utilisateur (n°228).
+- Si plusieurs options compatibles API 26 : choisir la plus simple (n°222).

@@ -127,21 +127,19 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - noCompress += "tflite" confirmé par Zoé et Léna : model.tflite non compressé dans l'APK. openFd() fonctionne. Repli ByteBuffer conservé comme filet de sécurité.
 - InputScale (normalisation TFLite) : paramétrable via app/assets/model.config (clé scale=). Défaut : ZERO_ONE.
 - assign() non @Transaction : réserve non bloquante v1.0.0, à durcir en v1.1+.
+- moveToTree : delete direct (sans IntentSender) + vérification stillExists. ImageRepositoryImpl.move ne retire la ligne DB que si la source a réellement disparu.
 
 ## État actuel
 
 - Tâche 1c5cab0a (Corrections Scanneur) : terminée
-- Tâche 9dd5d8c1 (réconciliation image_labels adulte) : acceptée, MR #75 fusionnée ✅
-- Tâche e39a6b4d (insertMissingAdultLabels Long) : acceptée, MR #76 fusionnée ✅
-- Bug 768b171a (insertMissingAdultLabels Int) : à passer à 'corrigé' par Zoé
-- Bug c7681760 (filtre adulte vide) : à passer à 'corrigé'/'vérifié' par Zoé
-- Tâche 7445b925 (Corrections IHM) : passée à 'à vérifier'
-- Bugs ouverts nouveaux : 4be2e5e1 (bouton adulte redondant, mineur), 2f1581ee (suppression fichier, critique), 6acd97aa (déplacer = copie, majeur)
+- Tâche 7445b925 (Corrections IHM) : en cours
+- Bug 4be2e5e1 (bouton adulte redondant) : tâche 618fc1a5 terminée, MR fusionnée — workflow vérification en cours
+- Bug 2f1581ee (suppression fichier) : tâche 8d347ac6 terminée, MR #78 fusionnée — workflow vérification en cours
+- Bug 6acd97aa (déplacer = copie) : tâche 06ee8444 acceptée, MR #79 fusionnée — workflow vérification en cours
+- Tâche 8d347ac6 : back-end suppression scoped storage livré. Volet IHM (GalleryScreen lance l'IntentSender) à créer en sous-tâche pour Théo.
 
-## Nouveaux bugs à traiter
-- 4be2e5e1 : supprimer bouton 'uniquement l'adulte' → tâche à créer par Zoé → Théo
-- 2f1581ee : suppression fichier non fonctionnelle → tâche à créer par Zoé → Zoé ou Léna
-- 6acd97aa : déplacer = copie sans suppression → tâche à créer par Zoé → Zoé ou Léna
+## Prochaine action
+- Créer sous-tâche IHM pour la suppression scoped storage (GalleryScreen + IntentSender launcher) → Théo, sous tâche 7445b925
 
 ## Modèle Label (confirmé)
 - Label : name, isSystem, createdAt
@@ -183,3 +181,5 @@ model.config (clé scale=) à créer par l'utilisateur si normalisation non ZERO
 - MR #68 (Léna, FileActions SAF + libs.versions.toml)
 - MR #75 (Léna, contexte) : fusionnée ✅
 - MR #76 (Léna, insertMissingAdultLabels Long) : fusionnée ✅
+- MR #78 (Léna, back-end suppression scoped storage) : fusionnée ✅
+- MR #79 (Léna, fix move suppression source) : fusionnée ✅

@@ -122,7 +122,7 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - resolve_merge ne peut pas purger MERGE_HEAD (nécessite un conflict id actif assigné par le système).
 - MR fantômes #14 et #24 : ignorées sur instruction utilisateur.
 - task_status 'en validation' n'existe pas dans l'outil : utiliser 'à vérifier'.
-- mr_review et task_review renvoient souvent 'pas en attente' même quand get_blockers les liste : normal, déjà traité automatiquement. Ne pas réessayer indéfiniment.
+- mr_review et task_review renvoient souvent 'pas en attente' même quand get_blockers les liste : problème systémique de l'outil. L'utilisateur fusionne manuellement via GitHub dans ce cas.
 - isMinifyEnabled=false pour v1.0.0. R8/ProGuard à réactiver en v1.1+ après test d'un APK release signé sur appareil physique avec règles ProGuard adaptées (Room/Hilt/TFLite/coroutines).
 - noCompress += "tflite" confirmé par Zoé et Léna : model.tflite non compressé dans l'APK. openFd() fonctionne. Repli ByteBuffer conservé comme filet de sécurité.
 - InputScale (normalisation TFLite) : paramétrable via app/assets/model.config (clé scale=). Défaut : ZERO_ONE.
@@ -132,14 +132,15 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 ## État actuel
 
 - Tâche 1c5cab0a (Corrections Scanneur) : terminée
-- Tâche 7445b925 (Corrections IHM) : en cours
-- Bug 4be2e5e1 (bouton adulte redondant) : tâche 618fc1a5 terminée, MR fusionnée — workflow vérification en cours
-- Bug 2f1581ee (suppression fichier) : tâche 8d347ac6 terminée, MR #78 fusionnée — workflow vérification en cours
-- Bug 6acd97aa (déplacer = copie) : tâche 06ee8444 acceptée, MR #79 fusionnée — workflow vérification en cours
-- Tâche 8d347ac6 : back-end suppression scoped storage livré. Volet IHM (GalleryScreen lance l'IntentSender) à créer en sous-tâche pour Théo.
+- Tâche 7445b925 (Corrections IHM) : en attente fusion MR #79 et #80 (utilisateur fusionne manuellement via GitHub)
+- Bug 4be2e5e1 (bouton adulte redondant) : tâche 618fc1a5 terminée — en attente fusion MR
+- Bug 2f1581ee (suppression fichier) : tâches 8d347ac6 + 8661d464 terminées — en attente fusion MR #80
+- Bug 6acd97aa (déplacer = copie) : tâche 06ee8444 terminée — en attente fusion MR #79
 
-## Prochaine action
-- Créer sous-tâche IHM pour la suppression scoped storage (GalleryScreen + IntentSender launcher) → Théo, sous tâche 7445b925
+## Actions à enchaîner après confirmation fusion MR #79 et #80
+1. Passer bugs 2f1581ee et 6acd97aa à 'corrigé'
+2. Lancer workflow 'Vérification bugs terminés' → Zoé les passe à 'vérifié'
+3. Clôturer tâche 7445b925 (Corrections IHM)
 
 ## Modèle Label (confirmé)
 - Label : name, isSystem, createdAt
@@ -182,4 +183,5 @@ model.config (clé scale=) à créer par l'utilisateur si normalisation non ZERO
 - MR #75 (Léna, contexte) : fusionnée ✅
 - MR #76 (Léna, insertMissingAdultLabels Long) : fusionnée ✅
 - MR #78 (Léna, back-end suppression scoped storage) : fusionnée ✅
-- MR #79 (Léna, fix move suppression source) : fusionnée ✅
+- MR #79 (Léna, fix move suppression source) : fusion manuelle en attente utilisateur
+- MR #80 (Théo, launcher IntentSender suppression) : fusion manuelle en attente utilisateur

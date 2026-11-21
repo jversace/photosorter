@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileNotFoundException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -107,7 +108,18 @@ class ImageRepositoryImpl @Inject constructor(
             var lastError: AppError? = null
             for (item in items) {
                 when (val res = fileActions.moveToTree(item.uri, destUri)) {
-                    is AppResult.Success -> imageDao.deleteById(item.id)
+                    is AppResult.Success -> {
+                        // La copie a réussi ; on ne retire de la base que si la source
+                        // a réellement disparu, sinon on remonte une erreur claire et on
+                        // conserve l'image (pas d'état incohérent base/fichiers).
+                        if (!sourceStillExists(item.uri)) {
+                            imageDao.deleteById(item.id)
+                        } else {
+                            lastError = AppError.Io(
+                                "Déplacement : copie effectuée mais original non supprimé pour ${item.name}"
+                            )
+                        }
+                    }
                     is AppResult.Failure -> lastError = res.error
                     is AppResult.PendingDelete -> Unit
                 }
@@ -150,6 +162,28 @@ class ImageRepositoryImpl @Inject constructor(
                 AppResult.Success(Unit)
             }.getOrElse { AppResult.Failure(AppError.Io("Partage impossible : ${it.message}")) }
         }
+
+    /**
+     * Indique si la source d'un déplacement existe encore après la tentative de suppression.
+     * - `file://` (URI issues du scan) : test direct sur le système de fichiers.
+     * - `content://` : tentative d'ouverture via le ContentResolver ; une entrée absente lève
+     *   [FileNotFoundException], interprétée comme « source supprimée ».
+     */
+    private fun sourceStillExists(uri: String): Boolean {
+        val parsed = Uri.parse(uri)
+        return when (parsed.scheme) {
+            "file" -> parsed.path?.let { File(it).exists() } ?: false
+            "content" -> try {
+                context.contentResolver.openInputStream(parsed)?.use { true } ?: false
+            } catch (e: FileNotFoundException) {
+                false
+            } catch (e: SecurityException) {
+                // On ne peut pas conclure : par prudence, on considère la source encore présente.
+                true
+            }
+            else -> parsed.path?.let { File(it).exists() } ?: false
+        }
+    }
 
     private fun matchesFilter(item: ImageItem, filter: FilterState): Boolean {
         if (!filter.includeAdult && item.isAdult) return false

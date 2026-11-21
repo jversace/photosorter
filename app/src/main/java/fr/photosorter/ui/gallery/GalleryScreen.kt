@@ -1,7 +1,9 @@
 package fr.photosorter.ui.gallery
 
+import android.app.Activity
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -72,6 +74,30 @@ internal fun GalleryScreen(
                 PendingDestAction.MOVE -> viewModel.moveSelected(treeUri.toString())
                 PendingDestAction.COPY -> viewModel.copySelected(treeUri.toString())
             }
+        }
+    }
+
+    // Launcher pour la confirmation système de suppression scoped storage (API >= 29).
+    val deleteIntentLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult(),
+    ) { result ->
+        val pending = state.pendingDelete
+        if (result.resultCode == Activity.RESULT_OK && pending != null) {
+            viewModel.onDeleteConfirmed(pending.uris)
+        } else {
+            viewModel.onDeleteCancelled()
+        }
+    }
+
+    // Observation de la demande de confirmation système : on lance l'IntentSender fourni.
+    LaunchedEffect(state.pendingDelete) {
+        val pending = state.pendingDelete ?: return@LaunchedEffect
+        val sender = pending.intentSender
+        if (sender != null) {
+            deleteIntentLauncher.launch(IntentSenderRequest.Builder(sender).build())
+        } else {
+            // Repli API 29 : rien à lancer, on valide directement le nettoyage DB.
+            viewModel.onDeleteConfirmed(pending.uris)
         }
     }
 

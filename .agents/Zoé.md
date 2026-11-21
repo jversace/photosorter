@@ -106,24 +106,24 @@ agent/zoé
 ## SCHÉMA RÉEL
 - image_labels.image_id + image_labels.label_name (FK -> labels.name) = SOURCE DE VÉRITÉ (n°224).
 - images.is_adult = cache ; ne pas s'y fier seul.
-- ADULT_LABEL = "adulte" défini dans fr.photosorter.domain.model (Label.kt).
+- ADULT_LABEL = "adulte" dans fr.photosorter.domain.model (Label.kt).
 - FK label_name IMPOSE que le libellé existe dans labels AVANT insert.
+- Emplacement DAO : app/src/main/java/fr/photosorter/data/db/dao/ImageLabelDao.kt (PAS data/local).
+
+## BUG 768b171a (insertMissingAdultLabels type retour)
+- Confirmé sur branche Léna : @Query INSERT OR IGNORE ... SELECT avec retour `Int`.
+- Room : INSERT => Long ou Unit (Int réservé UPDATE/DELETE). Correction demandée à Léna (tâche e39a6b4d).
+- À CORRIGER avant fusion de la MR (sinon KSP échoue).
 
 ## FILTRES (validé)
 - ImageQueryDao.observeFiltered : adultOnly via EXISTS corrélé. CORRECT.
 - ImageRepositoryImpl.observeImages transmet adultOnly+adultLabel ; matchesFilter gère adultOnly. CORRECT.
 
-## BUG dd7f6f6c + 61ea13d4 (volet 2 / detectAdult suspend)
-- Volet 1 (DAO adultOnly) corrigé/accepted.
-- FICHIER : app/src/main/java/fr/photosorter/data/scanner/ScanEngineSupport.kt
-  (PAS fr/photosorter/scanner ; le scanner est sous data/scanner).
-- flushImages : withTransaction { imageDao.insertAll (REPLACE) ; ensure 'adulte' via labelDao ; imageLabelDao.insertAll (IGNORE) }.
-- detectAdult : internal suspend (classify() est suspend, appelé dans la coroutine de scan déjà withContext(io)). SKIP = court-circuit SYNCHRONE ; Unavailable => false (conservateur).
-- ORDRE DE FUSION TRANCHÉ : MR #73 (Léna) absorbe volet 2 + detectAdult suspend. #73 FUSIONNÉE EN PREMIER. => #71 devient REDONDANTE, à FERMER (sans fusionner) côté application pour éviter conflit dans ScanEngineSupport.kt.
-- Après fusion #73 : dd7f6f6c et 61ea13d4 -> 'corrigé' (via #73), puis vérification terrain.
+## BUG 61ea13d4 (detectAdult suspend) — RÉSOLU via MR #73
+- ScanEngineSupport.kt (data/scanner) ; detectAdult internal suspend, SKIP court-circuit synchrone.
 
 ## PRÉFILTRE / MODÉRATION
-- PreFilterDecision enum : SKIP / ANALYZE (PAS Skip/Classify). Vérifier dans chaque review.
+- PreFilterDecision enum : SKIP / ANALYZE.
 - Détection adulte : normalisation pilotée par config + logScores (n°248 en attente).
 
 ## AUTRES
@@ -131,6 +131,6 @@ agent/zoé
 - Wrapper Gradle : jar à générer par l'utilisateur (n°228).
 
 ## Limites d'outil
-- mr_review renvoie parfois 'pas en attente' alors que get_blockers liste la MR : décalage récurrent. Faire fusionner/clore côté application (Malo/utilisateur).
-- message vers agent principal peut échouer 'profondeur max atteinte' : consigner dans le contexte.
+- mr_review renvoie parfois 'pas en attente' alors que get_blockers liste la MR : décalage récurrent.
+- message vers agent principal peut échouer 'profondeur max atteinte'.
 - bug_status : workflow corrigé -> QA vérifie.

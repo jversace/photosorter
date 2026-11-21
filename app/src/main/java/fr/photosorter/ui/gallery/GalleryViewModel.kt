@@ -37,6 +37,7 @@ class GalleryViewModel @Inject constructor(
     private val errorMessage = MutableStateFlow<String?>(null)
     private val feedback = MutableStateFlow<GalleryFeedback?>(null)
     private val busy = MutableStateFlow(false)
+    private val pendingDelete = MutableStateFlow<PendingDeleteRequest?>(null)
 
     private val images = combine(sort, filter) { s, f -> s to f }
         .flatMapLatest { (s, f) -> imageRepository.observeImages(s, f).catch { e -> errorMessage.value = e.message; emit(emptyList()) } }
@@ -45,7 +46,9 @@ class GalleryViewModel @Inject constructor(
     // adulte est assuré exclusivement par le tri-état (includeAdult + adultOnly) du filtre.
     private val labels = labelRepository.observeLabels().map { l -> l.filterNot { it.isSystem }.map { it.name } }.catch { emit(emptyList()) }
 
-    val uiState: StateFlow<GalleryUiState> = combine(images, displayMode, sort, filter, selectedIds, labels) { v ->
+    val uiState: StateFlow<GalleryUiState> = combine(
+        images, displayMode, sort, filter, selectedIds, labels, pendingDelete,
+    ) { v ->
         @Suppress("UNCHECKED_CAST")
         val imgs = v[0] as List<ImageItem>
         imagesState.value = imgs
@@ -55,6 +58,7 @@ class GalleryViewModel @Inject constructor(
             selectedIds = (v[4] as Set<Long>).filterTo(LinkedHashSet()) { id -> imgs.any { it.id == id } },
             availableLabels = v[5] as List<String>, isLoading = false,
             errorMessage = errorMessage.value, feedback = feedback.value, actionsBusy = busy.value,
+            pendingDelete = v[6] as PendingDeleteRequest?,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GalleryUiState(isLoading = true))
 
@@ -75,6 +79,7 @@ class GalleryViewModel @Inject constructor(
             when (val r = block(its)) {
                 is AppResult.Success -> { feedback.value = fb; selectedIds.value = emptySet() }
                 is AppResult.Failure -> errorMessage.value = r.error.message
+                is AppResult.PendingDelete -> pendingDelete.value = PendingDeleteRequest(r.intentSender, r.uris)
             }
             busy.value = false
         }
@@ -86,4 +91,25 @@ class GalleryViewModel @Inject constructor(
     fun copySelected(dest: String) = run(GalleryFeedback.COPIED) { imageRepository.copy(it, dest) }
     fun assignLabel(name: String) = run(GalleryFeedback.LABEL_ASSIGNED) { labelRepository.assign(it, name) }
     fun unassignLabel(name: String) = run(GalleryFeedback.LABEL_REMOVED) { labelRepository.unassign(it, name) }
+
+    /**
+     * Appelé par l'UI après que l'utilisateur a confirmé la suppression système (RESULT_OK).
+     * Finalise la suppression en base + rafraîchit la liste.
+     */
+    fun onDeleteConfirmed(uris: List<String>) {
+        pendingDelete.value = null
+        if (uris.isEmpty()) return
+        busy.value = true
+        viewModelScope.launch {
+            when (val r = imageRepository.deleteConfirmed(uris)) {
+                is AppResult.Success -> { feedback.value = GalleryFeedback.DELETED; selectedIds.value = emptySet() }
+                is AppResult.Failure -> errorMessage.value = r.error.message
+                is AppResult.PendingDelete -> pendingDelete.value = PendingDeleteRequest(r.intentSender, r.uris)
+            }
+            busy.value = false
+        }
+    }
+
+    /** Appelé par l'UI si l'utilisateur annule la demande système (RESULT_CANCELED). */
+    fun onDeleteCancelled() { pendingDelete.value = null }
 }

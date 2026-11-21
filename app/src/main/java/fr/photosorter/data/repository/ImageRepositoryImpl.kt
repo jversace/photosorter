@@ -66,7 +66,6 @@ class ImageRepositoryImpl @Inject constructor(
             var lastError: AppError? = null
             val pendingUris = mutableListOf<String>()
             var pendingSender: android.content.IntentSender? = null
-            var deletedAny = false
 
             for (item in items) {
                 when (val req = mediaStoreDeleter.requestDelete(item.uri)) {
@@ -75,7 +74,6 @@ class ImageRepositoryImpl @Inject constructor(
                             lastError = req.error
                         } else {
                             imageDao.deleteById(item.id)
-                            deletedAny = true
                         }
                     }
                     is DeleteRequest.NeedsConfirmation -> {
@@ -130,11 +128,10 @@ class ImageRepositoryImpl @Inject constructor(
         withContext(dispatchers.io) {
             var lastError: AppError? = null
             for (item in items) {
-                when (val res = fileActions.copyToTree(item.uri, destUri)) {
-                    is AppResult.Success -> Unit
-                    is AppResult.Failure -> lastError = res.error
-                    is AppResult.PendingDelete -> Unit
-                }
+                // FileActions.copyToTree renvoie null en cas de succès, sinon l'erreur
+                // (même contrat que moveToTree).
+                val err = fileActions.copyToTree(item.uri, destUri)
+                if (err != null) lastError = err
             }
             if (lastError != null) AppResult.Failure(lastError!!) else AppResult.Success(Unit)
         }
@@ -187,15 +184,19 @@ class ImageRepositoryImpl @Inject constructor(
     private fun matchesFilter(item: ImageItem, filter: FilterState): Boolean {
         if (!filter.includeAdult && item.isAdult) return false
         if (filter.formats.isNotEmpty() && item.format !in filter.formats) return false
-        if (filter.minSizeBytes > 0 && item.sizeBytes < filter.minSizeBytes) return false
+        val minSize = filter.minSizeBytes
+        if (minSize != null && minSize > 0 && item.sizeBytes < minSize) return false
         return true
     }
 }
 
-private fun SortField.toSortCode(): String = when (this) {
-    SortField.NAME -> "name"
-    SortField.DATE -> "date"
-    SortField.SIZE -> "size"
-    SortField.FORMAT -> "format"
-    SortField.LABEL -> "label"
+/**
+ * Code de tri attendu par [ImageQueryDao.observeFiltered] (0=NAME, 1=DATE, 2=SIZE, 3=FORMAT, 4=LABEL).
+ */
+private fun SortField.toSortCode(): Int = when (this) {
+    SortField.NAME -> 0
+    SortField.DATE -> 1
+    SortField.SIZE -> 2
+    SortField.FORMAT -> 3
+    SortField.LABEL -> 4
 }

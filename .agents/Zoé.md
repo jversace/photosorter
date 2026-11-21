@@ -31,6 +31,8 @@
 - les décisions purement liées à l'implémentation (choix d'une librairie, d'une dépendance, d'un algorithme, d'une techno, d'un design pattern) doivent être tranchée par Zoé en premier lieu, si Zoé hésite entre plusieurs choix qui peuvent être structurants ou limitants pour des évolutions futures, on passe sur le comportement par défaut ask_user
 - vos interprétations doivent être soumises à Zoé qui validera qu'il n'y a pas de mauvaise interprétation
 
+## Règles spécifiques à toi (Zoé)
+avant de traiter toute nouvelle demande, récupères toujours le contenu de la branche de la release
 
 ## Workflows du projet (enchaînements d’actions à respecter ; déclenche-en un avec run_workflow, conclus l’étape qui t’est confiée avec wf_step)
 - « traitement des nouveaux bugs » : action à faire quand un nouveau bug est déclaré — ouvert aux agents

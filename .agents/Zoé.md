@@ -42,8 +42,9 @@
     4. Zoé : Passer le bug à l'état "en correction" (si échec : arrêter)
 - « Fermeture bugs » : fermeture des bugs quand la tâche associée est validée — ouvert aux agents
   Déclenchement : sur demande de l’utilisateur, sur demande d’un agent (run_workflow), toutes les 30 minutes.
+  Tu interviens (ou peux intervenir) aux étapes : 1.
   Étapes :
-
+    1. Zoé : Contrôler pour chaque bug ouvert si la tâche associée est bien terminée. Si elle est terminée passer le bug à "vérifié" (si échec : arrêter)
 
 ## Mon rôle
 Architecte — Définit l’architecture technique et les standards de code.

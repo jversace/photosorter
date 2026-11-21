@@ -123,6 +123,7 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - MR fantômes #14 et #24 : ignorées sur instruction utilisateur.
 - task_status 'en validation' n'existe pas dans l'outil : utiliser 'à vérifier'.
 - mr_review et task_review renvoient souvent 'pas en attente' même quand get_blockers les liste : problème systémique de l'outil. L'utilisateur fusionne manuellement via GitHub dans ce cas.
+- get_blockers n'est PAS fiable : il peut dire 'Aucun blocage' alors que des MR ne sont pas fusionnées. Toujours vérifier par lecture directe des fichiers.
 - isMinifyEnabled=false pour v1.0.0. R8/ProGuard à réactiver en v1.1+ après test d'un APK release signé sur appareil physique avec règles ProGuard adaptées (Room/Hilt/TFLite/coroutines).
 - noCompress += "tflite" confirmé par Zoé et Léna : model.tflite non compressé dans l'APK. openFd() fonctionne. Repli ByteBuffer conservé comme filet de sécurité.
 - InputScale (normalisation TFLite) : paramétrable via app/assets/model.config (clé scale=). Défaut : ZERO_ONE.
@@ -132,15 +133,17 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 ## État actuel
 
 - Tâche 1c5cab0a (Corrections Scanneur) : terminée
-- Tâche 7445b925 (Corrections IHM) : en attente fusion MR #79 et #80 (utilisateur fusionne manuellement via GitHub)
-- Bug 4be2e5e1 (bouton adulte redondant) : tâche 618fc1a5 terminée — en attente fusion MR
-- Bug 2f1581ee (suppression fichier) : tâches 8d347ac6 + 8661d464 terminées — en attente fusion MR #80
-- Bug 6acd97aa (déplacer = copie) : tâche 06ee8444 terminée — en attente fusion MR #79
+- Tâche 7445b925 (Corrections IHM) : en attente fusion MR #76, #79, #80 (utilisateur fusionne manuellement via GitHub — confirmé)
+- Bug 4be2e5e1 (bouton adulte redondant) : tâche 618fc1a5 terminée — MR à vérifier par lecture fichier
+- Bug 2f1581ee (suppression fichier) : tâches 8d347ac6 + 8661d464 terminées — MR #80 non fusionnée
+- Bug 6acd97aa (déplacer = copie) : tâche 06ee8444 terminée — MR #79 non fusionnée
+- Bug 768b171a : tâche e39a6b4d terminée — MR #76 non fusionnée (insertMissingAdultLabels absent de release/v1.0.0)
 
-## Actions à enchaîner après confirmation fusion MR #79 et #80
-1. Passer bugs 2f1581ee et 6acd97aa à 'corrigé'
-2. Lancer workflow 'Vérification bugs terminés' → Zoé les passe à 'vérifié'
-3. Clôturer tâche 7445b925 (Corrections IHM)
+## Actions à enchaîner après confirmation fusion MR #76, #79 et #80
+1. Vérifier par lecture directe que insertMissingAdultLabels est présent dans ImageLabelDao.kt sur release/v1.0.0
+2. Passer bugs 2f1581ee, 6acd97aa et 768b171a à 'corrigé'
+3. Lancer workflow 'Vérification bugs terminés' → Zoé les passe à 'vérifié'
+4. Clôturer tâche 7445b925 (Corrections IHM)
 
 ## Modèle Label (confirmé)
 - Label : name, isSystem, createdAt
@@ -164,7 +167,7 @@ model.config (clé scale=) à créer par l'utilisateur si normalisation non ZERO
 - Réserve : gradle-wrapper.jar (~60 Ko binaire) à générer depuis un poste Gradle
 - MR #44 fusionnée dans release/v1.0.0
 
-## MR fusionnées
+## MR fusionnées (confirmées par lecture fichier)
 - MR #34 (Malo, packaging)
 - MR #41 (Léna, Room aliases)
 - MR #44 (Léna, wrapper + exécutable)
@@ -180,8 +183,8 @@ model.config (clé scale=) à créer par l'utilisateur si normalisation non ZERO
 - MR #66 (Théo, SAF OpenDocumentTree)
 - MR #67 (Léna, syncAdultLabels + test adultOnly)
 - MR #68 (Léna, FileActions SAF + libs.versions.toml)
-- MR #75 (Léna, contexte) : fusionnée ✅
-- MR #76 (Léna, insertMissingAdultLabels Long) : fusionnée ✅
+- MR #75 (Léna) : non confirmée par lecture fichier
+- MR #76 (Léna, insertMissingAdultLabels) : NON fusionnée — fusion manuelle en cours
 - MR #78 (Léna, back-end suppression scoped storage) : fusionnée ✅
-- MR #79 (Léna, fix move suppression source) : fusion manuelle en attente utilisateur
-- MR #80 (Théo, launcher IntentSender suppression) : fusion manuelle en attente utilisateur
+- MR #79 (Léna, fix move suppression source) : NON fusionnée — fusion manuelle en cours
+- MR #80 (Théo, launcher IntentSender suppression) : NON fusionnée — fusion manuelle en cours

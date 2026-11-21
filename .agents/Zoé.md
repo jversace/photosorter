@@ -116,10 +116,11 @@ agent/zoé
 - Emplacement DAO : app/src/main/java/fr/photosorter/data/db/dao/ImageLabelDao.kt (PAS data/local).
 
 ## BUGS — ÉTAT (21/11/2026)
-- 61ea13d4 (detectAdult suspend) : VÉRIFIÉ (tâche a285b8eb acceptée, MR fusionnée). Fait.
-- 768b171a (insertMissingAdultLabels type retour Int->Long) : CORRIGÉ côté code (tâche e39a6b4d, MR #76). MR PAS ENCORE FUSIONNÉE (fusion manuelle utilisateur en attente). NE PAS passer 'vérifié' avant confirmation.
-- c7681760 (réconciliation adultes) : tâche 9dd5d8c1, MR #75 PAS ENCORE FUSIONNÉE. NE PAS passer 'vérifié' avant confirmation.
-- Malo confirme : attendre sa confirmation avant de bouger c7681760/768b171a.
+- 61ea13d4 (detectAdult suspend) : VÉRIFIÉ. Fait.
+- 768b171a (insertMissingAdultLabels type retour Int->Long) : CORRIGÉ côté code. MR #76 NON fusionnée (Malo a lu release/v1.0.0 : insertMissingAdultLabels ABSENT d'ImageLabelDao.kt). NE PAS passer 'vérifié'.
+- c7681760 (réconciliation adultes) : tâche 9dd5d8c1, MR #75 NON fusionnée. NE PAS passer 'vérifié'.
+- 4be2e5e1 : en correction. 2f1581ee : en correction. 6acd97aa : corrigé, MR #79 NON fusionnée (move FileActions toujours runAction+ensureDestDir(File) dans release).
+- Malo a remonté à l'utilisateur le décalage d'outil mr_review.
 
 ## FILTRES (validé)
 - ImageQueryDao.observeFiltered : adultOnly via EXISTS corrélé. CORRECT.
@@ -134,8 +135,8 @@ agent/zoé
 - Wrapper Gradle : jar à générer par l'utilisateur (n°228).
 
 ## Workflow
-- Suivi bugs étape 1 (vérifié) : seulement si tâche terminée. Étape 2 (corrigé) : seulement si tâche 'à vérifier'. Respecter l'état réel des fusions avant tout changement de statut de bug.
+- Suivi bugs : ne changer un statut de bug que sur l'état réel des fusions. Étape 'en correction' exige MR fusionnée.
 
 ## Limites d'outil
-- mr_review peut renvoyer 'pas en attente de validation' alors que get_blockers liste la MR : décalage récurrent. Remonté à Malo.
-- message vers agent principal peut échouer 'profondeur max atteinte'.
+- mr_review renvoie 'pas en attente de validation' alors que get_blockers liste la MR (décalage récurrent). Malo remonte à l'utilisateur ; validation MR #79/#76/#75 à faire côté circuit normal (Malo).
+- Pas d'accès GitHub direct : impossible de forcer une fusion; resolve_merge uniquement sur conflit confié.

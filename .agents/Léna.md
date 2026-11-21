@@ -39,6 +39,10 @@
     2. Zoé : affecter la tâche à l'agent adapté (si échec : demander à l’utilisateur)
     3. démarrer les tâches prêtes (assignées, à faire, dépendances satisfaites) (si échec : arrêter)
     4. Zoé : Passer le bug à l'état "en correction" (si échec : arrêter)
+- « Fermeture bugs » : fermeture des bugs quand la tâche associée est validée — ouvert aux agents
+  Déclenchement : sur demande de l’utilisateur, sur demande d’un agent (run_workflow), toutes les 30 minutes.
+  Étapes :
+
 
 ## Mon rôle
 Développeur back-end — Implémente la logique métier, les API et la base de données.

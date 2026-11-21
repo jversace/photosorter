@@ -18,17 +18,15 @@ import fr.photosorter.domain.repository.ImageRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * Implémentation [ImageRepository] :
  * - Lecture/tri/filtre poussés en SQL via [ImageQueryDao].
- * - Actions fichiers via [FileActions] (scoped storage + SAF + fallback).
- * - Partage via [Intent.ACTION_SEND] et FileProvider.
- *
- * Copie/déplacement : [destUri] est une tree URI SAF (OpenDocumentTree) consommée via
- * [FileActions.copyToTree]/[FileActions.moveToTree] (DocumentFile).
+ * - Actions fichiers via [FileActions] (SAF + fallback).
+ * - Suppression via [MediaStoreDeleter] (scoped storage : confirmation système possible).
  */
 @Singleton
 class ImageRepositoryImpl @Inject constructor(
@@ -37,6 +35,7 @@ class ImageRepositoryImpl @Inject constructor(
     private val imageLabelDao: ImageLabelDao,
     private val imageQueryDao: ImageQueryDao,
     private val fileActions: FileActions,
+    private val mediaStoreDeleter: MediaStoreDeleter,
     private val dispatchers: DispatchersProvider
 ) : ImageRepository {
 
@@ -65,87 +64,108 @@ class ImageRepositoryImpl @Inject constructor(
 
     override suspend fun delete(items: List<ImageItem>): AppResult<Unit> =
         withContext(dispatchers.io) {
-            var failure: AppError? = null
+            var lastError: AppError? = null
+            val pendingUris = mutableListOf<String>()
+            var pendingSender: android.content.IntentSender? = null
+            var deletedAny = false
+
             for (item in items) {
-                val err = fileActions.delete(item.uri)
-                if (err != null) {
-                    if (failure == null) failure = err
-                } else {
-                    imageLabelDao.clearForImage(item.id)
-                    imageDao.deleteById(item.id)
+                when (val req = mediaStoreDeleter.requestDelete(item.uri)) {
+                    is DeleteRequest.Completed -> {
+                        if (req.error != null) {
+                            lastError = req.error
+                        } else {
+                            imageDao.deleteById(item.id)
+                            deletedAny = true
+                        }
+                    }
+                    is DeleteRequest.NeedsConfirmation -> {
+                        pendingUris += req.uris
+                        if (req.intentSender != null) pendingSender = req.intentSender
+                    }
                 }
             }
-            if (failure == null) AppResult.Success(Unit) else AppResult.Failure(failure)
+
+            when {
+                pendingUris.isNotEmpty() -> AppResult.PendingDelete(pendingSender, pendingUris)
+                lastError != null -> AppResult.Error(lastError!!)
+                deletedAny || items.isEmpty() -> AppResult.Success(Unit)
+                else -> AppResult.Success(Unit)
+            }
         }
 
-    // destUri = tree URI SAF choisie par l'utilisateur (OpenDocumentTree).
+    override suspend fun deleteConfirmed(uris: List<String>): AppResult<Unit> =
+        withContext(dispatchers.io) {
+            val err = mediaStoreDeleter.confirmDelete(uris)
+            if (err != null) return@withContext AppResult.Error(err)
+
+            // Nettoyage DB : on retire les images dont le fichier n'existe plus.
+            val gone = imageDao.getAllUris().filter { !File(Uri.parse(it).path.orEmpty()).exists() }
+            if (gone.isNotEmpty()) imageDao.deleteByUris(gone)
+            AppResult.Success(Unit)
+        }
+
     override suspend fun move(items: List<ImageItem>, destUri: String): AppResult<Unit> =
         withContext(dispatchers.io) {
-            runAction(items) { fileActions.moveToTree(it.uri, destUri) }
+            var lastError: AppError? = null
+            for (item in items) {
+                when (val res = fileActions.moveToTree(item.uri, destUri)) {
+                    is AppResult.Success -> imageDao.deleteById(item.id)
+                    is AppResult.Error -> lastError = res.error
+                    else -> Unit
+                }
+            }
+            if (lastError != null) AppResult.Error(lastError!!) else AppResult.Success(Unit)
         }
 
     override suspend fun copy(items: List<ImageItem>, destUri: String): AppResult<Unit> =
         withContext(dispatchers.io) {
-            runAction(items) { fileActions.copyToTree(it.uri, destUri) }
+            var lastError: AppError? = null
+            for (item in items) {
+                when (val res = fileActions.copyToTree(item.uri, destUri)) {
+                    is AppResult.Success -> Unit
+                    is AppResult.Error -> lastError = res.error
+                    else -> Unit
+                }
+            }
+            if (lastError != null) AppResult.Error(lastError!!) else AppResult.Success(Unit)
         }
 
     override suspend fun share(items: List<ImageItem>): AppResult<Unit> =
-        withContext(dispatchers.main) {
+        withContext(dispatchers.io) {
             if (items.isEmpty()) return@withContext AppResult.Success(Unit)
-            val uris = ArrayList<Uri>(items.size)
-            for (item in items) {
-                val uri = fileActions.shareUri(item.uri)
-                    ?: return@withContext AppResult.Failure(AppError.NotFound("Partage impossible : ${item.name}"))
-                uris.add(uri)
-            }
+            val uris = items.map { Uri.parse(it.uri) }
             val intent = if (uris.size == 1) {
                 Intent(Intent.ACTION_SEND).apply {
-                    type = "image/*"
+                    type = context.contentResolver.getType(uris.first()) ?: "image/*"
                     putExtra(Intent.EXTRA_STREAM, uris.first())
                 }
             } else {
                 Intent(Intent.ACTION_SEND_MULTIPLE).apply {
                     type = "image/*"
-                    putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+                    putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
                 }
             }.apply {
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            val chooser = Intent.createChooser(intent, null).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(chooser)
-            AppResult.Success(Unit)
+            runCatching {
+                context.startActivity(Intent.createChooser(intent, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                AppResult.Success(Unit)
+            }.getOrElse { AppResult.Error(AppError.Io("Partage impossible : ${it.message}")) }
         }
-
-    // --- helpers ---
-
-    private fun runAction(items: List<ImageItem>, action: (ImageItem) -> AppError?): AppResult<Unit> {
-        var firstError: AppError? = null
-        for (item in items) {
-            val err = action(item)
-            if (err != null && firstError == null) firstError = err
-        }
-        return if (firstError == null) AppResult.Success(Unit) else AppResult.Failure(firstError)
-    }
 
     private fun matchesFilter(item: ImageItem, filter: FilterState): Boolean {
         if (!filter.includeAdult && item.isAdult) return false
-        // adultOnly : source de vérité = libellés (table image_labels), pas le cache is_adult.
-        if (filter.adultOnly && ADULT_LABEL !in item.labels) return false
         if (filter.formats.isNotEmpty() && item.format !in filter.formats) return false
-        if (filter.dateFrom != null && item.dateModified < filter.dateFrom) return false
-        if (filter.dateTo != null && item.dateModified > filter.dateTo) return false
-        if (filter.minSizeBytes != null && item.sizeBytes < filter.minSizeBytes) return false
-        if (filter.labels.isNotEmpty() && item.labels.none { it in filter.labels }) return false
+        if (filter.minSizeBytes > 0 && item.sizeBytes < filter.minSizeBytes) return false
         return true
     }
 }
 
-private fun SortField.toSortCode(): Int = when (this) {
-    SortField.NAME -> 0
-    SortField.DATE -> 1
-    SortField.SIZE -> 2
-    SortField.FORMAT -> 3
-    SortField.LABEL -> 4
+private fun SortField.toSortCode(): String = when (this) {
+    SortField.NAME -> "name"
+    SortField.DATE -> "date"
+    SortField.SIZE -> "size"
+    SortField.FORMAT -> "format"
+    SortField.LABEL -> "label"
 }

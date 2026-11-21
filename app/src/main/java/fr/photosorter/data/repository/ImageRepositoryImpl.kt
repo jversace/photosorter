@@ -107,21 +107,20 @@ class ImageRepositoryImpl @Inject constructor(
         withContext(dispatchers.io) {
             var lastError: AppError? = null
             for (item in items) {
-                when (val res = fileActions.moveToTree(item.uri, destUri)) {
-                    is AppResult.Success -> {
-                        // La copie a réussi ; on ne retire de la base que si la source
-                        // a réellement disparu, sinon on remonte une erreur claire et on
-                        // conserve l'image (pas d'état incohérent base/fichiers).
-                        if (!sourceStillExists(item.uri)) {
-                            imageDao.deleteById(item.id)
-                        } else {
-                            lastError = AppError.Io(
-                                "Déplacement : copie effectuée mais original non supprimé pour ${item.name}"
-                            )
-                        }
-                    }
-                    is AppResult.Failure -> lastError = res.error
-                    is AppResult.PendingDelete -> Unit
+                val err = fileActions.moveToTree(item.uri, destUri)
+                if (err != null) {
+                    lastError = err
+                    continue
+                }
+                // La copie a réussi ; on ne retire de la base que si la source a réellement
+                // disparu, sinon on remonte une erreur claire et on conserve l'image
+                // (pas d'état incohérent base / système de fichiers).
+                if (!sourceStillExists(item.uri)) {
+                    imageDao.deleteById(item.id)
+                } else {
+                    lastError = AppError.Io(
+                        "Déplacement : copie effectuée mais original non supprimé pour ${item.name}"
+                    )
                 }
             }
             if (lastError != null) AppResult.Failure(lastError!!) else AppResult.Success(Unit)

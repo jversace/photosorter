@@ -9,6 +9,7 @@ import fr.photosorter.core.result.AppResult
 import fr.photosorter.data.db.dao.ImageDao
 import fr.photosorter.data.db.dao.ImageLabelDao
 import fr.photosorter.data.db.dao.ImageQueryDao
+import fr.photosorter.domain.model.ADULT_LABEL
 import fr.photosorter.domain.model.FilterState
 import fr.photosorter.domain.model.ImageItem
 import fr.photosorter.domain.model.SortCriteria
@@ -17,15 +18,17 @@ import fr.photosorter.domain.repository.ImageRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * Implémentation [ImageRepository] :
  * - Lecture/tri/filtre poussés en SQL via [ImageQueryDao].
- * - Actions fichiers via [FileActions] (scoped storage + fallback).
+ * - Actions fichiers via [FileActions] (scoped storage + SAF + fallback).
  * - Partage via [Intent.ACTION_SEND] et FileProvider.
+ *
+ * Copie/déplacement : [destUri] est une tree URI SAF (OpenDocumentTree) consommée via
+ * [FileActions.copyToTree]/[FileActions.moveToTree] (DocumentFile).
  */
 @Singleton
 class ImageRepositoryImpl @Inject constructor(
@@ -42,6 +45,8 @@ class ImageRepositoryImpl @Inject constructor(
             sort = sort.field.toSortCode(),
             asc = if (sort.ascending) 1 else 0,
             includeAdult = if (filter.includeAdult) 1 else 0,
+            adultOnly = if (filter.adultOnly) 1 else 0,
+            adultLabel = ADULT_LABEL,
             hasFormats = if (filter.formats.isEmpty()) 0 else 1,
             formats = filter.formats.map { it.name },
             dateFrom = filter.dateFrom,
@@ -73,18 +78,15 @@ class ImageRepositoryImpl @Inject constructor(
             if (failure == null) AppResult.Success(Unit) else AppResult.Failure(failure)
         }
 
+    // destUri = tree URI SAF choisie par l'utilisateur (OpenDocumentTree).
     override suspend fun move(items: List<ImageItem>, destUri: String): AppResult<Unit> =
         withContext(dispatchers.io) {
-            val destDir = ensureDestDir(destUri)
-                ?: return@withContext AppResult.Failure(AppError.NotFound("Dossier destination invalide"))
-            runAction(items) { fileActions.move(it.uri, destDir) }
+            runAction(items) { fileActions.moveToTree(it.uri, destUri) }
         }
 
     override suspend fun copy(items: List<ImageItem>, destUri: String): AppResult<Unit> =
         withContext(dispatchers.io) {
-            val destDir = ensureDestDir(destUri)
-                ?: return@withContext AppResult.Failure(AppError.NotFound("Dossier destination invalide"))
-            runAction(items) { fileActions.copy(it.uri, destDir) }
+            runAction(items) { fileActions.copyToTree(it.uri, destUri) }
         }
 
     override suspend fun share(items: List<ImageItem>): AppResult<Unit> =
@@ -118,12 +120,6 @@ class ImageRepositoryImpl @Inject constructor(
 
     // --- helpers ---
 
-    private fun ensureDestDir(destUri: String): File? {
-        val dir = runCatching { Uri.parse(destUri).path?.let(::File) }.getOrNull() ?: return null
-        if (!dir.isDirectory && !dir.mkdirs() && !dir.isDirectory) return null
-        return dir
-    }
-
     private fun runAction(items: List<ImageItem>, action: (ImageItem) -> AppError?): AppResult<Unit> {
         var firstError: AppError? = null
         for (item in items) {
@@ -135,6 +131,8 @@ class ImageRepositoryImpl @Inject constructor(
 
     private fun matchesFilter(item: ImageItem, filter: FilterState): Boolean {
         if (!filter.includeAdult && item.isAdult) return false
+        // adultOnly : source de vérité = libellés (table image_labels), pas le cache is_adult.
+        if (filter.adultOnly && ADULT_LABEL !in item.labels) return false
         if (filter.formats.isNotEmpty() && item.format !in filter.formats) return false
         if (filter.dateFrom != null && item.dateModified < filter.dateFrom) return false
         if (filter.dateTo != null && item.dateModified > filter.dateTo) return false

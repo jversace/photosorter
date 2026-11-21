@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.provider.OpenableColumns
+import androidx.documentfile.provider.DocumentFile
 import fr.photosorter.core.result.AppError
 import java.io.File
 
@@ -20,12 +21,11 @@ import java.io.File
  *   absent ou vide (typique sur API >= 29 / scoped storage), on matérialise une copie dans le
  *   cache de l'app à partir du flux du resolver, nommée d'après [OpenableColumns.DISPLAY_NAME].
  *
- * Politique par opération :
- * - DELETE : sur API >= 29, tentative ContentResolver.delete (respecte l'autorisation
- *   MediaStore), puis repli fichier via [resolveFile].
- * - MOVE/COPY : via [File] (renameTo, puis copie + suppression en repli). Si la cible est
- *   hors de la zone de l'app sur API >= 29, renvoie un [AppError.Io] explicite (scoped storage).
- * - SHARE : URI FileProvider en lecture seule (le fichier matérialisé doit survivre).
+ * Destination :
+ * - [move]/[copy] ciblent un dossier [File] (ancien comportement).
+ * - [moveToTree]/[copyToTree] ciblent une destination SAF (`tree` URI choisie par
+ *   OpenDocumentTree) consommée via [DocumentFile] : c'est le chemin utilisé en v1 sur
+ *   API >= 29, où un [File] de destination hors zone app n'est pas inscriptible.
  *
  * La permission runtime WRITE_EXTERNAL_STORAGE (API 26-28) relève de l'IHM, pas de cette classe.
  */
@@ -82,6 +82,56 @@ class FileActions(private val context: Context) {
             return if (copyFile(src, target)) null else scopedIoError("Copie", src)
         } finally {
             // Le fichier matérialisé en cache n'a servi qu'à lire la source : on le supprime.
+            resolved.cleanup()
+        }
+    }
+
+    /**
+     * Déplace [imageUri] dans l'arborescence SAF désignée par [treeUri] (tree URI).
+     * Crée le fichier cible via [DocumentFile.fromTreeUri], copie le flux puis supprime la
+     * source (MediaStore puis repli fichier). Renvoie null si succès.
+     */
+    fun moveToTree(imageUri: String, treeUri: String): AppError? {
+        val copyError = copyToTreeInternal(imageUri, treeUri, materialize = false)
+        if (copyError != null) return copyError
+        // Source supprimée uniquement après une copie réussie.
+        return delete(imageUri)
+    }
+
+    /**
+     * Copie [imageUri] dans l'arborescence SAF désignée par [treeUri] (tree URI).
+     * Renvoie null si succès.
+     */
+    fun copyToTree(imageUri: String, treeUri: String): AppError? =
+        copyToTreeInternal(imageUri, treeUri, materialize = true)
+
+    // --- Copie vers un tree URI SAF ----------------------------------------
+
+    private fun copyToTreeInternal(imageUri: String, treeUri: String, materialize: Boolean): AppError? {
+        val tree = runCatching { DocumentFile.fromTreeUri(context, Uri.parse(treeUri)) }.getOrNull()
+            ?: return AppError.Io("Arborescence destination inaccessible : $treeUri")
+        if (!tree.isDirectory) return AppError.Io("Destination invalide (pas un dossier) : $treeUri")
+
+        val resolved = resolveFile(Uri.parse(imageUri), materializeIfNeeded = materialize)
+            ?: return AppError.NotFound("URI non exploitable : $imageUri")
+        val src = resolved.file
+        try {
+            if (!src.exists()) return AppError.NotFound("Fichier introuvable : ${src.name}")
+            val displayName = src.name
+            val mime = resolver.getType(Uri.parse(imageUri)) ?: guessMime(displayName)
+            val target = tree.createFile(mime, displayName)
+                ?: return AppError.Io("Création du fichier destination impossible : $displayName")
+            val copied = runCatching {
+                resolver.openOutputStream(target.uri)?.use { output ->
+                    src.inputStream().use { input -> input.copyTo(output) }
+                } != null
+            }.getOrDefault(false)
+            if (!copied) {
+                runCatching { target.delete() }
+                return AppError.Io("Copie échouée : $displayName")
+            }
+            return null
+        } finally {
             resolved.cleanup()
         }
     }
@@ -187,6 +237,22 @@ class FileActions(private val context: Context) {
     }
 
     // --- Helpers ------------------------------------------------------------
+
+    /** Devine un type MIME à partir du nom de fichier (repli quand le resolver ne le fournit pas). */
+    private fun guessMime(name: String): String {
+        return when (name.substringAfterLast('.', "").lowercase()) {
+            "jpg", "jpeg" -> "image/jpeg"
+            "png" -> "image/png"
+            "heic", "heif" -> "image/heic"
+            "webp" -> "image/webp"
+            "gif" -> "image/gif"
+            "bmp" -> "image/bmp"
+            "dng" -> "image/x-adobe-dng"
+            "cr2" -> "image/x-canon-cr2"
+            "nef" -> "image/x-nikon-nef"
+            else -> "application/octet-stream"
+        }
+    }
 
     /** Crée le dossier cible si nécessaire ; renvoie une erreur si impossible. */
     private fun ensureDir(dir: File): AppError? {

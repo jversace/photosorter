@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.OpenableColumns
 import java.io.File
+import java.net.URLConnection
 
 data class FileMetadata(
     val name: String,
@@ -15,23 +16,32 @@ data class FileMetadata(
     val height: Int
 )
 
+/**
+ * Lecture des metadonnees d'une image.
+ *
+ * Sous scoped storage (API >= 29) les Uri produites par [StorageWalker] sont de type
+ * file:// (Uri.fromFile). contentResolver.query/getType ne sont PAS fiables sur file://.
+ * On construit donc nom/taille/date DIRECTEMENT depuis le File (garanti), et on ne
+ * sollicite le contentResolver que de facon BEST-EFFORT (MIME), en tolerant file://.
+ */
 class MediaMetadataReader(private val contentResolver: ContentResolver) {
 
     fun read(uri: Uri): FileMetadata? {
+        val path = uri.path
+        val file = path?.let { File(it) }
+
         var name: String? = null
         var size = -1L
         var modified = 0L
 
-        val path = uri.path
-        if (path != null) {
-            val f = File(path)
-            if (f.exists()) {
-                name = f.name
-                size = f.length()
-                modified = f.lastModified()
-            }
+        // 1) Source primaire : le File (fiable pour file://).
+        if (file != null && file.exists()) {
+            name = file.name
+            size = file.length()
+            modified = file.lastModified()
         }
 
+        // 2) Repli best-effort via contentResolver (utile pour content://).
         if (name.isNullOrBlank() || size < 0) {
             try {
                 contentResolver.query(
@@ -47,16 +57,34 @@ class MediaMetadataReader(private val contentResolver: ContentResolver) {
                     }
                 }
             } catch (_: Exception) {
+                // file:// non interrogeable : on tolere, le File a deja fourni l'essentiel.
             }
         }
 
         val resolved = name
         if (resolved.isNullOrBlank()) return null
 
-        val mime = try { contentResolver.getType(uri) } catch (_: Exception) { null }
+        // MIME best-effort : contentResolver puis repli par extension.
+        val mime = resolveMime(uri, resolved, file)
         val (w, h) = readDimensions(path)
 
         return FileMetadata(resolved, size.coerceAtLeast(0L), modified, mime, w, h)
+    }
+
+    private fun resolveMime(uri: Uri, name: String, file: File?): String? {
+        if (uri.scheme != "file") {
+            try {
+                contentResolver.getType(uri)?.let { return it }
+            } catch (_: Exception) {
+            }
+        }
+        if (file != null) {
+            try {
+                URLConnection.guessContentTypeFromName(name)?.let { return it }
+            } catch (_: Throwable) {
+            }
+        }
+        return null
     }
 
     private fun readDimensions(path: String?): Pair<Int, Int> {

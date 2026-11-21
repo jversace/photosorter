@@ -93,26 +93,38 @@ Développeur front-end — IHM. Branche : agent/théo.
 ## Décisions durables (IHM)
 - Jetpack Compose + Material 3, mono-activity, API 26.
 - Structure ui/ : theme/, navigation/, screens/, gallery/, detail/, labels/, scan/.
-- ViewModels @HiltViewModel sur interfaces de domaine (ImageRepository, LabelRepository).
-- Strings FR (certaines en dur dans les écrans faute de res centralisé ; à externaliser si demandé).
+- ViewModels @HiltViewModel sur interfaces de domaine.
+- Strings FR dans app/src/main/res/values/strings.xml. TOUJOURS vérifier qu'une R.string.* utilisée existe (cause d'échec Kotlin).
 
-## Workflow release v1.0.0
-- Pousser sur agent/théo → merge_request vers release/v1.0.0 (Zoé/fusion) ; pull ensuite.
+## Filtre adulte (tâche 60787cd8) — CONTRAT FINAL
+- FilterState porte DEUX champs distincts de labels : includeAdult:Boolean=true et adultOnly:Boolean=false.
+- UI = contrôle tri-état (3 FilterChip) mutuellement exclusifs :
+  Tout afficher   = (includeAdult=true,  adultOnly=false)
+  Masquer l'adulte= (includeAdult=false, adultOnly=false)
+  Uniquement adulte=(includeAdult=false, adultOnly=true)
+- Ne touche JAMAIS labels (convention : ne pas exposer labels={adulte} + adultOnly ensemble).
+- DAO (Léna) : observeFiltered(adultOnly:Int 0/1, adultLabel:String=ADULT_LABEL) ; adultOnly = clause EXISTS sur image_labels en ET ; includeAdult géré séparément. Confirmé compatible, rien à changer côté IHM.
+- GalleryViewModel transmet déjà tout FilterState au repository → adultOnly circule automatiquement.
+- Chaînes : filters_adult_section / _show_all / _hide / _only (filters_include_adult conservée mais plus utilisée).
 
-## Tâches terminées (7)
-- 4060ffc0 socle M3 + nav + a11y.
-- 5ee8aef7 galerie (liste/grille, badges adulte, sélection multiple).
-- e93e44ff tri et filtres.
-- 79906e61 plein écran (zoom/nav/EXIF).
-- f1d46c78 écran scan + progression.
-- 10f2b02d action bar et dialogues.
-- a3be7352 gestion libellés (LabelViewModel + LabelScreen, NavHost branché ; révision 'adulte' OK car assignLabel/unassignLabel ne bloquent pas les libellés système).
+## Décisions validées par Zoé
+- Permission scan : ActivityResultContracts.RequestMultiplePermissions, API plateforme. READ_MEDIA_IMAGES (API>=33) sinon READ_EXTERNAL_STORAGE. CODÉ (f4f04627).
+
+## ScanScreen
+- Contrôle + demande de permission runtime IMPLÉMENTÉS (f4f04627, MR #57).
+
+## À FAIRE (non urgent, après push de Léna)
+- Consommer report.unclassifiedCount: Int (=0 par défaut) = images NON analyseeables, distinct de 'normale'. Afficher 'N image(s) non analysée(s)' UNIQUEMENT si N>0. Ajouter chaîne FR (format %1$d). Rien avant que Léna ait poussé le champ.
 
 ## LEÇON — outil write_file
-- write_file peut tronquer les contenus longs (>~80 lignes) ; écrire COMPACT et TOUJOURS relire avec read_file après.
+- write_file peut tronquer les contenus longs ; écrire COMPACT et TOUJOURS relire avec read_file après.
+- Bloc action : UNE action par bloc, JSON valide.
 
 ## NE PAS modifier sans prévenir Léna
 - app/build.gradle.kts, libs.versions.toml, settings.gradle.kts, PhotoSorterApp.kt.
 
+## Tâches terminées (7)
+- 4060ffc0, 5ee8aef7, e93e44ff, 79906e61, f1d46c78, 10f2b02d, a3be7352.
+
 ## État projet
-- v1.0.0 : 17 tâches terminées (Malo 1, Zoé 3, Léna 6, Théo 7). Release finale remontée à l'utilisateur par Malo.
+- v1.0.0 : 17 tâches terminées. Cause '0 image' = permission runtime non accordée, corrigée par f4f04627.

@@ -24,11 +24,11 @@
 ## Règles du projet
 - lors du démarrage d'une nouvelle tâche, récupérez les modifications présentes dans la branche de la release en cours vers votre branche
 - ne pas mettre une tâche à en validation tant qu'elle n'est pas commitée dans votre branche
-- lorsque vous avez commité dans votre branche, mettre la tâche à "en validation"
-- Malo valide que tous les fichier y sont, les merge dans la branche de la release en cours, et passe la tâche à terminée
+- lorsque vous avez commité dans votre branche, mettre la tâche à "à vérifier"
+- Zoé valide que tous les fichiers y sont, les merge dans la branche de la release en cours, et passe la tâche à terminée
 - Quand un agent n'a plus de tâche en cours et qu'une de ses tâches peut être démarrée (Malo vérifie s'il n'y a pas de dépendance bloquante), la tâche doit être démarrée
-- les décisions purement liées à l'implémentation doivent être tranchée par Zoé
-- vos interprétations doivent être soumises à Adam qui validera qu'il n'y a pas de mauvaise interprétation
+- les décisions purement liées à l'implémentation (choix d'une librairie, d'une dépendance, d'un algorithme, d'une techno, d'un design pattern) doivent être tranchée par Zoé
+- vos interprétations doivent être soumises à Zoé qui validera qu'il n'y a pas de mauvaise interprétation
 
 
 
@@ -47,6 +47,7 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - Déclarer des bugs : libre
 - Faire évoluer les bugs (en correction, corrigé) : libre
 - Vérifier ou rouvrir un bug : libre
+- Valider (fusionner) ou refuser les merge requests des autres agents : libre
 - Associer tâches et bugs à des modules : libre
 - Niveau d'autonomie du projet : équilibré
 - Agents joignables : tous
@@ -63,7 +64,7 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 {"do":"force_unlock","path":"<fichier>","reason":"..."} : (agent principal) libérer de force le verrou d’un fichier (détenteur inactif ou plantage) ; si le détenteur travaille encore, utilise stop_agent
 {"do":"pull"} : récupérer dans ta branche les changements de la branche de travail de la release (fusion ; en cas de conflit, la règle du projet s’applique)
 {"do":"merge_request","title":"...","body":"...","task":"<id de la tâche, facultatif>"} : soumettre ta branche à la branche de travail de la release (l’agent principal la valide)
-{"do":"mr_review","id":"<id de la MR>","verdict":"approved|rejected","comment":"..."} : (agent principal / QA) valider (fusion) ou refuser une merge request
+{"do":"mr_review","id":"<id de la MR>","verdict":"approved|rejected","comment":"..."} : (agent principal, ou tout agent dont le rôle a le droit « valider les merge requests » ; jamais ta propre MR) valider (fusion) ou refuser une merge request
 {"do":"resolve_merge","conflict":"<id>","files":[{"path":"...","content":"<contenu final complet, ou null pour supprimer>"}],"message":"..."} : résoudre un conflit de fusion qui t’est confié (un élément par fichier en conflit)
 {"do":"message","to":"<prénom>","text":"..."} : écrire à un agent joignable (sa réponse te revient)
 {"do":"get_progress","agent":"<prénom ou all>"} : avancement d’un agent ou de toute l’équipe (sans coût)
@@ -82,6 +83,7 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 {"do":"bug_status","id":"<id>","status":"en correction|corrigé|vérifié|rouvert"} : faire évoluer un bug (vérifié/rouvert : droit de vérification)
 {"do":"ask_user","question":"...","options":["A","B"],"recommendation":"...","impact":"...","structural":true,"task":"<id de la tâche bloquée, ou vide>","replaces":[<n° des décisions en attente auxquelles cette question répond aussi>]} : poser une question à l’utilisateur (ambiguïté, décision structurante) ; si elle répond aussi à une question déjà en attente, indique son numéro dans replaces : l’ancienne est annulée et remplacée
 {"do":"instruction","text":"...","scope":"global|role:<rôle>|agent:<prénom>|module:<module>"} : (agent principal) enregistrer une nouvelle instruction de l’utilisateur
+{"do":"instr_rewrite","items":[...],"obsolete":[...]} : (uniquement lors d’une consolidation demandée par l’application) liste consolidée des instructions
 {"do":"spec","text":"<spécifications complètes en markdown>"} : (agent principal) remplacer les spécifications
 
 ## Notes de l’agent (à tenir à jour)
@@ -101,17 +103,27 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 - resolve_merge ne peut pas purger MERGE_HEAD (nécessite un conflict id actif assigné par le système).
 - MR fantômes #14 et #24 : ignorées sur instruction utilisateur.
 - task_status 'en validation' n'existe pas dans l'outil : utiliser 'à vérifier'.
-- mr_review et task_review renvoient souvent 'pas en attente' même quand get_blockers les liste : toujours demander une fusion/clôture manuelle à l'utilisateur dans ce cas (ask_user). Ne pas réessayer indéfiniment.
+- mr_review et task_review renvoient souvent 'pas en attente' même quand get_blockers les liste : normal, déjà traité automatiquement. Ne pas réessayer indéfiniment.
 - isMinifyEnabled=false pour v1.0.0. R8/ProGuard à réactiver en v1.1+ après test d'un APK release signé sur appareil physique avec règles ProGuard adaptées (Room/Hilt/TFLite/coroutines).
+- noCompress += "tflite" confirmé par Zoé et Léna : model.tflite non compressé dans l'APK. openFd() fonctionne. Repli ByteBuffer conservé comme filet de sécurité. Taille APK légèrement supérieure : normal.
+- InputScale (normalisation TFLite) : en attente réponse utilisateur sur config d'entraînement du modèle (décision n°248).
 
-## État actuel — EN ATTENTE BUILD UTILISATEUR
+## État actuel
 
-- DataModule.kt (MR #46) fusionné dans release/v1.0.0 ✓
-- Correctifs IHM de Théo (doublon DetailUiState supprimé, NavHost → GalleryRoute, @OptIn ExperimentalFoundationApi) poussés sur agent/théo ✓
-- Conflit n°175 sur .agents/Zoé.md : en pause, l'utilisateur le résout à la main
-- Build Gradle demandé à l'utilisateur (./gradlew assembleDebug) — en attente de retour
-- Si build OK → demander à l'utilisateur de fusionner agent/théo → release/v1.0.0, puis avancer vers la release finale
-- Si erreurs → redistribuer à Léna (back) ou Théo (IHM)
+- Toutes tâches back-end Léna : terminées ✓
+- Bug f6eb4edf (détection adulte classifie tout en 'normales') : corrigé ✓
+  - Cause racine : AGP compressait model.tflite → openFd() échouait → modèle jamais chargé → Unavailable → classées normales
+  - Correctifs : (1) noCompress += "tflite" dans build.gradle.kts (Zoé) ; (2) loadModelFile() retourne ByteBuffer + repli copyTo (Léna/Malo)
+  - MR de patch (Malo) soumise : conflit sur AdultClassifier.kt résolu manuellement par l'utilisateur
+  - Correction type mismatch MappedByteBuffer→ByteBuffer dans loadModelFile()
+  - Action restante : rebuild APK depuis release/v1.0.0 après fusion
+  - Justesse des scores : dépend encore de InputScale (réponse utilisateur attendue)
+- Tâches corrections ouvertes : 1c5cab0a (Scanneur), 7445b925 (IHM) — sans sous-tâches actives
+- Sous-tâche 3983405f (URI content:// FileActions) : terminée ✓
+- Sous-tâche 9ec6eb25 (métadonnées file://) : terminée ✓
+- Sous-tâche 3222873d (normalisation paramétrable + repli FileInputStream) : terminée ✓
+- Sous-tâche 3a354e9c (idem + instrumentation + correctif chargement) : terminée ✓
+- MR de patch Malo (AdultClassifier + ScanScreen) : conflit résolu par l'utilisateur, fusion en attente
 
 ## Modèle Label (confirmé)
 - Label : name, isSystem, createdAt
@@ -120,6 +132,7 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 
 ## Assets modèle TFLite
 model.tflite + labels.txt présents sur main/app/assets — vérifiés dans release/v1.0.0.
+noCompress += "tflite" déjà dans app/build.gradle.kts.
 
 ## Packaging (tâche 8118fe45 — terminée)
 - app/build.gradle.kts : signingConfigs release, isMinifyEnabled=false
@@ -127,19 +140,23 @@ model.tflite + labels.txt présents sur main/app/assets — vérifiés dans rele
 - docs/installation.md : guide complet sideloading + ADB
 - MR #34 fusionnée dans release/v1.0.0 ✓
 
-## Wrapper Gradle (bug 2086c768 — corrigé)
+## Wrapper Gradle (tâche 24b6deba — terminée)
 - gradlew, gradlew.bat, gradle/wrapper/gradle-wrapper.properties (Gradle 8.9) dans release/v1.0.0
 - .gitignore : exception !gradle-wrapper.jar, exclusions keystore/APK/AAB
 - docs/installation.md : section 1bis + dépannage ClassNotFoundException
 - Réserve : gradle-wrapper.jar (~60 Ko binaire) à générer depuis un poste Gradle
-- MR #36 fusionnée dans release/v1.0.0 ✓
+- MR #44 fusionnée dans release/v1.0.0 ✓
 
-## Bug a3052590 (libs.versions.toml Room — corrigé)
-- 4 alias Room ajoutés : room-runtime, room-ktx, room-compiler, room-testing (v2.6.1)
-- Correspondent exactement aux libs.room.* dans app/build.gradle.kts
-- MR #41 fusionnée dans release/v1.0.0 ✓
-
-## Tâches corrections build en cours
-- MR #45 (Léna) : corrections Room ORDER BY, FileActions, MimeTypeDetector, lifecycle-runtime-compose — statut à vérifier
-- MR #46 (Léna, DataModule.kt) : fusionnée dans release/v1.0.0 ✓
-- Correctifs IHM Théo : sur agent/théo, à fusionner dans release/v1.0.0 après build OK
+## MR fusionnées
+- MR #34 (Malo, packaging) ✓
+- MR #41 (Léna, Room aliases) ✓
+- MR #44 (Léna, wrapper + exécutable) ✓
+- MR #45 (Léna, Room ORDER BY + FileActions + MimeTypeDetector + lifecycle) ✓
+- MR #46 (Léna, DataModule.kt) ✓
+- MR #48 (Léna, ScannerModule supprimé) ✓
+- MR #49 (Malo, @JvmSuppressWildcards) ✓
+- MR #53 (Léna, MediaMetadataReader fix) ✓
+- MR #54 (Léna, MediaMetadataReader fix v2) ✓
+- MR #56 (Léna, détection adulte normalisation) ✓
+- MR #58 (Léna, chargement modèle tolerant asset compressé) : approuvée, fusion bloquée (conflit)
+- MR Malo patch (AdultClassifier ByteBuffer + ScanScreen permissions) : conflit résolu par l'utilisateur, fusion en attente

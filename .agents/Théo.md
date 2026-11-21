@@ -112,37 +112,31 @@ Développeur front-end — IHM. Branche : agent/théo.
 - Jetpack Compose + Material 3, mono-activity, API 26.
 - Structure ui/ : theme/, navigation/, screens/, gallery/, detail/, labels/, scan/.
 - ViewModels @HiltViewModel sur interfaces de domaine.
-- Strings FR dans app/src/main/res/values/strings.xml. TOUJOURS vérifier qu'une R.string.* utilisée existe (cause d'échec Kotlin).
+- Strings FR dans app/src/main/res/values/strings.xml. TOUJOURS vérifier qu'une R.string.* utilisée existe.
 
-## Filtre adulte (tâche 60787cd8) — CONTRAT FINAL
-- FilterState porte DEUX champs distincts de labels : includeAdult:Boolean=true et adultOnly:Boolean=false.
-- UI = contrôle tri-état (3 FilterChip) mutuellement exclusifs :
-  Tout afficher   = (includeAdult=true,  adultOnly=false)
-  Masquer l'adulte= (includeAdult=false, adultOnly=false)
-  Uniquement adulte=(includeAdult=false, adultOnly=true)
-- Ne touche JAMAIS labels (convention : ne pas exposer labels={adulte} + adultOnly ensemble).
-- DAO (Léna) : observeFiltered(adultOnly:Int 0/1, adultLabel:String=ADULT_LABEL) ; adultOnly = clause EXISTS sur image_labels en ET ; includeAdult géré séparément. Confirmé compatible, rien à changer côté IHM.
-- GalleryViewModel transmet déjà tout FilterState au repository → adultOnly circule automatiquement.
-- Chaînes : filters_adult_section / _show_all / _hide / _only (filters_include_adult conservée mais plus utilisée).
+## Filtre adulte — CONTRAT FINAL
+- FilterState porte DEUX champs de labels : includeAdult:Boolean=true et adultOnly:Boolean=false.
+- UI = tri-état 3 FilterChip mutuellement exclusifs : Tout afficher / Masquer l'adulte / Uniquement adulte.
+- Ne touche JAMAIS labels (ne pas exposer labels={adulte} + adultOnly ensemble).
+- DAO : observeFiltered(adultOnly:Int 0/1, adultLabel:String=ADULT_LABEL) ; adultOnly via EXISTS en ET.
+- Décision Zoé (tâche 618fc1a5, bug 4be2e5e1) : availableLabels filtre !isSystem (plus de case à cocher 'adulte' doublon), le tri-état reste le seul contrôle adulte. Constante ADULT_LABEL="adulte" dans domain/model/Label.kt.
 
 ## Décisions validées par Zoé
 - Permission scan : ActivityResultContracts.RequestMultiplePermissions, API plateforme. READ_MEDIA_IMAGES (API>=33) sinon READ_EXTERNAL_STORAGE. CODÉ (f4f04627).
 
-## ScanScreen
-- Contrôle + demande de permission runtime IMPLÉMENTÉS (f4f04627, MR #57).
-
-## À FAIRE (non urgent, après push de Léna)
-- Consommer report.unclassifiedCount: Int (=0 par défaut) = images NON analyseeables, distinct de 'normale'. Afficher 'N image(s) non analysée(s)' UNIQUEMENT si N>0. Ajouter chaîne FR (format %1$d). Rien avant que Léna ait poussé le champ.
-
 ## LEÇON — outil write_file
-- write_file peut tronquer les contenus longs ; écrire COMPACT et TOUJOURS relire avec read_file après.
+- write_file peut tronquer ; écrire COMPACT et TOUJOURS relire avec read_file après. Si on reconstruit un fichier de mémoire, repartir de base (read_file agent=base) pour ne pas perdre de méthodes. Un read 'abrégé' peut masquer du contenu.
 - Bloc action : UNE action par bloc, JSON valide.
 
 ## NE PAS modifier sans prévenir Léna
 - app/build.gradle.kts, libs.versions.toml, settings.gradle.kts, PhotoSorterApp.kt.
 
-## Tâches terminées (7)
-- 4060ffc0, 5ee8aef7, e93e44ff, 79906e61, f1d46c78, 10f2b02d, a3be7352.
+## CONTRAT suppression via MediaStore (bug 2f1581ee) — validé par Zoé, à venir via MR de Léna
+- MediaStoreDeleter.kt : sealed interface DeleteRequest { Completed(error:AppError?) ; NeedsConfirmation(intentSender:IntentSender?, uris:List<String>) }, fun requestDelete(imageUri), fun confirmDelete(uris):AppError?.
+- AppResult.PendingDelete(intentSender, uris) : AppResult<Nothing>.
+- ImageRepository.delete(items):AppResult<Unit> peut renvoyer PendingDelete (ne nettoie pas la DB) ; NOUVELLE deleteConfirmed(uris):AppResult<Unit> nettoie la DB.
+- IHM (GalleryScreen, PAS le ViewModel) : sur PendingDelete lancer intentSender via launcher startIntentSenderForResult ; au retour RESULT_OK appeler deleteConfirmed(uris) puis rafraîchir. DeleteConfirmDialog reste la confirmation applicative. API<29 : delete() direct, pas de PendingDelete.
+- STATUT : BLOQUÉ tant que la MR de Léna n'est pas fusionnée dans release/v1.0.0 (symboles absents). Faire pull puis adapter GalleryScreen + GalleryViewModel. Contrat noté, message à Léna non délivré (limite échanges).
 
-## État projet
-- v1.0.0 : 17 tâches terminées. Cause '0 image' = permission runtime non accordée, corrigée par f4f04627.
+## Tâches terminées (dont 618fc1a5)
+- 4060ffc0, 5ee8aef7, e93e44ff, 79906e61, f1d46c78, 10f2b02d, a3be7352, 60787cd8, dc4d6e94, 618fc1a5 (MR #77).

@@ -23,10 +23,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Implementation [ImageRepository] :
- * - Lecture/tri/filtre pousses en SQL via [ImageQueryDao].
- * - Actions fichiers via [FileActions] (SAF + fallback).
- * - Suppression via [MediaStoreDeleter] (scoped storage : confirmation systeme possible).
+ * Implementation [ImageRepository].
  */
 @Singleton
 class ImageRepositoryImpl @Inject constructor(
@@ -95,8 +92,90 @@ class ImageRepositoryImpl @Inject constructor(
             val err = mediaStoreDeleter.confirmDelete(uris)
             if (err != null) return@withContext AppResult.Failure(err)
 
-            // Nettoyage DB : on retire les images dont le fichier n existe plus.
             val gone = imageDao.getAllUris().filter { !File(Uri.parse(it).path.orEmpty()).exists() }
             if (gone.isNotEmpty()) imageDao.deleteByUris(gone)
             AppResult.Success(Unit)
         }
+
+    override suspend fun move(items: List<ImageItem>, destUri: String): AppResult<Unit> =
+        withContext(dispatchers.io) {
+            var lastError: AppError? = null
+            for (item in items) {
+                val err = fileActions.moveToTree(item.uri, destUri)
+                if (err != null) {
+                    lastError = err
+                    continue
+                }
+                val sourceStillExists = File(Uri.parse(item.uri).path.orEmpty()).exists()
+                if (sourceStillExists) {
+                    lastError = AppError.Io("La source existe encore apres le deplacement")
+                } else {
+                    imageDao.deleteById(item.id)
+                }
+            }
+            if (lastError != null) AppResult.Failure(lastError!!) else AppResult.Success(Unit)
+        }
+
+    override suspend fun copy(items: List<ImageItem>, destUri: String): AppResult<Unit> =
+        withContext(dispatchers.io) {
+            var lastError: AppError? = null
+            for (item in items) {
+                val err = fileActions.copyToTree(item.uri, destUri)
+                if (err != null) lastError = err
+            }
+            if (lastError != null) AppResult.Failure(lastError!!) else AppResult.Success(Unit)
+        }
+
+    override suspend fun setLabel(imageIds: List<Long>, label: String, assigned: Boolean): AppResult<Unit> =
+        withContext(dispatchers.io) {
+            try {
+                if (assigned) imageDao.addLabelToImages(imageIds, label)
+                else imageDao.removeLabelFromImages(imageIds, label)
+                AppResult.Success(Unit)
+            } catch (e: Exception) {
+                AppResult.Failure(AppError.Database(e))
+            }
+        }
+
+    override suspend fun share(uris: List<String>): AppResult<Unit> =
+        withContext(dispatchers.main) {
+            try {
+                val intent = fileActions.shareUri(uris)
+                context.startActivity(intent)
+                AppResult.Success(Unit)
+            } catch (e: FileNotFoundException) {
+                AppResult.Failure(AppError.Io("Fichier introuvable en partage"))
+            } catch (e: android.content.ActivityNotFoundException) {
+                AppResult.Failure(AppError.Io("Aucune application de partage"))
+            }
+        }
+
+    private fun fr.photosorter.data.db.entity.ImageWithLabels.toDomain(): ImageItem = ImageItem(
+        id = image.id,
+        uri = image.uri,
+        name = image.name,
+        format = image.format,
+        sizeBytes = image.sizeBytes,
+        dateModified = image.dateModified,
+        labels = labels
+    )
+
+    private fun matchesFilter(item: ImageItem, filter: FilterState): Boolean {
+        if (!filter.includeAdult && item.labels.contains(ADULT_LABEL)) return false
+        if (filter.adultOnly && !item.labels.contains(ADULT_LABEL)) return false
+        if (filter.formats.isNotEmpty() && filter.formats.none { it.name == item.format }) return false
+        if (filter.minSizeBytes != null && item.sizeBytes < filter.minSizeBytes) return false
+        if (filter.dateFrom != null && item.dateModified < filter.dateFrom) return false
+        if (filter.dateTo != null && item.dateModified > filter.dateTo) return false
+        if (filter.labels.isNotEmpty() && !filter.labels.all { item.labels.contains(it) }) return false
+        return true
+    }
+
+    private fun SortField.toSortCode(): Int = when (this) {
+        SortField.NAME -> 0
+        SortField.DATE -> 1
+        SortField.SIZE -> 2
+        SortField.FORMAT -> 3
+        SortField.LABEL -> 4
+    }
+}

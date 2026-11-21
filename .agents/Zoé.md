@@ -114,13 +114,22 @@ agent/zoé
 - ADULT_LABEL = "adulte" dans fr.photosorter.domain.model (Label.kt).
 - FK label_name IMPOSE que le libellé existe dans labels AVANT insert.
 - Emplacement DAO : app/src/main/java/fr/photosorter/data/db/dao/ImageLabelDao.kt (PAS data/local).
+- FileActions : pas dans data/file/ ; chercher dans data/scanner ou data/di (module Hilt séparé, n°225).
 
-## BUGS — ÉTAT (21/11/2026)
-- 61ea13d4 (detectAdult suspend) : VÉRIFIÉ. Fait.
-- 768b171a (insertMissingAdultLabels type retour Int->Long) : CORRIGÉ côté code. MR #76 NON fusionnée (Malo a lu release/v1.0.0 : insertMissingAdultLabels ABSENT d'ImageLabelDao.kt). NE PAS passer 'vérifié'.
-- c7681760 (réconciliation adultes) : tâche 9dd5d8c1, MR #75 NON fusionnée. NE PAS passer 'vérifié'.
-- 4be2e5e1 : en correction. 2f1581ee : en correction. 6acd97aa : corrigé, MR #79 NON fusionnée (move FileActions toujours runAction+ensureDestDir(File) dans release).
-- Malo a remonté à l'utilisateur le décalage d'outil mr_review.
+## DÉCALAGE D'OUTIL (CONFIRMÉ 21/11/2026)
+- mr_review renvoie 'pas en attente de validation' alors que get_blockers liste la MR.
+- get_blockers peut afficher à tort 'Aucun blocage détecté'.
+- Malo a CONFIRMÉ par lecture directe : insertMissingAdultLabels ABSENT sur main ET sur release/v1.0.0.
+- => MR #76 (Léna), #79 (Léna), #80 (Théo) NE SONT PAS FUSIONNÉES malgré l'outil.
+- RÈGLE : ne jamais passer un bug à 'corrigé'/'vérifié' sans vérifier le code réellement présent dans release/v1.0.0.
+
+## BUGS — ÉTAT RÉEL
+- 768b171a (insertMissingAdultLabels) : CORRIGÉ côté code, MR #76 NON fusionnée. NE PAS vérifier.
+- c7681760 (réconciliation adultes) : tâche 9dd5d8c1, MR #75 NON fusionnée. NE PAS vérifier.
+- 2f1581ee (suppression) : MR #80 NON fusionnée. 'en correction'. NE PAS passer 'corrigé'.
+- 4be2e5e1 (bouton redondant) : tâche 618fc1a5 'terminée' mais MR non confirmée en release. NE PAS passer 'corrigé' sans preuve.
+- 6acd97aa (move SAF) : MR #79 NON fusionnée. 'corrigé' non vérifiable.
+- 61ea13d4 (detectAdult suspend) : VÉRIFIÉ.
 
 ## FILTRES (validé)
 - ImageQueryDao.observeFiltered : adultOnly via EXISTS corrélé. CORRECT.
@@ -135,8 +144,9 @@ agent/zoé
 - Wrapper Gradle : jar à générer par l'utilisateur (n°228).
 
 ## Workflow
-- Suivi bugs : ne changer un statut de bug que sur l'état réel des fusions. Étape 'en correction' exige MR fusionnée.
+- Suivi bugs : ne changer un statut de bug QUE sur l'état réel des fusions vérifié par lecture de release/v1.0.0.
+- Quand une preuve de fusion manque => wf_step outcome=ko + message à Malo, ne pas masquer.
 
-## Limites d'outil
-- mr_review renvoie 'pas en attente de validation' alors que get_blockers liste la MR (décalage récurrent). Malo remonte à l'utilisateur ; validation MR #79/#76/#75 à faire côté circuit normal (Malo).
-- Pas d'accès GitHub direct : impossible de forcer une fusion; resolve_merge uniquement sur conflit confié.
+## En cours
+- Malo remonte à l'utilisateur pour fusion manuelle des MR #75/#76/#79/#80.
+- Dès fusion confirmée : vérifier 768b171a, c7681760, 6acd97aa ; passer 2f1581ee et 4be2e5e1 'corrigé' après preuve.

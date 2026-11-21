@@ -101,12 +101,14 @@ agent/léna
 ## Notes de l’agent (à tenir à jour)
 Rôle : Développeur back-end. Branche agent/léna.
 
-Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a, 87c5f661, 4f0b27e5, 9dd5d8c1(à vérifier). 3222873d/3a354e9c/e9e95a30 OK. c09d3de2/24b6deba MR validée.
+Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a, 87c5f661, 4f0b27e5. 3222873d/3a354e9c/e9e95a30 OK. c09d3de2/24b6deba MR validée. BASCULE : #71 (volet 2 dd7f6f6c) REDONDANTE, absorbée par #73 ; #71 à fermer sans fusion.
 
-BASCULE MR antérieure : #71 (volet 2 dd7f6f6c) REDONDANTE, absorbée par #73 (a285b8eb detectAdult suspend). #71 à fermer sans fusion.
+TÂCHE 9dd5d8c1 (réconciliation adultes, bug c7681760) : MR #75 soumise vers release/v1.0.0, tâche 'à vérifier'. ImageLabelDao.insertMissingAdultLabels (INSERT OR IGNORE ... SELECT id,:adultLabel FROM images WHERE is_adult=1) ; ScanEngineSupport.reconcileAdultLabels (transaction : ensure label + insertMissing) ; ScanEngine appelle reconcileAdultLabels en fin de scan après flush final. Tests in-memory Room.
 
-TÂCHE 9dd5d8c1 (réconciliation adultes, bug c7681760) : MR soumise vers release/v1.0.0, tâche 'à vérifier'. Implémentation : ImageLabelDao.insertMissingAdultLabels (INSERT OR IGNORE ... SELECT id,:adultLabel FROM images WHERE is_adult=1, idempotent) ; ScanEngineSupport.reconcileAdultLabels (transaction : ensure label + insertMissing) ; ScanEngine appelle reconcileAdultLabels en fin de scan après flush final. Tests in-memory Room ajoutés (RecreatesMissingLinksOnly inserted=1 ; IsIdempotent 2 puis 0). FilterState/GalleryFilterDialog/DAO adultOnly inchangés.
+TÂCHE e39a6b4d / BUG 768b171a : corrigé, MR soumise. insertMissingAdultLabels retourne désormais Long (pas Int) car INSERT...SELECT exige Long/Unit. reconcileAdultLabels -> Long (var 0L). Tests : littéraux Long (1L,2L,0L). ScanEngine n'exploite pas le retour. KSP/Room doit compiler.
 
-WRITE_FILE tronque les contenus longs -> petits fichiers + read_file systématique. read_file d'un fichier long peut être tronqué dans l'historique mais contenu complet disponible à l'écriture. JSON action = \n échappés.
+RÈGLE Room apprise : INSERT...SELECT -> retour Long ou Unit, jamais Int (Int = UPDATE/DELETE seulement).
+
+WRITE_FILE tronque les contenus longs -> petits fichiers + read_file systématique. JSON action = \n échappés.
 
 AdultClassifier : isReady, ensureInitialized, unavailableCount/resetUnavailableCount, classify(Uri). Assets model.tflite+labels.txt+model.config. DatabaseSeeder.adultLabelEntity(now).

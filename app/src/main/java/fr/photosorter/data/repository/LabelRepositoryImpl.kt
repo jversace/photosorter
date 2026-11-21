@@ -8,6 +8,7 @@ import fr.photosorter.data.db.dao.ImageLabelDao
 import fr.photosorter.data.db.dao.LabelDao
 import fr.photosorter.data.db.entity.ImageLabelEntity
 import fr.photosorter.data.db.entity.LabelEntity
+import fr.photosorter.domain.model.ADULT_LABEL
 import fr.photosorter.domain.model.ImageItem
 import fr.photosorter.domain.model.Label
 import fr.photosorter.domain.repository.LabelRepository
@@ -21,6 +22,10 @@ import javax.inject.Singleton
  * Implémentation [LabelRepository] :
  * - CRUD libellés via [LabelDao] (le libellé système « adulte » est protégé en SQL).
  * - Affectation/retrait via [ImageLabelDao] (table image_labels).
+ *
+ * Contrat DAO : image_labels(label_name) est une FK vers labels(name). Il faut donc
+ * garantir l'existence du libellé (même nom exact/casse) AVANT tout insert dans image_labels,
+ * sinon SQLite lève « FOREIGN KEY constraint failed ».
  */
 @Singleton
 class LabelRepositoryImpl @Inject constructor(
@@ -70,6 +75,7 @@ class LabelRepositoryImpl @Inject constructor(
     override suspend fun assign(items: List<ImageItem>, label: String): AppResult<Unit> =
         withContext(dispatchers.io) {
             if (items.isEmpty()) return@withContext AppResult.Success(Unit)
+            ensureLabelExists(label)
             val links = items.map { ImageLabelEntity(imageId = it.id, labelName = label) }
             imageLabelDao.insertAll(links)
             AppResult.Success(Unit)
@@ -81,4 +87,20 @@ class LabelRepositoryImpl @Inject constructor(
             imageLabelDao.unassign(items.map { it.id }, label)
             AppResult.Success(Unit)
         }
+
+    /**
+     * Garantit l'existence d'une ligne labels(name = [name]) pour satisfaire la FK de
+     * image_labels(label_name). Idempotent : ne fait rien si le libellé existe déjà
+     * (comparaison sur le nom exact, casse comprise). Pour le label système « adulte »
+     * on réutilise l'entité dédiée du seeder (isSystem = true).
+     */
+    private suspend fun ensureLabelExists(name: String) {
+        if (labelDao.getByName(name) != null) return
+        val entity = if (name == ADULT_LABEL) {
+            DatabaseSeeder.adultLabelEntity()
+        } else {
+            LabelEntity(name = name, isSystem = false, createdAt = System.currentTimeMillis())
+        }
+        labelDao.insert(entity)
+    }
 }

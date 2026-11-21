@@ -134,10 +134,10 @@ Agent principal : écrit à tous les agents, crée les tâches, tient SPEC.md à
 
 - Tâche 1c5cab0a (Corrections Scanneur) : terminée
 - Tâche 7445b925 (Corrections IHM) : en attente fusion MR #76, #79, #80 (utilisateur fusionne manuellement via GitHub — confirmé)
-- Bug 4be2e5e1 (bouton adulte redondant) : tâche 618fc1a5 terminée
+- Bug 4be2e5e1 (bouton adulte redondant) : tâche 618fc1a5 terminée — MR à vérifier
 - Bug 2f1581ee (suppression fichier) : tâches 8d347ac6 + 8661d464 terminées — MR #80 non fusionnée
 - Bug 6acd97aa (déplacer = copie) : tâche 06ee8444 terminée — MR #79 non fusionnée
-- Bug 768b171a : tâche e39a6b4d terminée — MR #76 non fusionnée
+- Bug 768b171a : tâche e39a6b4d terminée — MR #76 non fusionnée (insertMissingAdultLabels absent de release/v1.0.0)
 - MR #81 (Zoé, fix ImageRepositoryImpl compilation) : fusionnée ✅
 
 ## Actions à enchaîner après confirmation fusion MR #76, #79 et #80

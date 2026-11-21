@@ -11,14 +11,7 @@ import fr.photosorter.domain.model.SortField
 import fr.photosorter.domain.repository.ImageRepository
 import fr.photosorter.domain.repository.LabelRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -28,7 +21,6 @@ class GalleryViewModel @Inject constructor(
     private val imageRepository: ImageRepository,
     private val labelRepository: LabelRepository,
 ) : ViewModel() {
-
     private val displayMode = MutableStateFlow(GalleryDisplayMode.GRID)
     private val sort = MutableStateFlow(SortCriteria(SortField.DATE, false))
     private val filter = MutableStateFlow(FilterState())
@@ -41,7 +33,6 @@ class GalleryViewModel @Inject constructor(
 
     private val images = combine(sort, filter) { s, f -> s to f }
         .flatMapLatest { (s, f) -> imageRepository.observeImages(s, f).catch { e -> errorMessage.value = e.message; emit(emptyList()) } }
-
     private val labels = labelRepository.observeLabels().map { l -> l.filterNot { it.isSystem }.map { it.name } }.catch { emit(emptyList()) }
 
     val uiState: StateFlow<GalleryUiState> = combine(
@@ -61,7 +52,6 @@ class GalleryViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GalleryUiState(isLoading = true))
 
     private fun items(): List<ImageItem> = imagesState.value.filter { it.id in selectedIds.value }
-
     fun setDisplayMode(m: GalleryDisplayMode) { displayMode.value = m }
     fun setSort(f: SortField) { sort.value = if (sort.value.field == f) sort.value.copy(ascending = !sort.value.ascending) else SortCriteria(f, true) }
     fun setFilter(f: FilterState) { filter.value = f }
@@ -85,7 +75,6 @@ class GalleryViewModel @Inject constructor(
 
     fun deleteSelected() = run(GalleryFeedback.DELETED) { imageRepository.delete(it) }
 
-    /** Finalise la suppression après confirmation système (RESULT_OK). */
     fun onDeleteConfirmed(uris: List<String>) {
         pendingDelete.value = null
         busy.value = true
@@ -99,7 +88,6 @@ class GalleryViewModel @Inject constructor(
         }
     }
 
-    /** Annule la suppression (RESULT_CANCELED) : nettoie la demande en attente. */
     fun onDeleteCancelled() { pendingDelete.value = null }
 
     fun shareSelected() = run(GalleryFeedback.SHARED) { imageRepository.share(it) }

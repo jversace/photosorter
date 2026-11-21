@@ -25,6 +25,9 @@ interface ImageDao {
     @Query("DELETE FROM images WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("DELETE FROM images WHERE uri IN (:uris)")
+    suspend fun deleteByUris(uris: List<String>)
+
     @Query("SELECT * FROM images WHERE id = :id")
     suspend fun getById(id: Long): ImageEntity?
 

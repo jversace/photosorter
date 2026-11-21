@@ -41,7 +41,9 @@ class GalleryViewModel @Inject constructor(
     private val images = combine(sort, filter) { s, f -> s to f }
         .flatMapLatest { (s, f) -> imageRepository.observeImages(s, f).catch { e -> errorMessage.value = e.message; emit(emptyList()) } }
 
-    private val labels = labelRepository.observeLabels().map { l -> l.map { it.name } }.catch { emit(emptyList()) }
+    // Le libellé système 'adulte' n'est jamais proposé en case à cocher : le contrôle du contenu
+    // adulte est assuré exclusivement par le tri-état (includeAdult + adultOnly) du filtre.
+    private val labels = labelRepository.observeLabels().map { l -> l.filterNot { it.isSystem }.map { it.name } }.catch { emit(emptyList()) }
 
     val uiState: StateFlow<GalleryUiState> = combine(images, displayMode, sort, filter, selectedIds, labels) { v ->
         @Suppress("UNCHECKED_CAST")

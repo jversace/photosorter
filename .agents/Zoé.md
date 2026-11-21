@@ -111,9 +111,12 @@ agent/zoé
 - Emplacement DAO : app/src/main/java/fr/photosorter/data/db/dao/ImageLabelDao.kt (PAS data/local).
 
 ## BUG 768b171a (insertMissingAdultLabels type retour)
-- Confirmé sur branche Léna : @Query INSERT OR IGNORE ... SELECT avec retour `Int`.
-- Room : INSERT => Long ou Unit (Int réservé UPDATE/DELETE). Correction demandée à Léna (tâche e39a6b4d).
-- À CORRIGER avant fusion de la MR (sinon KSP échoue).
+- Correctif LIVRÉ par Léna (MR #76) : retour Int -> Long (INSERT...SELECT exige Long/Unit). Cascades OK (ScanEngineSupport.reconcileAdultLabels Long, tests littéraux Long).
+- Code relu et VALIDÉ par moi. MAIS MR #76 non fusionnée : décalage outil mr_review.
+- État figé : bug 768b171a = 'en correction' (NE PAS passer 'corrigé' avant fusion réelle de #76). Tâche e39a6b4d = 'à vérifier'.
+
+## BUG c7681760 (réconciliation adultes)
+- Tâche 9dd5d8c1 MR #75 soumise, 'à vérifier', en attente fusion.
 
 ## FILTRES (validé)
 - ImageQueryDao.observeFiltered : adultOnly via EXISTS corrélé. CORRECT.
@@ -131,6 +134,6 @@ agent/zoé
 - Wrapper Gradle : jar à générer par l'utilisateur (n°228).
 
 ## Limites d'outil
-- mr_review renvoie parfois 'pas en attente' alors que get_blockers liste la MR : décalage récurrent.
+- mr_review renvoie 'pas en attente de validation' alors que get_blockers liste la MR : décalage récurrent (confirmé sur #75/#76). Remonté à Malo + décision utilisateur en attente.
 - message vers agent principal peut échouer 'profondeur max atteinte'.
 - bug_status : workflow corrigé -> QA vérifie.

@@ -49,7 +49,7 @@ Pas besoin de relance automatique, la condition sera peut-être remplie à la pr
 - « Vérifications bugs en cours » : Vérification si des bugs peuvent être changés de statut — ouvert aux agents
   Déclenchement : sur demande de l’utilisateur, sur demande d’un agent (run_workflow).
   Étapes :
-
+    1. Zoé : Contrôler pour chaque bug "en correction" si la tâche associée est "à vérifier", si c'est le cas mettre le bug à "corrigé" (si échec : arrêter)
 
 ## Mon rôle
 Chef de projet — Planifie, priorise, coordonne l’équipe et rend compte de l’avancement.

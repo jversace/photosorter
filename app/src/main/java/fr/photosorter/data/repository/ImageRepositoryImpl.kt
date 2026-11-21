@@ -7,7 +7,6 @@ import fr.photosorter.core.dispatchers.DispatchersProvider
 import fr.photosorter.core.result.AppError
 import fr.photosorter.core.result.AppResult
 import fr.photosorter.data.db.dao.ImageDao
-import fr.photosorter.data.db.dao.ImageLabelDao
 import fr.photosorter.data.db.dao.ImageQueryDao
 import fr.photosorter.domain.model.ADULT_LABEL
 import fr.photosorter.domain.model.FilterState
@@ -32,7 +31,6 @@ import javax.inject.Singleton
 class ImageRepositoryImpl @Inject constructor(
     private val context: Context,
     private val imageDao: ImageDao,
-    private val imageLabelDao: ImageLabelDao,
     private val imageQueryDao: ImageQueryDao,
     private val fileActions: FileActions,
     private val mediaStoreDeleter: MediaStoreDeleter,
@@ -88,8 +86,7 @@ class ImageRepositoryImpl @Inject constructor(
 
             when {
                 pendingUris.isNotEmpty() -> AppResult.PendingDelete(pendingSender, pendingUris)
-                lastError != null -> AppResult.Error(lastError!!)
-                deletedAny || items.isEmpty() -> AppResult.Success(Unit)
+                lastError != null -> AppResult.Failure(lastError!!)
                 else -> AppResult.Success(Unit)
             }
         }
@@ -97,7 +94,7 @@ class ImageRepositoryImpl @Inject constructor(
     override suspend fun deleteConfirmed(uris: List<String>): AppResult<Unit> =
         withContext(dispatchers.io) {
             val err = mediaStoreDeleter.confirmDelete(uris)
-            if (err != null) return@withContext AppResult.Error(err)
+            if (err != null) return@withContext AppResult.Failure(err)
 
             // Nettoyage DB : on retire les images dont le fichier n'existe plus.
             val gone = imageDao.getAllUris().filter { !File(Uri.parse(it).path.orEmpty()).exists() }
@@ -111,11 +108,11 @@ class ImageRepositoryImpl @Inject constructor(
             for (item in items) {
                 when (val res = fileActions.moveToTree(item.uri, destUri)) {
                     is AppResult.Success -> imageDao.deleteById(item.id)
-                    is AppResult.Error -> lastError = res.error
-                    else -> Unit
+                    is AppResult.Failure -> lastError = res.error
+                    is AppResult.PendingDelete -> Unit
                 }
             }
-            if (lastError != null) AppResult.Error(lastError!!) else AppResult.Success(Unit)
+            if (lastError != null) AppResult.Failure(lastError!!) else AppResult.Success(Unit)
         }
 
     override suspend fun copy(items: List<ImageItem>, destUri: String): AppResult<Unit> =
@@ -124,11 +121,11 @@ class ImageRepositoryImpl @Inject constructor(
             for (item in items) {
                 when (val res = fileActions.copyToTree(item.uri, destUri)) {
                     is AppResult.Success -> Unit
-                    is AppResult.Error -> lastError = res.error
-                    else -> Unit
+                    is AppResult.Failure -> lastError = res.error
+                    is AppResult.PendingDelete -> Unit
                 }
             }
-            if (lastError != null) AppResult.Error(lastError!!) else AppResult.Success(Unit)
+            if (lastError != null) AppResult.Failure(lastError!!) else AppResult.Success(Unit)
         }
 
     override suspend fun share(items: List<ImageItem>): AppResult<Unit> =
@@ -151,7 +148,7 @@ class ImageRepositoryImpl @Inject constructor(
             runCatching {
                 context.startActivity(Intent.createChooser(intent, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 AppResult.Success(Unit)
-            }.getOrElse { AppResult.Error(AppError.Io("Partage impossible : ${it.message}")) }
+            }.getOrElse { AppResult.Failure(AppError.Io("Partage impossible : ${it.message}")) }
         }
 
     private fun matchesFilter(item: ImageItem, filter: FilterState): Boolean {

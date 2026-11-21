@@ -42,8 +42,6 @@ class GalleryViewModel @Inject constructor(
     private val images = combine(sort, filter) { s, f -> s to f }
         .flatMapLatest { (s, f) -> imageRepository.observeImages(s, f).catch { e -> errorMessage.value = e.message; emit(emptyList()) } }
 
-    // Le libellé système 'adulte' n'est jamais proposé en case à cocher : le contrôle du contenu
-    // adulte est assuré exclusivement par le tri-état (includeAdult + adultOnly) du filtre.
     private val labels = labelRepository.observeLabels().map { l -> l.filterNot { it.isSystem }.map { it.name } }.catch { emit(emptyList()) }
 
     val uiState: StateFlow<GalleryUiState> = combine(
@@ -87,9 +85,7 @@ class GalleryViewModel @Inject constructor(
 
     fun deleteSelected() = run(GalleryFeedback.DELETED) { imageRepository.delete(it) }
 
-    /**
-     * Appelé par l'UI après confirmation système (RESULT_OK) : finalise la suppression effective.
-     */
+    /** Finalise la suppression après confirmation système (RESULT_OK). */
     fun onDeleteConfirmed(uris: List<String>) {
         pendingDelete.value = null
         busy.value = true
@@ -103,7 +99,7 @@ class GalleryViewModel @Inject constructor(
         }
     }
 
-    /** Appelé par l'UI si l'utilisateur annule la confirmation système (RESULT_CANCELED). */
+    /** Annule la suppression (RESULT_CANCELED) : nettoie la demande en attente. */
     fun onDeleteCancelled() { pendingDelete.value = null }
 
     fun shareSelected() = run(GalleryFeedback.SHARED) { imageRepository.share(it) }

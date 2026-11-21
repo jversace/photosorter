@@ -46,7 +46,7 @@ Pas besoin de relance automatique, la condition sera peut-être remplie à la pr
   Déclenchement : sur demande de l’utilisateur, sur demande d’un agent (run_workflow), toutes les 30 minutes.
   Tu interviens (ou peux intervenir) aux étapes : 1.
   Étapes :
-    1. Zoé : Contrôler pour chaque bug ouvert si la tâche associée est bien terminée. Si elle est terminée passer le bug à "vérifié" (si échec : arrêter)
+    1. Zoé : Contrôler pour chaque bug "corrigé" si la tâche associée est bien terminée. Si elle est terminée passer le bug à "vérifié" (si échec : arrêter)
 - « Vérifications bugs en cours » : Vérification si des bugs peuvent être changés de statut — ouvert aux agents
   Déclenchement : sur demande de l’utilisateur, sur demande d’un agent (run_workflow).
   Tu interviens (ou peux intervenir) aux étapes : 1.

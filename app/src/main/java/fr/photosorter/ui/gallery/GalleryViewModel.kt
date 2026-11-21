@@ -86,19 +86,12 @@ class GalleryViewModel @Inject constructor(
     }
 
     fun deleteSelected() = run(GalleryFeedback.DELETED) { imageRepository.delete(it) }
-    fun shareSelected() = run(GalleryFeedback.SHARED) { imageRepository.share(it) }
-    fun moveSelected(dest: String) = run(GalleryFeedback.MOVED) { imageRepository.move(it, dest) }
-    fun copySelected(dest: String) = run(GalleryFeedback.COPIED) { imageRepository.copy(it, dest) }
-    fun assignLabel(name: String) = run(GalleryFeedback.LABEL_ASSIGNED) { labelRepository.assign(it, name) }
-    fun unassignLabel(name: String) = run(GalleryFeedback.LABEL_REMOVED) { labelRepository.unassign(it, name) }
 
     /**
-     * Appelé par l'UI après que l'utilisateur a confirmé la suppression système (RESULT_OK).
-     * Finalise la suppression en base + rafraîchit la liste.
+     * Appelé par l'UI après confirmation système (RESULT_OK) : finalise la suppression effective.
      */
     fun onDeleteConfirmed(uris: List<String>) {
         pendingDelete.value = null
-        if (uris.isEmpty()) return
         busy.value = true
         viewModelScope.launch {
             when (val r = imageRepository.deleteConfirmed(uris)) {
@@ -110,6 +103,12 @@ class GalleryViewModel @Inject constructor(
         }
     }
 
-    /** Appelé par l'UI si l'utilisateur annule la demande système (RESULT_CANCELED). */
+    /** Appelé par l'UI si l'utilisateur annule la confirmation système (RESULT_CANCELED). */
     fun onDeleteCancelled() { pendingDelete.value = null }
+
+    fun shareSelected() = run(GalleryFeedback.SHARED) { imageRepository.share(it) }
+    fun moveSelected(dest: String) = run(GalleryFeedback.MOVED) { imageRepository.move(it, dest) }
+    fun copySelected(dest: String) = run(GalleryFeedback.COPIED) { imageRepository.copy(it, dest) }
+    fun assignLabel(name: String) = run(GalleryFeedback.LABEL_ASSIGNED) { labelRepository.assign(it, name) }
+    fun unassignLabel(name: String) = run(GalleryFeedback.LABEL_REMOVED) { labelRepository.unassign(it, name) }
 }

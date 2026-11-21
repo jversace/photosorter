@@ -146,7 +146,7 @@ class ImageQueryDaoTest {
 
         // Un seul lien manquant (image 2, adulte sans lien). L'image 1 etait deja liee,
         // l'image 3 n'est pas adulte.
-        assertEquals(1, inserted)
+        assertEquals(1L, inserted)
         val rows = db.imageQueryDao().observeFiltered(
             sort = 0, asc = 1, includeAdult = 1, adultOnly = 1, adultLabel = adultLabel,
             hasFormats = 0, formats = emptyList(),
@@ -169,7 +169,7 @@ class ImageQueryDaoTest {
         val first = db.imageLabelDao().insertMissingAdultLabels(adultLabel)
         val second = db.imageLabelDao().insertMissingAdultLabels(adultLabel)
 
-        assertEquals(2, first)
-        assertEquals(0, second)
+        assertEquals(2L, first)
+        assertEquals(0L, second)
     }
 }

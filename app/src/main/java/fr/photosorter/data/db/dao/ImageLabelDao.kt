@@ -27,11 +27,13 @@ interface ImageLabelDao {
      * après un re-scan, les images adultes issues d'un scan antérieur doivent voir leur
      * lien recréé même si elles ne font pas partie du lot courant (bug c7681760).
      *
+     * Room exige Long (ou Unit) pour un INSERT ... SELECT, pas Int (bug 768b171a).
+     *
      * @return le nombre de liens effectivement insérés (0 si tout était déjà réconcilié).
      */
     @Query(
         "INSERT OR IGNORE INTO image_labels (image_id, label_name) " +
             "SELECT id, :adultLabel FROM images WHERE is_adult = 1"
     )
-    suspend fun insertMissingAdultLabels(adultLabel: String): Int
+    suspend fun insertMissingAdultLabels(adultLabel: String): Long
 }

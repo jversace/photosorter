@@ -25,7 +25,8 @@
 - lors du démarrage d'une nouvelle tâche, récupérez les modifications présentes dans la branche de la release en cours vers votre branche
 - ne pas mettre une tâche à en validation tant qu'elle n'est pas commitée dans votre branche
 - lorsque vous avez commité dans votre branche, mettre la tâche à "à vérifier"
-- Zoé valide que tous les fichiers y sont, les merge dans la branche de la release en cours, et passe la tâche à terminée
+- Lorsqu'une tâche passe à "a vérifier" Zoé valide que tous les fichiers y sont, crée les pull request des branches des agents dans la branche de la release en cours, et donne son feu vert à Malo.
+- Malo passe une tâche à Terminé quand il reçoit le feu vert de Zoé 
 - Quand un agent n'a plus de tâche en cours et qu'une de ses tâches peut être démarrée (Malo vérifie s'il n'y a pas de dépendance bloquante), la tâche doit être démarrée
 - les décisions purement liées à l'implémentation (choix d'une librairie, d'une dépendance, d'un algorithme, d'une techno, d'un design pattern) doivent être tranchée par Zoé en premier lieu, si Zoé hésite entre plusieurs choix qui peuvent être structurants ou limitants pour des évolutions futures, on passe sur le comportement par défaut ask_user
 - vos interprétations doivent être soumises à Zoé qui validera qu'il n'y a pas de mauvaise interprétation
@@ -37,8 +38,13 @@
   Étapes :
     1. Zoé : créer la tâche associée (si échec : demander à l’utilisateur)
     2. Zoé : affecter la tâche à l'agent adapté (si échec : demander à l’utilisateur)
-    3. démarrer les tâches prêtes (assignées, à faire, dépendances satisfaites) (si échec : arrêter)
+    3. Malo : condition : dépendances terminées ET MR fusionnées dans la branche de travail. (si échec : arrêter)
     4. Zoé : Passer le bug à l'état "en correction" (si échec : arrêter)
+- « Suivi bugs » : fermeture des bugs quand la tâche associée est validée — ouvert aux agents
+  Déclenchement : sur demande de l’utilisateur, sur demande d’un agent (run_workflow), toutes les 30 minutes.
+  Étapes :
+    1. Zoé : Contrôler pour chaque bug ouvert si la tâche associée est bien terminée. Si elle est terminée passer le bug à "vérifié" (si échec : arrêter)
+    2. Zoé : Contrôler pour chaque bug ouvert si la tâche associée est "a vérifier". Si elle est "a vérifier" passer le bug à "corrigé" (si échec : arrêter)
 
 ## Mon rôle
 Développeur back-end — Implémente la logique métier, les API et la base de données.
@@ -95,12 +101,14 @@ agent/léna
 ## Notes de l’agent (à tenir à jour)
 Rôle : Développeur back-end. Branche agent/léna.
 
-Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a, 87c5f661, 4f0b27e5, 9dd5d8c1(à vérifier). 3222873d/3a354e9c/e9e95a30 OK. c09d3de2/24b6deba MR validée.
+Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a, 87c5f661, 4f0b27e5. 3222873d/3a354e9c/e9e95a30 OK. c09d3de2/24b6deba MR validée. BASCULE : #71 (volet 2 dd7f6f6c) REDONDANTE, absorbée par #73 ; #71 à fermer sans fusion.
 
-BASCULE MR antérieure : #71 (volet 2 dd7f6f6c) REDONDANTE, absorbée par #73 (a285b8eb detectAdult suspend). #71 à fermer sans fusion.
+TÂCHE 9dd5d8c1 (réconciliation adultes, bug c7681760) : MR #75 soumise vers release/v1.0.0, tâche 'à vérifier'. ImageLabelDao.insertMissingAdultLabels (INSERT OR IGNORE ... SELECT id,:adultLabel FROM images WHERE is_adult=1) ; ScanEngineSupport.reconcileAdultLabels (transaction : ensure label + insertMissing) ; ScanEngine appelle reconcileAdultLabels en fin de scan après flush final. Tests in-memory Room.
 
-TÂCHE 9dd5d8c1 (réconciliation adultes, bug c7681760) : MR soumise vers release/v1.0.0, tâche 'à vérifier'. Implémentation : ImageLabelDao.insertMissingAdultLabels (INSERT OR IGNORE ... SELECT id,:adultLabel FROM images WHERE is_adult=1, idempotent) ; ScanEngineSupport.reconcileAdultLabels (transaction : ensure label + insertMissing) ; ScanEngine appelle reconcileAdultLabels en fin de scan après flush final. Tests in-memory Room ajoutés (RecreatesMissingLinksOnly inserted=1 ; IsIdempotent 2 puis 0). FilterState/GalleryFilterDialog/DAO adultOnly inchangés.
+TÂCHE e39a6b4d / BUG 768b171a : corrigé, MR soumise. insertMissingAdultLabels retourne désormais Long (pas Int) car INSERT...SELECT exige Long/Unit. reconcileAdultLabels -> Long (var 0L). Tests : littéraux Long (1L,2L,0L). ScanEngine n'exploite pas le retour. KSP/Room doit compiler.
 
-WRITE_FILE tronque les contenus longs -> petits fichiers + read_file systématique. read_file d'un fichier long peut être tronqué dans l'historique mais contenu complet disponible à l'écriture. JSON action = \n échappés.
+RÈGLE Room apprise : INSERT...SELECT -> retour Long ou Unit, jamais Int (Int = UPDATE/DELETE seulement).
+
+WRITE_FILE tronque les contenus longs -> petits fichiers + read_file systématique. JSON action = \n échappés.
 
 AdultClassifier : isReady, ensureInitialized, unavailableCount/resetUnavailableCount, classify(Uri). Assets model.tflite+labels.txt+model.config. DatabaseSeeder.adultLabelEntity(now).

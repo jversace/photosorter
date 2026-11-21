@@ -70,14 +70,17 @@ internal suspend fun flushImages(
  * IGNORE ... SELECT) un lien pour TOUTES les images ou images.is_adult = 1, y
  * compris celles hors du lot courant, sans dupliquer les liens deja presents.
  *
+ * Room exige Long (ou Unit) pour un INSERT ... SELECT (bug 768b171a) : le type
+ * suit insertMissingAdultLabels.
+ *
  * @return le nombre de liens manquants effectivement inseres (0 = rien a faire).
  */
 internal suspend fun reconcileAdultLabels(
     db: AppDatabase,
     imageLabelDao: ImageLabelDao,
     labelDao: LabelDao
-): Int {
-    var inserted = 0
+): Long {
+    var inserted = 0L
     db.withTransaction {
         if (labelDao.getByName(ADULT_LABEL) == null) {
             labelDao.insert(

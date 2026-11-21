@@ -110,20 +110,15 @@ agent/zoé
 - FK label_name IMPOSE que le libellé existe dans labels AVANT insert.
 - Emplacement DAO : app/src/main/java/fr/photosorter/data/db/dao/ImageLabelDao.kt (PAS data/local).
 
-## BUG 768b171a (insertMissingAdultLabels type retour)
-- Correctif LIVRÉ par Léna (MR #76) : retour Int -> Long (INSERT...SELECT exige Long/Unit). Cascades OK (ScanEngineSupport.reconcileAdultLabels Long, tests littéraux Long).
-- Code relu et VALIDÉ par moi. MAIS MR #76 non fusionnée : décalage outil mr_review.
-- État figé : bug 768b171a = 'en correction' (NE PAS passer 'corrigé' avant fusion réelle de #76). Tâche e39a6b4d = 'à vérifier'.
-
-## BUG c7681760 (réconciliation adultes)
-- Tâche 9dd5d8c1 MR #75 soumise, 'à vérifier', en attente fusion.
+## BUGS — ÉTAT (21/11/2026)
+- 61ea13d4 (detectAdult suspend) : VÉRIFIÉ (tâche a285b8eb acceptée, MR fusionnée). Fait.
+- 768b171a (insertMissingAdultLabels type retour Int->Long) : CORRIGÉ côté code (tâche e39a6b4d, MR #76). MR PAS ENCORE FUSIONNÉE (fusion manuelle utilisateur en attente). NE PAS passer 'vérifié' avant confirmation.
+- c7681760 (réconciliation adultes) : tâche 9dd5d8c1, MR #75 PAS ENCORE FUSIONNÉE. NE PAS passer 'vérifié' avant confirmation.
+- Malo confirme : attendre sa confirmation avant de bouger c7681760/768b171a.
 
 ## FILTRES (validé)
 - ImageQueryDao.observeFiltered : adultOnly via EXISTS corrélé. CORRECT.
 - ImageRepositoryImpl.observeImages transmet adultOnly+adultLabel ; matchesFilter gère adultOnly. CORRECT.
-
-## BUG 61ea13d4 (detectAdult suspend) — RÉSOLU via MR #73
-- ScanEngineSupport.kt (data/scanner) ; detectAdult internal suspend, SKIP court-circuit synchrone.
 
 ## PRÉFILTRE / MODÉRATION
 - PreFilterDecision enum : SKIP / ANALYZE.
@@ -133,7 +128,9 @@ agent/zoé
 - Packaging v1.0.0 : isMinifyEnabled=false (n°227).
 - Wrapper Gradle : jar à générer par l'utilisateur (n°228).
 
+## Workflow
+- Suivi bugs étape 1 (vérifié) : seulement si tâche terminée. Étape 2 (corrigé) : seulement si tâche 'à vérifier'. Respecter l'état réel des fusions avant tout changement de statut de bug.
+
 ## Limites d'outil
-- mr_review renvoie 'pas en attente de validation' alors que get_blockers liste la MR : décalage récurrent (confirmé sur #75/#76). Remonté à Malo + décision utilisateur en attente.
+- mr_review peut renvoyer 'pas en attente de validation' alors que get_blockers liste la MR : décalage récurrent. Remonté à Malo.
 - message vers agent principal peut échouer 'profondeur max atteinte'.
-- bug_status : workflow corrigé -> QA vérifie.

@@ -43,9 +43,7 @@ class GalleryViewModel @Inject constructor(
 
     // Le libellé système 'adulte' n'est jamais proposé en case à cocher : le contrôle du contenu
     // adulte est assuré exclusivement par le tri-état (includeAdult + adultOnly) du filtre.
-    private val labels = labelRepository.observeLabels()
-        .map { list -> list.filterNot { it.isSystem }.map { it.name } }
-        .catch { emit(emptyList()) }
+    private val labels = labelRepository.observeLabels().map { l -> l.filterNot { it.isSystem }.map { it.name } }.catch { emit(emptyList()) }
 
     val uiState: StateFlow<GalleryUiState> = combine(images, displayMode, sort, filter, selectedIds, labels) { v ->
         @Suppress("UNCHECKED_CAST")
@@ -60,4 +58,32 @@ class GalleryViewModel @Inject constructor(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GalleryUiState(isLoading = true))
 
-    private fun items(): List<ImageItem> = imagesState.value
+    private fun items(): List<ImageItem> = imagesState.value.filter { it.id in selectedIds.value }
+
+    fun setDisplayMode(m: GalleryDisplayMode) { displayMode.value = m }
+    fun setSort(f: SortField) { sort.value = if (sort.value.field == f) sort.value.copy(ascending = !sort.value.ascending) else SortCriteria(f, true) }
+    fun setFilter(f: FilterState) { filter.value = f }
+    fun toggleSelection(id: Long) { selectedIds.value = selectedIds.value.let { if (id in it) it - id else it + id } }
+    fun clearSelection() { selectedIds.value = emptySet() }
+    fun toggleSelectAll() { selectedIds.value = if (uiState.value.allSelected) emptySet() else imagesState.value.mapTo(LinkedHashSet()) { it.id } }
+    fun consumeFeedback() { feedback.value = null }
+
+    private fun run(fb: GalleryFeedback, block: suspend (List<ImageItem>) -> AppResult<Unit>) {
+        val its = items(); if (its.isEmpty()) return
+        busy.value = true
+        viewModelScope.launch {
+            when (val r = block(its)) {
+                is AppResult.Success -> { feedback.value = fb; selectedIds.value = emptySet() }
+                is AppResult.Failure -> errorMessage.value = r.error.message
+            }
+            busy.value = false
+        }
+    }
+
+    fun deleteSelected() = run(GalleryFeedback.DELETED) { imageRepository.delete(it) }
+    fun shareSelected() = run(GalleryFeedback.SHARED) { imageRepository.share(it) }
+    fun moveSelected(dest: String) = run(GalleryFeedback.MOVED) { imageRepository.move(it, dest) }
+    fun copySelected(dest: String) = run(GalleryFeedback.COPIED) { imageRepository.copy(it, dest) }
+    fun assignLabel(name: String) = run(GalleryFeedback.LABEL_ASSIGNED) { labelRepository.assign(it, name) }
+    fun unassignLabel(name: String) = run(GalleryFeedback.LABEL_REMOVED) { labelRepository.unassign(it, name) }
+}

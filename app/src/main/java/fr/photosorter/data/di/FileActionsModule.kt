@@ -7,9 +7,10 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import fr.photosorter.data.repository.FileActions
+import fr.photosorter.data.repository.MediaStoreDeleter
 import javax.inject.Singleton
 
-/** Fournit [FileActions] (actions fichiers scoped storage + fallback). */
+/** Fournit [FileActions] et [MediaStoreDeleter] (actions fichiers scoped storage + fallback). */
 @Module
 @InstallIn(SingletonComponent::class)
 object FileActionsModule {
@@ -17,4 +18,9 @@ object FileActionsModule {
     @Provides
     @Singleton
     fun provideFileActions(@ApplicationContext context: Context): FileActions = FileActions(context)
+
+    @Provides
+    @Singleton
+    fun provideMediaStoreDeleter(@ApplicationContext context: Context): MediaStoreDeleter =
+        MediaStoreDeleter(context)
 }

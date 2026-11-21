@@ -25,7 +25,8 @@
 - lors du démarrage d'une nouvelle tâche, récupérez les modifications présentes dans la branche de la release en cours vers votre branche
 - ne pas mettre une tâche à en validation tant qu'elle n'est pas commitée dans votre branche
 - lorsque vous avez commité dans votre branche, mettre la tâche à "à vérifier"
-- Zoé valide que tous les fichiers y sont, les merge dans la branche de la release en cours, et passe la tâche à terminée
+- Lorsqu'une tâche passe à "a vérifier" Zoé valide que tous les fichiers y sont, crée les pull request des branches des agents dans la branche de la release en cours, et donne son feu vert à Malo.
+- Malo passe une tâche à Terminé quand il reçoit le feu vert de Zoé 
 - Quand un agent n'a plus de tâche en cours et qu'une de ses tâches peut être démarrée (Malo vérifie s'il n'y a pas de dépendance bloquante), la tâche doit être démarrée
 - les décisions purement liées à l'implémentation (choix d'une librairie, d'une dépendance, d'un algorithme, d'une techno, d'un design pattern) doivent être tranchée par Zoé en premier lieu, si Zoé hésite entre plusieurs choix qui peuvent être structurants ou limitants pour des évolutions futures, on passe sur le comportement par défaut ask_user
 - vos interprétations doivent être soumises à Zoé qui validera qu'il n'y a pas de mauvaise interprétation
@@ -37,8 +38,17 @@
   Étapes :
     1. Zoé : créer la tâche associée (si échec : demander à l’utilisateur)
     2. Zoé : affecter la tâche à l'agent adapté (si échec : demander à l’utilisateur)
-    3. démarrer les tâches prêtes (assignées, à faire, dépendances satisfaites) (si échec : arrêter)
+    3. Malo : condition : dépendances terminées ET MR fusionnées dans la branche de travail.
+Pas besoin de relance automatique, la condition sera peut-être remplie à la prochaine exécution du workflow (si échec : arrêter)
     4. Zoé : Passer le bug à l'état "en correction" (si échec : arrêter)
+- « Vérification bugs terminés » : fermeture des bugs quand la tâche associée est validée — ouvert aux agents
+  Déclenchement : sur demande de l’utilisateur, sur demande d’un agent (run_workflow), toutes les 30 minutes.
+  Étapes :
+    1. Zoé : Contrôler pour chaque bug "corrigé" si la tâche associée est bien terminée. Si elle est terminée passer le bug à "vérifié" (si échec : arrêter)
+- « Vérifications bugs en cours » : Vérification si des bugs peuvent être changés de statut — ouvert aux agents
+  Déclenchement : sur demande de l’utilisateur, sur demande d’un agent (run_workflow).
+  Étapes :
+    1. Zoé : Contrôler pour chaque bug "en correction" si la tâche associée est "à vérifier", si c'est le cas mettre le bug à "corrigé" (si échec : arrêter)
 
 ## Mon rôle
 Développeur back-end — Implémente la logique métier, les API et la base de données.
@@ -93,24 +103,20 @@ agent/léna
 {"do":"spec","text":"<spécifications complètes en markdown>"} : (agent principal) remplacer les spécifications
 
 ## Notes de l’agent (à tenir à jour)
-Rôle : Développeur back-end. Branche agent/léna.
+Role: Developpeur back-end. Branche agent/lena.
 
-Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a, 87c5f661, 4f0b27e5. 3222873d/3a354e9c/e9e95a30 OK. c09d3de2/24b6deba MR validée.
+Taches cloturees: 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a, 87c5f661, 4f0b27e5, 06ee8444 (acceptee Malo).
 
-BASCULE MR : initialement #71 (volet 2 dd7f6f6c) était en attente. J'ai ensuite corrigé a285b8eb (bug 61ea13d4 : detectAdult suspend) et soumis MR #73, qui CONTIENT AUSSI le volet 2 (même fichier ScanEngineSupport.kt). Zoé a décidé de VALIDER #73 EN PRIORITÉ : elle absorbe le volet 2 et évite le conflit. => #71 devient REDONDANTE, à FERMER SANS FUSION côté application. dd7f6f6c passera 'corrigé' via #73.
+ETAT MR: MR #79 (tache 06ee8444, bug 6acd97aa move) soumise vers release/v1.0.0, EN ATTENTE DE VALIDATION par l agent principal (Malo). Confirme par get_blockers. Je n ai PAS le droit de merger. Zoé a signale ne pas voir #79 comme fusionnable; pull fait (branche a jour), re-soumission a repondu 'MR #79 deja ouverte, sera validee'. Donc la balle est cote Malo. Message a Zoe non delivre (profondeur max echanges).
 
-a285b8eb (à vérifier) : detectAdult() rendu 'internal suspend fun' (classify() est suspend). Appelant unique ScanEngine.scan() suspend/withContext(io) -> valide. SKIP court-circuit synchrone. Scored->isAdult / Unavailable->false conservateur.
+MR #76 / tache e39a6b4d (insertMissingAdultLabels): pas de MR distincte identifiee sur ma branche; non listee dans get_blockers; contenu probablement deja integre. Ne pas re-soumettre sans preuve d un fichier manquant; demander a Zoe le fichier exact si besoin.
 
-DÉCISION SCISSION ScanEngine (option A) : ScanEngine.kt = classe private fields + scan() ; ScanEngineSupport.kt = internal const val BATCH_SIZE/MSG_* + extensions PARAMÉTRÉES flushImages(batch,db,imageDao,imageLabelDao,labelDao):Int (suspend) et detectAdult(uri,name,preFilter,classifier):Boolean (suspend).
+DECISION SAF (moveToTree): FileActions.moveToTree renvoie AppError? ; apres copie SAF -> delete(imageUri) DIRECT (jamais MediaStore.createDeleteRequest/IntentSender: renvoie un IntentSender inconditionnel sur API>=30, casse le move synchrone) -> verifie stillExists ; anomalie = AppError.Io. Asymetrie assumee: copyToTree reste AppResult<Unit> (via copy), moveToTree AppError? (via move). Pas de PendingDelete cote move.
 
-flushImages : crée 'adulte' si absent (LabelEntity(name,isSystem,createdAt=System.currentTimeMillis()) -> createdAt OBLIGATOIRE) PUIS ImageLabelEntity(imageId,ADULT_LABEL) via ImageLabelDao.insertAll(IGNORE), atomiquement avec ImageDao.insertAll(List<Long>, REPLACE) dans db.withTransaction. Unavailable=>false, aucune insertion.
+ImageRepositoryImpl.move: deleteById UNIQUEMENT si sourceStillExists==false; sinon AppError.Io et image conservee.
 
-detectAdult : when(preFilter.decide(...)) { PreFilterDecision.SKIP -> false ; PreFilterDecision.ANALYZE -> Unit } puis classifier.classify(Uri)->Result.Scored(isAdult)/Unavailable. ENUM = SKIP/ANALYZE (majuscules).
+WRITE_FILE tronque les contenus longs a l AFFICHAGE; toujours read_file pour confirmer. JSON action: rester simple, eviter apostrophes complexes (font echouer le parsing).
 
-FK CRITIQUE : ImageLabelEntity(imageId,labelName) 2 FK CASCADE (image_id->ImageEntity.id ; label_name->LabelEntity.name) => 'adulte' DOIT exister dans labels AVANT insert.
+REGLE Room: INSERT...SELECT -> Long ou Unit, jamais Int.
 
-APRÈS FUSION #73 : dd7f6f6c 'corrigé', bug 61ea13d4 'corrigé' ; puis vérification terrain (libellé 'adulte' sur images déjà scannées -> envisager backfill, décision Zoé).
-
-WRITE_FILE tronque les contenus longs -> petits fichiers + read_file systématique. JSON action = \n échappés.
-
-AdultClassifier : isReady, ensureInitialized, unavailableCount/resetUnavailableCount, classify(Uri). Assets model.tflite+labels.txt+model.config.
+AdultClassifier: isReady, ensureInitialized, unavailableCount/resetUnavailableCount, classify(Uri). Assets model.tflite+labels.txt+model.config. DatabaseSeeder.adultLabelEntity(now).

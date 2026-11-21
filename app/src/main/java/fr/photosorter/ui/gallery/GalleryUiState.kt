@@ -1,5 +1,6 @@
 package fr.photosorter.ui.gallery
 
+import android.content.IntentSender
 import androidx.annotation.StringRes
 import fr.photosorter.R
 import fr.photosorter.domain.model.FilterState
@@ -27,6 +28,15 @@ internal fun feedbackRes(feedback: GalleryFeedback): Int = when (feedback) {
 }
 
 /**
+ * Demande de confirmation système (scoped storage) à lancer depuis l'Activity.
+ * [intentSender] peut être null en repli (API 29) : dans ce cas l'UI n'a rien à lancer.
+ */
+data class PendingDeleteRequest(
+    val intentSender: IntentSender?,
+    val uris: List<String>,
+)
+
+/**
  * État complet de l'écran galerie.
  * Pas d'erreur réseau : l'app est 100% locale, on ne gère que les erreurs métier locales.
  */
@@ -41,6 +51,7 @@ data class GalleryUiState(
     val errorMessage: String? = null,
     val feedback: GalleryFeedback? = null,
     val actionsBusy: Boolean = false,
+    val pendingDelete: PendingDeleteRequest? = null,
 ) {
     /** Vrai en mode sélection multiple actif (au moins un élément sélectionné). */
     val isSelectionMode: Boolean get() = selectedIds.isNotEmpty()

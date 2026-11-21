@@ -24,6 +24,8 @@ import javax.inject.Singleton
  * (exclusions systeme), lit les metadonnees, applique la moderation adulte
  * (pre-filtre + classifieur TFLite) puis ecrit dans Room par lots atomiques :
  * images ET libelle systeme 'adulte' (image_labels) dans la meme transaction.
+ * En fin de scan, une reconciliation idempotente des liens 'adulte' garantit
+ * la coherence apres re-scan (REPLACE + FK CASCADE).
  * 100% local. La logique de lot et de detection est dans ScanEngineSupport.kt.
  */
 @Singleton
@@ -96,6 +98,11 @@ class ScanEngine @Inject constructor(
                 _progress.value = ScanProgress.Running(done = index + 1, total = total, current = meta.name)
             }
             if (buffer.isNotEmpty()) written += flushImages(buffer, db, imageDao, imageLabelDao, labelDao)
+
+            // Reconciliation idempotente des liens 'adulte' pour TOUTES les images
+            // is_adult = 1 (y compris celles hors lot courant) : INSERT OR IGNORE ...
+            // SELECT. Compense la perte de liens due au REPLACE + FK CASCADE au re-scan.
+            reconcileAdultLabels(db, imageLabelDao, labelDao)
 
             val duration = SystemClock.elapsedRealtime() - startedAt
             val result = if (cancelled.get()) {

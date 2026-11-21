@@ -23,7 +23,10 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Implementation [ImageRepository].
+ * Implementation [ImageRepository] :
+ * - Lecture/tri/filtre pousses en SQL via [ImageQueryDao].
+ * - Actions fichiers via [FileActions] (SAF + fallback).
+ * - Suppression via [MediaStoreDeleter] (scoped storage : confirmation systeme possible).
  */
 @Singleton
 class ImageRepositoryImpl @Inject constructor(
@@ -92,6 +95,7 @@ class ImageRepositoryImpl @Inject constructor(
             val err = mediaStoreDeleter.confirmDelete(uris)
             if (err != null) return@withContext AppResult.Failure(err)
 
+            // Nettoyage DB : on retire les images dont le fichier n'existe plus.
             val gone = imageDao.getAllUris().filter { !File(Uri.parse(it).path.orEmpty()).exists() }
             if (gone.isNotEmpty()) imageDao.deleteByUris(gone)
             AppResult.Success(Unit)
@@ -106,11 +110,14 @@ class ImageRepositoryImpl @Inject constructor(
                     lastError = err
                     continue
                 }
-                val sourceStillExists = File(Uri.parse(item.uri).path.orEmpty()).exists()
-                if (sourceStillExists) {
-                    lastError = AppError.Io("La source existe encore apres le deplacement")
-                } else {
+                // La copie a reussi ; on ne retire de la base que si la source a reellement
+                // disparu, sinon on remonte une erreur claire et on conserve l'image.
+                if (!sourceStillExists(item.uri)) {
                     imageDao.deleteById(item.id)
+                } else {
+                    lastError = AppError.Io(
+                        "Deplacement : copie effectuee mais original non supprime pour ${item.name}"
+                    )
                 }
             }
             if (lastError != null) AppResult.Failure(lastError!!) else AppResult.Success(Unit)
@@ -120,62 +127,70 @@ class ImageRepositoryImpl @Inject constructor(
         withContext(dispatchers.io) {
             var lastError: AppError? = null
             for (item in items) {
+                // FileActions.copyToTree renvoie null en cas de succes, sinon l'erreur.
                 val err = fileActions.copyToTree(item.uri, destUri)
                 if (err != null) lastError = err
             }
             if (lastError != null) AppResult.Failure(lastError!!) else AppResult.Success(Unit)
         }
 
-    override suspend fun setLabel(imageIds: List<Long>, label: String, assigned: Boolean): AppResult<Unit> =
+    override suspend fun share(items: List<ImageItem>): AppResult<Unit> =
         withContext(dispatchers.io) {
-            try {
-                if (assigned) imageDao.addLabelToImages(imageIds, label)
-                else imageDao.removeLabelFromImages(imageIds, label)
-                AppResult.Success(Unit)
-            } catch (e: Exception) {
-                AppResult.Failure(AppError.Database(e))
+            if (items.isEmpty()) return@withContext AppResult.Success(Unit)
+            val uris = items.map { Uri.parse(it.uri) }
+            val intent = if (uris.size == 1) {
+                Intent(Intent.ACTION_SEND).apply {
+                    type = context.contentResolver.getType(uris.first()) ?: "image/*"
+                    putExtra(Intent.EXTRA_STREAM, uris.first())
+                }
+            } else {
+                Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                    type = "image/*"
+                    putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+                }
+            }.apply {
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
+            runCatching {
+                context.startActivity(Intent.createChooser(intent, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                AppResult.Success(Unit)
+            }.getOrElse { AppResult.Failure(AppError.Io("Partage impossible : ${it.message}")) }
         }
 
-    override suspend fun share(uris: List<String>): AppResult<Unit> =
-        withContext(dispatchers.main) {
-            try {
-                val intent = fileActions.shareUri(uris)
-                context.startActivity(intent)
-                AppResult.Success(Unit)
+    /**
+     * Indique si la source d'un deplacement existe encore apres la tentative de suppression.
+     */
+    private fun sourceStillExists(uri: String): Boolean {
+        val parsed = Uri.parse(uri)
+        return when (parsed.scheme) {
+            "file" -> parsed.path?.let { File(it).exists() } ?: false
+            "content" -> try {
+                context.contentResolver.openInputStream(parsed)?.use { true } ?: false
             } catch (e: FileNotFoundException) {
-                AppResult.Failure(AppError.Io("Fichier introuvable en partage"))
-            } catch (e: android.content.ActivityNotFoundException) {
-                AppResult.Failure(AppError.Io("Aucune application de partage"))
+                false
+            } catch (e: SecurityException) {
+                true
             }
+            else -> parsed.path?.let { File(it).exists() } ?: false
         }
-
-    private fun fr.photosorter.data.db.entity.ImageWithLabels.toDomain(): ImageItem = ImageItem(
-        id = image.id,
-        uri = image.uri,
-        name = image.name,
-        format = image.format,
-        sizeBytes = image.sizeBytes,
-        dateModified = image.dateModified,
-        labels = labels
-    )
+    }
 
     private fun matchesFilter(item: ImageItem, filter: FilterState): Boolean {
-        if (!filter.includeAdult && item.labels.contains(ADULT_LABEL)) return false
-        if (filter.adultOnly && !item.labels.contains(ADULT_LABEL)) return false
-        if (filter.formats.isNotEmpty() && filter.formats.none { it.name == item.format }) return false
-        if (filter.minSizeBytes != null && item.sizeBytes < filter.minSizeBytes) return false
-        if (filter.dateFrom != null && item.dateModified < filter.dateFrom) return false
-        if (filter.dateTo != null && item.dateModified > filter.dateTo) return false
-        if (filter.labels.isNotEmpty() && !filter.labels.all { item.labels.contains(it) }) return false
+        if (!filter.includeAdult && item.isAdult) return false
+        if (filter.formats.isNotEmpty() && item.format !in filter.formats) return false
+        val minSize = filter.minSizeBytes
+        if (minSize != null && minSize > 0 && item.sizeBytes < minSize) return false
         return true
     }
+}
 
-    private fun SortField.toSortCode(): Int = when (this) {
-        SortField.NAME -> 0
-        SortField.DATE -> 1
-        SortField.SIZE -> 2
-        SortField.FORMAT -> 3
-        SortField.LABEL -> 4
-    }
+/**
+ * Code de tri attendu par [ImageQueryDao.observeFiltered] (0=NAME, 1=DATE, 2=SIZE, 3=FORMAT, 4=LABEL).
+ */
+private fun SortField.toSortCode(): Int = when (this) {
+    SortField.NAME -> 0
+    SortField.DATE -> 1
+    SortField.SIZE -> 2
+    SortField.FORMAT -> 3
+    SortField.LABEL -> 4
 }

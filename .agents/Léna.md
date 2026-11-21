@@ -103,16 +103,20 @@ agent/léna
 {"do":"spec","text":"<spécifications complètes en markdown>"} : (agent principal) remplacer les spécifications
 
 ## Notes de l’agent (à tenir à jour)
-Rôle : Développeur back-end. Branche agent/léna.
+Role: Developpeur back-end. Branche agent/lena.
 
-Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a, 87c5f661, 4f0b27e5. 3222873d/3a354e9c/e9e95a30 OK. c09d3de2/24b6deba MR validée. BASCULE : #71 (volet 2 dd7f6f6c) REDONDANTE, absorbée par #73 ; #71 à fermer sans fusion.
+Taches cloturees: 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a, 87c5f661, 4f0b27e5, 06ee8444 (acceptee Malo).
 
-TÂCHE 9dd5d8c1 (réconciliation adultes, bug c7681760) : MR #75 soumise vers release/v1.0.0, tâche 'à vérifier'. ImageLabelDao.insertMissingAdultLabels (INSERT OR IGNORE ... SELECT id,:adultLabel FROM images WHERE is_adult=1) ; ScanEngineSupport.reconcileAdultLabels (transaction : ensure label + insertMissing) ; ScanEngine appelle reconcileAdultLabels en fin de scan après flush final. Tests in-memory Room.
+ETAT MR: MR #79 (tache 06ee8444, bug 6acd97aa move) soumise vers release/v1.0.0, EN ATTENTE DE VALIDATION par l agent principal (Malo). Confirme par get_blockers. Je n ai PAS le droit de merger. Zoé a signale ne pas voir #79 comme fusionnable; pull fait (branche a jour), re-soumission a repondu 'MR #79 deja ouverte, sera validee'. Donc la balle est cote Malo. Message a Zoe non delivre (profondeur max echanges).
 
-TÂCHE e39a6b4d / BUG 768b171a : corrigé, MR soumise. insertMissingAdultLabels retourne désormais Long (pas Int) car INSERT...SELECT exige Long/Unit. reconcileAdultLabels -> Long (var 0L). Tests : littéraux Long (1L,2L,0L). ScanEngine n'exploite pas le retour. KSP/Room doit compiler.
+MR #76 / tache e39a6b4d (insertMissingAdultLabels): pas de MR distincte identifiee sur ma branche; non listee dans get_blockers; contenu probablement deja integre. Ne pas re-soumettre sans preuve d un fichier manquant; demander a Zoe le fichier exact si besoin.
 
-RÈGLE Room apprise : INSERT...SELECT -> retour Long ou Unit, jamais Int (Int = UPDATE/DELETE seulement).
+DECISION SAF (moveToTree): FileActions.moveToTree renvoie AppError? ; apres copie SAF -> delete(imageUri) DIRECT (jamais MediaStore.createDeleteRequest/IntentSender: renvoie un IntentSender inconditionnel sur API>=30, casse le move synchrone) -> verifie stillExists ; anomalie = AppError.Io. Asymetrie assumee: copyToTree reste AppResult<Unit> (via copy), moveToTree AppError? (via move). Pas de PendingDelete cote move.
 
-WRITE_FILE tronque les contenus longs -> petits fichiers + read_file systématique. JSON action = \n échappés.
+ImageRepositoryImpl.move: deleteById UNIQUEMENT si sourceStillExists==false; sinon AppError.Io et image conservee.
 
-AdultClassifier : isReady, ensureInitialized, unavailableCount/resetUnavailableCount, classify(Uri). Assets model.tflite+labels.txt+model.config. DatabaseSeeder.adultLabelEntity(now).
+WRITE_FILE tronque les contenus longs a l AFFICHAGE; toujours read_file pour confirmer. JSON action: rester simple, eviter apostrophes complexes (font echouer le parsing).
+
+REGLE Room: INSERT...SELECT -> Long ou Unit, jamais Int.
+
+AdultClassifier: isReady, ensureInitialized, unavailableCount/resetUnavailableCount, classify(Uri). Assets model.tflite+labels.txt+model.config. DatabaseSeeder.adultLabelEntity(now).

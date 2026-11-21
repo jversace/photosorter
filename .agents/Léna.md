@@ -95,22 +95,12 @@ agent/léna
 ## Notes de l’agent (à tenir à jour)
 Rôle : Développeur back-end. Branche agent/léna.
 
-Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a, 87c5f661, 4f0b27e5. 3222873d/3a354e9c/e9e95a30 OK. c09d3de2/24b6deba MR validée.
+Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a, 87c5f661, 4f0b27e5, 9dd5d8c1(à vérifier). 3222873d/3a354e9c/e9e95a30 OK. c09d3de2/24b6deba MR validée.
 
-BASCULE MR : initialement #71 (volet 2 dd7f6f6c) était en attente. J'ai ensuite corrigé a285b8eb (bug 61ea13d4 : detectAdult suspend) et soumis MR #73, qui CONTIENT AUSSI le volet 2 (même fichier ScanEngineSupport.kt). Zoé a décidé de VALIDER #73 EN PRIORITÉ : elle absorbe le volet 2 et évite le conflit. => #71 devient REDONDANTE, à FERMER SANS FUSION côté application. dd7f6f6c passera 'corrigé' via #73.
+BASCULE MR antérieure : #71 (volet 2 dd7f6f6c) REDONDANTE, absorbée par #73 (a285b8eb detectAdult suspend). #71 à fermer sans fusion.
 
-a285b8eb (à vérifier) : detectAdult() rendu 'internal suspend fun' (classify() est suspend). Appelant unique ScanEngine.scan() suspend/withContext(io) -> valide. SKIP court-circuit synchrone. Scored->isAdult / Unavailable->false conservateur.
+TÂCHE 9dd5d8c1 (réconciliation adultes, bug c7681760) : MR soumise vers release/v1.0.0, tâche 'à vérifier'. Implémentation : ImageLabelDao.insertMissingAdultLabels (INSERT OR IGNORE ... SELECT id,:adultLabel FROM images WHERE is_adult=1, idempotent) ; ScanEngineSupport.reconcileAdultLabels (transaction : ensure label + insertMissing) ; ScanEngine appelle reconcileAdultLabels en fin de scan après flush final. Tests in-memory Room ajoutés (RecreatesMissingLinksOnly inserted=1 ; IsIdempotent 2 puis 0). FilterState/GalleryFilterDialog/DAO adultOnly inchangés.
 
-DÉCISION SCISSION ScanEngine (option A) : ScanEngine.kt = classe private fields + scan() ; ScanEngineSupport.kt = internal const val BATCH_SIZE/MSG_* + extensions PARAMÉTRÉES flushImages(batch,db,imageDao,imageLabelDao,labelDao):Int (suspend) et detectAdult(uri,name,preFilter,classifier):Boolean (suspend).
+WRITE_FILE tronque les contenus longs -> petits fichiers + read_file systématique. read_file d'un fichier long peut être tronqué dans l'historique mais contenu complet disponible à l'écriture. JSON action = \n échappés.
 
-flushImages : crée 'adulte' si absent (LabelEntity(name,isSystem,createdAt=System.currentTimeMillis()) -> createdAt OBLIGATOIRE) PUIS ImageLabelEntity(imageId,ADULT_LABEL) via ImageLabelDao.insertAll(IGNORE), atomiquement avec ImageDao.insertAll(List<Long>, REPLACE) dans db.withTransaction. Unavailable=>false, aucune insertion.
-
-detectAdult : when(preFilter.decide(...)) { PreFilterDecision.SKIP -> false ; PreFilterDecision.ANALYZE -> Unit } puis classifier.classify(Uri)->Result.Scored(isAdult)/Unavailable. ENUM = SKIP/ANALYZE (majuscules).
-
-FK CRITIQUE : ImageLabelEntity(imageId,labelName) 2 FK CASCADE (image_id->ImageEntity.id ; label_name->LabelEntity.name) => 'adulte' DOIT exister dans labels AVANT insert.
-
-APRÈS FUSION #73 : dd7f6f6c 'corrigé', bug 61ea13d4 'corrigé' ; puis vérification terrain (libellé 'adulte' sur images déjà scannées -> envisager backfill, décision Zoé).
-
-WRITE_FILE tronque les contenus longs -> petits fichiers + read_file systématique. JSON action = \n échappés.
-
-AdultClassifier : isReady, ensureInitialized, unavailableCount/resetUnavailableCount, classify(Uri). Assets model.tflite+labels.txt+model.config.
+AdultClassifier : isReady, ensureInitialized, unavailableCount/resetUnavailableCount, classify(Uri). Assets model.tflite+labels.txt+model.config. DatabaseSeeder.adultLabelEntity(now).

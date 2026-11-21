@@ -103,16 +103,20 @@ agent/léna
 {"do":"spec","text":"<spécifications complètes en markdown>"} : (agent principal) remplacer les spécifications
 
 ## Notes de l’agent (à tenir à jour)
-Rôle : Développeur back-end. Branche agent/léna.
+Role: Developpeur back-end. Branche agent/lena.
 
-Tâches clôturées : 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a, 87c5f661, 4f0b27e5, 06ee8444 (acceptée par Malo). MR #79 soumise vers release/v1.0.0 (bug 6acd97aa déplacement).
+Taches cloturees: 45770063, 31fa8938, 68b19a34, 87bcaabc, 596d8d9a, 87c5f661, 4f0b27e5, 06ee8444 (acceptee Malo).
 
-DÉCISION SAF (moveToTree) : FileActions.moveToTree renvoie AppError? (et non AppResult) ; after copie SAF -> delete(imageUri) DIRECT (jamais MediaStore.createDeleteRequest/IntentSender : renvoie un IntentSender inconditionnel sur API>=30, casse le déplacement synchrone) -> vérifie stillExists(imageUri) ; toute anomalie = AppError.Io explicite. Helper stillExists fiable file:// et content://. Asymétrie assumée : copyToTree reste AppResult<Unit> (appelé par ImageRepositoryImpl.copy), moveToTree AppError? (appelé par move). Ne pas introduire PendingDelete côté move.
+ETAT MR: MR #79 (tache 06ee8444, bug 6acd97aa move) soumise vers release/v1.0.0, EN ATTENTE DE VALIDATION par l agent principal (Malo). Confirme par get_blockers. Je n ai PAS le droit de merger. Zoé a signale ne pas voir #79 comme fusionnable; pull fait (branche a jour), re-soumission a repondu 'MR #79 deja ouverte, sera validee'. Donc la balle est cote Malo. Message a Zoe non delivre (profondeur max echanges).
 
-ImageRepositoryImpl.move : ne supprime la ligne DB (deleteById) QUE si sourceStillExists==false ; sinon AppError.Io et image conservée.
+MR #76 / tache e39a6b4d (insertMissingAdultLabels): pas de MR distincte identifiee sur ma branche; non listee dans get_blockers; contenu probablement deja integre. Ne pas re-soumettre sans preuve d un fichier manquant; demander a Zoe le fichier exact si besoin.
 
-WRITE_FILE tronque les contenus longs à l'AFFICHAGE ; toujours relire (read_file) pour confirmer état réel du fichier. JSON action : apostrophes/guillemets et retours à la ligne doivent être propres (les notes longues avec apostrophes complexes font échouer le parsing -> rester simple, éviter apostrophes).
+DECISION SAF (moveToTree): FileActions.moveToTree renvoie AppError? ; apres copie SAF -> delete(imageUri) DIRECT (jamais MediaStore.createDeleteRequest/IntentSender: renvoie un IntentSender inconditionnel sur API>=30, casse le move synchrone) -> verifie stillExists ; anomalie = AppError.Io. Asymetrie assumee: copyToTree reste AppResult<Unit> (via copy), moveToTree AppError? (via move). Pas de PendingDelete cote move.
 
-RÈGLE Room : INSERT...SELECT -> retour Long ou Unit, jamais Int.
+ImageRepositoryImpl.move: deleteById UNIQUEMENT si sourceStillExists==false; sinon AppError.Io et image conservee.
 
-AdultClassifier : isReady, ensureInitialized, unavailableCount/resetUnavailableCount, classify(Uri). Assets model.tflite+labels.txt+model.config. DatabaseSeeder.adultLabelEntity(now).
+WRITE_FILE tronque les contenus longs a l AFFICHAGE; toujours read_file pour confirmer. JSON action: rester simple, eviter apostrophes complexes (font echouer le parsing).
+
+REGLE Room: INSERT...SELECT -> Long ou Unit, jamais Int.
+
+AdultClassifier: isReady, ensureInitialized, unavailableCount/resetUnavailableCount, classify(Uri). Assets model.tflite+labels.txt+model.config. DatabaseSeeder.adultLabelEntity(now).

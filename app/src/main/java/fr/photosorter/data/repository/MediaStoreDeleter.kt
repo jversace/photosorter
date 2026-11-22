@@ -5,11 +5,14 @@ import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
 import android.content.IntentSender
+import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import fr.photosorter.core.result.AppError
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.File
+import kotlin.coroutines.resume
 
 /**
  * Résultat d'une demande de suppression.
@@ -43,7 +46,7 @@ class MediaStoreDeleter(private val context: Context) {
      * Prépare la suppression d'une image. Renvoie une suppression immédiate terminée, ou une
      * demande de confirmation à faire aboutir via [confirmDelete].
      */
-    fun requestDelete(imageUri: String): DeleteRequest {
+    suspend fun requestDelete(imageUri: String): DeleteRequest {
         val uri = Uri.parse(imageUri)
 
         // API < 29 : pas de scoped storage, suppression fichier directe.
@@ -88,23 +91,17 @@ class MediaStoreDeleter(private val context: Context) {
             val uri = Uri.parse(s)
             val err: AppError? = when (uri.scheme) {
                 ContentResolver.SCHEME_CONTENT -> {
-                    try {
-                        val deleted = resolver.delete(uri, null, null)
-                        android.util.Log.i("MediaStoreDeleter", "confirmDelete uri=$uri deleted=$deleted")
-                        if (deleted > 0) {
-                            null
-                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                            // API 30+ : le système a déjà supprimé après confirmation du dialogue.
-                            // resolver.delete retourne 0 mais c'est un succès.
-                            null
-                        } else {
-                            AppError.Io("Suppression refusée : $s")
-                        }
-                    } catch (e: SecurityException) {
-                        AppError.PermissionDenied(e.message)
-                    } catch (e: Exception) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) null
-                        else AppError.Io("Suppression impossible : ${e.message}")
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        // API 30+ : suppression déjà faite par le système après confirmation.
+                        // Ne PAS rappeler resolver.delete() (SecurityException inutile).
+                        android.util.Log.i(TAG, "confirmDelete (API 30+) : délégué au système, uri=$uri")
+                        null
+                    } else {
+                        try {
+                            val deleted = resolver.delete(uri, null, null)
+                            if (deleted > 0) null else AppError.Io("Suppression refusée : $s")
+                        } catch (e: SecurityException) { AppError.PermissionDenied(e.message) }
+                        catch (e: Exception) { AppError.Io("Suppression impossible : ${e.message}") }
                     }
                 }
                 else -> deleteFileDirect(uri)
@@ -112,6 +109,67 @@ class MediaStoreDeleter(private val context: Context) {
             if (err != null) lastError = err
         }
         return lastError
+    }
+
+    private companion object { const val TAG = "MediaStoreDeleter" }
+    /**
+     * Prépare la suppression d'un LOT d'images en UN SEUL createDeleteRequest.
+     * Indispensable : createDeleteRequest affiche un dialogue groupé et n'autorise
+     * la suppression que des URIs qu'il contient. Appelé N fois, seul le dernier
+     * IntentSender est valide (les PendingIntent successifs se remplacent).
+     */
+    suspend fun requestDeleteBatch(imageUris: List<String>): DeleteRequest {
+        if (imageUris.isEmpty()) return DeleteRequest.Completed(null)
+        android.util.Log.i(TAG, "requestDeleteBatch: reçues=${imageUris.size} uris=$imageUris")
+
+        // API < 29 : pas de scoped storage, suppression directe de chaque fichier.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            var lastError: AppError? = null
+            for (u in imageUris) {
+                val err = deleteFileDirect(Uri.parse(u))
+                if (err != null) lastError = err
+            }
+            return DeleteRequest.Completed(lastError)
+        }
+
+        // API >= 29 : résoudre toutes les URIs en content:// MediaStore.
+        val mediaUris = imageUris.mapNotNull { toMediaContentUri(Uri.parse(it)) }
+        if (mediaUris.isEmpty()) return DeleteRequest.Completed(null)
+
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // API 30+ : UN appel pour tout le lot.
+            android.util.Log.i(TAG, "requestDeleteBatch: mediaUris résolues=${mediaUris.size} -> $mediaUris")
+            runCatching {
+                val pending = MediaStore.createDeleteRequest(resolver, mediaUris)
+                android.util.Log.i(TAG, "requestDeleteBatch: IntentSender obtenu=${pending.intentSender != null}")
+                DeleteRequest.NeedsConfirmation(pending.intentSender, mediaUris.map { it.toString() })
+            }.getOrElse {
+                android.util.Log.e(TAG, "requestDeleteBatch: createDeleteRequest a échoué", it)
+                DeleteRequest.Completed(AppError.Io("Demande de suppression impossible : ${it.message}"))
+            }
+        } else {
+            // API 29 : tentative directe par URI ; on ne peut pas batcher createDeleteRequest
+            // (API absente), on collecte les RecoverableSecurityException pour un retry.
+            var confirmationSender: IntentSender? = null
+            val confirmationUris = mutableListOf<String>()
+            var lastError: AppError? = null
+            for (mediaUri in mediaUris) {
+                try {
+                    val deleted = resolver.delete(mediaUri, null, null)
+                    if (deleted == 0) lastError = AppError.Io("Suppression refusée : $mediaUri")
+                } catch (e: RecoverableSecurityException) {
+                    confirmationUris += mediaUri.toString()
+                    confirmationSender = e.userAction.actionIntent.intentSender
+                } catch (e: SecurityException) {
+                    lastError = AppError.PermissionDenied(e.message)
+                }
+            }
+            if (confirmationUris.isNotEmpty()) {
+                DeleteRequest.NeedsConfirmation(confirmationSender, confirmationUris)
+            } else {
+                DeleteRequest.Completed(lastError)
+            }
+        }
     }
 
     // --- Helpers ------------------------------------------------------------
@@ -129,7 +187,7 @@ class MediaStoreDeleter(private val context: Context) {
      * - `content://` MediaStore : renvoyée telle quelle.
      * - `file://` : on retrouve l'id MediaStore via la colonne `_data`.
      */
-    private fun toMediaContentUri(uri: Uri): Uri? {
+    private suspend fun toMediaContentUri(uri: Uri): Uri? {
         if (uri.scheme == ContentResolver.SCHEME_CONTENT) return uri
         if (uri.scheme != ContentResolver.SCHEME_FILE) return null
         val path = uri.path ?: return null
@@ -139,9 +197,16 @@ class MediaStoreDeleter(private val context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val imagesBase = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
             queryMediaUri(imagesBase, path)?.let { return it }
-            // Fallback pour les fichiers qui ne seraient pas indexés comme images (rare)
             val filesBase = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
-            return queryMediaUri(filesBase, path)
+            queryMediaUri(filesBase, path)?.let { return it }
+
+            android.util.Log.i(TAG, "toMediaContentUri: $path absent, indexation en cours…")
+            if (ensureIndexed(path)) {
+                queryMediaUri(imagesBase, path)?.let { return it }
+                queryMediaUri(filesBase, path)?.let { return it }
+            }
+            android.util.Log.w(TAG, "toMediaContentUri: $path NON RÉSOLUE après indexation")
+            return null
         }
 
         // API 26-28 : résolution sur la collection Files (l'appelant fera deleteFileDirect de toute façon)
@@ -185,4 +250,13 @@ class MediaStoreDeleter(private val context: Context) {
         }
         return null
     }
+
+    private suspend fun ensureIndexed(path: String): Boolean =
+        suspendCancellableCoroutine { cont ->
+            if (!File(path).exists()) { cont.resume(false); return@suspendCancellableCoroutine }
+            MediaScannerConnection.scanFile(context, arrayOf(path), null) { _, uri ->
+                android.util.Log.i(TAG, "ensureIndexed: $path -> $uri (ok=${uri != null})")
+                if (cont.isActive) cont.resume(uri != null)
+            }
+        }
 }

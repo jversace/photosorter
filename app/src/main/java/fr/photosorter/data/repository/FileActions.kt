@@ -96,23 +96,9 @@ class FileActions(private val context: Context) {
      * la copie reste en destination mais l'appelant est informé (pas de succès trompeur).
      */
     fun moveToTree(imageUri: String, treeUri: String): AppError? {
-        val copyError = copyToTreeInternal(imageUri, treeUri, materialize = false)
-        if (copyError != null) return copyError
-
-        // Copie réussie : supprimer la source. On utilise la suppression directe (delete),
-        // PAS le flux de confirmation MediaStore (createDeleteRequest renvoie un IntentSender
-        // inconditionnellement sur API 30+, ce qui casserait tout déplacement synchrone).
-        val delError = delete(imageUri)
-        if (delError != null) {
-            return AppError.Io(
-                "Déplacement : copie effectuée mais original non supprimé (${delError.message ?: "erreur"})"
-            )
-        }
-        // Vérifier que la source a réellement disparu (certains OEM renvoient un faux succès).
-        if (stillExists(imageUri)) {
-            return AppError.Io("Déplacement : copie effectuée mais original toujours présent")
-        }
-        return null
+        // Ne copie QUE la source vers la destination. La suppression de la source
+        // est déléguée à MediaStoreDeleter (createDeleteRequest) par ImageRepositoryImpl.
+        return copyToTreeInternal(imageUri, treeUri, materialize = false)
     }
 
     fun copyToTree(imageUri: String, treeUri: String): AppError? =

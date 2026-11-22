@@ -77,13 +77,15 @@ internal fun GalleryScreen(
         }
     }
 
-    // Launcher pour la confirmation système de suppression scoped storage (API >= 29).
+    // Launcher pour la confirmation système (suppression scoped storage et,
+    // désormais, suppression de la source après un déplacement).
     val deleteIntentLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult(),
     ) { result ->
+        android.util.Log.i("GalleryScreen", "deleteIntentLauncher resultCode=${result.resultCode}")
         val pending = state.pendingDelete
         if (result.resultCode == Activity.RESULT_OK && pending != null) {
-            viewModel.onDeleteConfirmed(pending.uris)
+            viewModel.onDeleteConfirmed(pending)
         } else {
             viewModel.onDeleteCancelled()
         }
@@ -92,12 +94,13 @@ internal fun GalleryScreen(
     // Observation de la demande de confirmation système : on lance l'IntentSender fourni.
     LaunchedEffect(state.pendingDelete) {
         val pending = state.pendingDelete ?: return@LaunchedEffect
+        android.util.Log.i("GalleryScreen", "pendingDelete intentSender=${pending.intentSender != null} uris=${pending.uris} action=${pending.action}")
         val sender = pending.intentSender
         if (sender != null) {
             deleteIntentLauncher.launch(IntentSenderRequest.Builder(sender).build())
         } else {
             // Repli API 29 : rien à lancer, on valide directement le nettoyage DB.
-            viewModel.onDeleteConfirmed(pending.uris)
+            viewModel.onDeleteConfirmed(pending)
         }
     }
 

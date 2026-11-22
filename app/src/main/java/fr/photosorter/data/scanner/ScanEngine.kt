@@ -18,6 +18,9 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.content.ContentUris
+import android.provider.MediaStore
+import android.os.Build
 
 /**
  * Moteur de scan : enumere les racines de stockage, parcourt recursivement
@@ -70,9 +73,26 @@ class ScanEngine @Inject constructor(
 
         try {
             val roots = storageRootProvider.roots()
+            android.util.Log.i("ScanEngine", "roots=${roots.map { it.absolutePath }}")
             val files = ArrayList<ScannedFile>(1024)
             _progress.value = ScanProgress.Running(done = 0, total = 0, current = MSG_ANALYZING)
             walker.walk(roots, cancelled) { files.add(it) }
+
+            // Compléter avec MediaStore : couvre la carte SD (inaccessible via File sur API 30+)
+            // et tout fichier indexé absent du parcours File. Déduplication par chemin physique :
+            // si un fichier est déjà trouvé par le walker (file://), on garde le walker (pas de régression).
+            val seenPaths = files.mapNotNullTo(HashSet()) { it.uri.path }
+            val before = files.size
+            for (sf in queryMediaStoreImages(context)) {
+                if (seenPaths.add(sf.normalizedPath)) {
+                    files.add(sf)
+                }
+            }
+            android.util.Log.i(
+                "ScanEngine",
+                "files total=${files.size} (walker=$before, MediaStore ajoutés=${files.size - before})"
+            )
+
             val total = files.size
 
             for ((index, file) in files.withIndex()) {
@@ -120,5 +140,38 @@ class ScanEngine @Inject constructor(
             running = false
             buffer.clear()
         }
+    }
+
+    /**
+     * Récupère les images indexées par MediaStore (couvre le stockage interne ET la
+     * carte SD externe). Indispensable sur API 30+ : la carte SD n'est pas accessible
+     * via File API (canRead() renvoie false silencieusement), donc StorageWalker ne
+     * peut pas la parcourir. MediaStore est la seule voie conforme au scoped storage.
+     */
+    private fun queryMediaStoreImages(context: Context): List<ScannedFile> {
+        val result = mutableListOf<ScannedFile>()
+        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
+        } else {
+            @Suppress("DEPRECATION")
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        }
+        val projection = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DATA)
+        runCatching {
+            context.contentResolver.query(collection, projection, null, null, null)?.use { c ->
+                val idCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                val dataCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA)
+                while (c.moveToNext()) {
+                    val id = c.getLong(idCol)
+                    val data = c.getString(dataCol) ?: continue
+                    val contentUri = ContentUris.withAppendedId(collection, id)
+                    result.add(ScannedFile(contentUri, data))
+                }
+            }
+        }.onFailure {
+            android.util.Log.w("ScanEngine", "MediaStoreQuery échouée: ${it.message}")
+        }
+        android.util.Log.i("ScanEngine", "MediaStoreQuery: ${result.size} image(s) indexée(s)")
+        return result
     }
 }

@@ -26,4 +26,5 @@ interface ImageRepository {
     suspend fun move(items: List<ImageItem>, destUri: String): AppResult<Unit>
     suspend fun copy(items: List<ImageItem>, destUri: String): AppResult<Unit>
     suspend fun share(items: List<ImageItem>): AppResult<Unit>
+    suspend fun moveConfirmed(uris: List<String>): AppResult<Unit>
 }

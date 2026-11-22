@@ -3,6 +3,7 @@ package fr.photosorter.ui.gallery
 import android.content.IntentSender
 import androidx.annotation.StringRes
 import fr.photosorter.R
+import fr.photosorter.core.result.AppResult
 import fr.photosorter.domain.model.FilterState
 import fr.photosorter.domain.model.ImageItem
 import fr.photosorter.domain.model.SortCriteria
@@ -34,6 +35,7 @@ internal fun feedbackRes(feedback: GalleryFeedback): Int = when (feedback) {
 data class PendingDeleteRequest(
     val intentSender: IntentSender?,
     val uris: List<String>,
+    val action: AppResult.PendingAction = AppResult.PendingAction.DELETE,
 )
 
 /**

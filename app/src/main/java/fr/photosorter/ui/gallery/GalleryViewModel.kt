@@ -60,12 +60,22 @@ class GalleryViewModel @Inject constructor(
         }
     }
     fun deleteSelected() = run(GalleryFeedback.DELETED) { imageRepository.delete(it) }
-    fun onDeleteConfirmed(uris: List<String>) { pendingDelete.value = null; busy.value = true
+    fun onDeleteConfirmed(pending: PendingDeleteRequest) {
+        pendingDelete.value = null
+        busy.value = true
         viewModelScope.launch {
-            when (val r = imageRepository.deleteConfirmed(uris)) {
-                is AppResult.Success -> { feedback.value = GalleryFeedback.DELETED; selectedIds.value = emptySet() }
+            val r = when (pending.action) {
+                AppResult.PendingAction.DELETE -> imageRepository.deleteConfirmed(pending.uris)
+                AppResult.PendingAction.MOVE_SOURCE -> imageRepository.moveConfirmed(pending.uris)
+            }
+            when (r) {
+                is AppResult.Success -> {
+                    feedback.value = if (pending.action == AppResult.PendingAction.DELETE)
+                        GalleryFeedback.DELETED else GalleryFeedback.MOVED
+                    selectedIds.value = emptySet()
+                }
                 is AppResult.Failure -> errorMessage.value = r.error.message
-                is AppResult.PendingDelete -> pendingDelete.value = PendingDeleteRequest(r.intentSender, r.uris)
+                is AppResult.PendingDelete -> pendingDelete.value = PendingDeleteRequest(r.intentSender, r.uris, r.action)
             }
             busy.value = false
         }

@@ -21,9 +21,13 @@ sealed interface AppResult<out T> {
      *   doit être obtenue par un autre moyen (récupération API 29).
      * @param uris URIs MediaStore (content://) concernées par la suppression.
      */
+
+    enum class PendingAction { DELETE, MOVE_SOURCE }
+
     data class PendingDelete(
         val intentSender: IntentSender?,
-        val uris: List<String>
+        val uris: List<String>,
+        val action: PendingAction = PendingAction.DELETE,   // ← nouveau
     ) : AppResult<Nothing>
 }
 

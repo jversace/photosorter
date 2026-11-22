@@ -73,30 +73,33 @@ class ImageRepositoryImpl @Inject constructor(
 
     override suspend fun delete(items: List<ImageItem>): AppResult<Unit> =
         withContext(dispatchers.io) {
-            var lastError: AppError? = null
-            val pendingUris = mutableListOf<String>()
-            var pendingSender: android.content.IntentSender? = null
+            android.util.Log.i("ImageRepository", "delete: items=${items.size} uris=${items.map { it.uri }}")
+            if (items.isEmpty()) return@withContext AppResult.Success(Unit)
 
-            for (item in items) {
-                when (val req = mediaStoreDeleter.requestDelete(item.uri)) {
-                    is DeleteRequest.Completed -> {
-                        if (req.error != null) {
-                            lastError = req.error
-                        } else {
-                            imageDao.deleteById(item.id)
+            when (val req = mediaStoreDeleter.requestDeleteBatch(items.map { it.uri })) {
+                is DeleteRequest.Completed -> {
+                    android.util.Log.i("ImageRepository", "delete: Completed err=${req.error?.message}")
+                    if (req.error != null) {
+                        // Succès partiel possible : nettoyage DB basé sur l'existence réelle.
+                        val gone = imageDao.getAllUris().filter { uriStr ->
+                            val path = Uri.parse(uriStr).path
+                            path == null || !File(path).exists()
                         }
-                    }
-                    is DeleteRequest.NeedsConfirmation -> {
-                        pendingUris += req.uris
-                        if (req.intentSender != null) pendingSender = req.intentSender
+                        if (gone.isNotEmpty()) imageDao.deleteByUris(gone)
+                        AppResult.Failure(req.error)
+                    } else {
+                        val gone = imageDao.getAllUris().filter { uriStr ->
+                            val path = Uri.parse(uriStr).path
+                            path == null || !File(path).exists()
+                        }
+                        if (gone.isNotEmpty()) imageDao.deleteByUris(gone)
+                        AppResult.Success(Unit)
                     }
                 }
-            }
-
-            when {
-                pendingUris.isNotEmpty() -> AppResult.PendingDelete(pendingSender, pendingUris)
-                lastError != null -> AppResult.Failure(lastError!!)
-                else -> AppResult.Success(Unit)
+                is DeleteRequest.NeedsConfirmation -> {
+                    android.util.Log.i("ImageRepository", "delete: NeedsConfirmation uris=${req.uris}")
+                    AppResult.PendingDelete(req.intentSender, req.uris)
+                }
             }
         }
 
@@ -124,26 +127,39 @@ class ImageRepositoryImpl @Inject constructor(
 
     override suspend fun move(items: List<ImageItem>, destUri: String): AppResult<Unit> =
         withContext(dispatchers.io) {
-            var lastError: AppError? = null
+            if (items.isEmpty()) return@withContext AppResult.Success(Unit)
+            android.util.Log.i("ImageRepository", "move: items=${items.size} dest=$destUri")
+
+            // Étape 1 : copier tout ce qui peut l'être.
+            val copied = mutableListOf<ImageItem>()
+            var copyError: AppError? = null
             for (item in items) {
                 val err = fileActions.moveToTree(item.uri, destUri)
-                if (err != null) {
-                    lastError = err
-                    continue
-                }
-                // La copie a réussi ; on ne retire de la base que si la source a réellement
-                // disparu, sinon on remonte une erreur claire et on conserve l'image
-                // (pas d'état incohérent base / système de fichiers).
-                if (!sourceStillExists(item.uri)) {
-                    imageDao.deleteById(item.id)
-                } else {
-                    lastError = AppError.Io(
-                        "Déplacement : copie effectuée mais original non supprimé pour ${item.name}"
-                    )
-                }
+                if (err != null) copyError = err
+                else copied.add(item)
             }
-            if (lastError != null) AppResult.Failure(lastError!!) else AppResult.Success(Unit)
+            if (copied.isEmpty()) {
+                return@withContext AppResult.Failure(copyError ?: AppError.Io("Aucune copie réussie"))
+            }
+
+            // Étape 2 : demander la suppression des sources (dialogue système groupé).
+            when (val req = mediaStoreDeleter.requestDeleteBatch(copied.map { it.uri })) {
+                is DeleteRequest.Completed -> {
+                    // Suppression directe réussie : nettoyage DB des sources disparues.
+                    val gone = imageDao.getAllUris().filter { uriStr ->
+                        val path = Uri.parse(uriStr).path
+                        path == null || !File(path).exists()
+                    }
+                    if (gone.isNotEmpty()) imageDao.deleteByUris(gone)
+                    if (req.error != null) AppResult.Failure(req.error) else AppResult.Success(Unit)
+                }
+                is DeleteRequest.NeedsConfirmation ->
+                    AppResult.PendingDelete(req.intentSender, req.uris, AppResult.PendingAction.MOVE_SOURCE)
+            }
         }
+
+    override suspend fun moveConfirmed(uris: List<String>): AppResult<Unit> =
+        deleteConfirmed(uris)
 
     override suspend fun copy(items: List<ImageItem>, destUri: String): AppResult<Unit> =
         withContext(dispatchers.io) {

@@ -25,10 +25,20 @@ interface ImageDao {
     @Query("DELETE FROM images WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("DELETE FROM images WHERE uri IN (:uris)")
+    suspend fun deleteByUris(uris: List<String>)
+
+    @Query("SELECT uri FROM images")
+    suspend fun getAllUris(): List<String>
+
     @Query("SELECT * FROM images WHERE id = :id")
     suspend fun getById(id: Long): ImageEntity?
 
     @Transaction
     @Query("SELECT * FROM images ORDER BY name ASC")
     suspend fun getAllWithLabels(): List<ImageWithLabels>
+
+    /** URIs des images marquées adultes (pour la réconciliation des liens). */
+    @Query("SELECT uri FROM images WHERE is_adult = 1")
+    suspend fun getAdultUris(): List<String>
 }

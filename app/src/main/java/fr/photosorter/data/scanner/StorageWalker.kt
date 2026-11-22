@@ -27,7 +27,11 @@ class StorageWalker(
     ) {
         for (root in roots) {
             if (cancelled.get()) return
-            if (!root.exists() || !root.canRead()) continue
+            if (!root.exists() || !root.canRead()) {
+                android.util.Log.w("StorageWalker", "root IGNORÉE (exists=${root.exists()} canRead=${root.canRead()}): ${root.absolutePath}")
+                continue
+            }
+            android.util.Log.i("StorageWalker", "walk root: ${root.absolutePath}")
             walkDir(root, root, depth = 0, cancelled, onFile)
         }
     }

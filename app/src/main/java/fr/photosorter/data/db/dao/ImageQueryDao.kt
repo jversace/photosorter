@@ -16,6 +16,10 @@ import kotlinx.coroutines.flow.Flow
  *
  * Codes de tri (sort) :
  *   0 = NAME, 1 = DATE, 2 = SIZE, 3 = FORMAT, 4 = LABEL
+ *
+ * Direction : on trie d'abord par un bloc CASE actif uniquement pour l'ordre
+ * demandé (ASC si :asc = 1, DESC sinon) ; l'autre bloc vaut NULL pour toutes
+ * les lignes et n'a donc aucun effet.
  */
 @Dao
 interface ImageQueryDao {
@@ -24,35 +28,53 @@ interface ImageQueryDao {
      * Filtres : formats (liste vide = tous), plage de dates [dateFrom, dateTo],
      * taille min, libellés (OR : image ayant AU MOINS un des libellés demandés),
      * includeAdult = 0 exclut les images adultes.
+     *
+     * adultOnly = 1 => n'afficher QUE les images portant le libellé système adulte.
+     * La source de vérité de l'association image/libellé est la table image_labels
+     * (instruction n°224) : on ne s'appuie PAS sur images.is_adult, qui est un cache
+     * potentiellement désynchronisé après révision du label par l'utilisateur.
+     * La condition est indépendante (ET) des autres filtres libellés.
      */
     @Transaction
     @Query(
         "SELECT * FROM images i " +
-        "WHERE (:includeAdult = 1 OR i.is_adult = 0) " +
+        "WHERE (:adultOnly = 1 OR :includeAdult = 1 OR i.is_adult = 0) " +
+        "AND (:adultOnly = 0 OR EXISTS (SELECT 1 FROM image_labels ila WHERE ila.image_id = i.id AND ila.label_name = :adultLabel)) " +
         "AND (:hasFormats = 0 OR i.format IN (:formats)) " +
         "AND (:dateFrom IS NULL OR i.date_modified >= :dateFrom) " +
         "AND (:dateTo IS NULL OR i.date_modified <= :dateTo) " +
         "AND (:minSize IS NULL OR i.size_bytes >= :minSize) " +
         "AND (:hasLabels = 0 OR EXISTS (SELECT 1 FROM image_labels il WHERE il.image_id = i.id AND il.label_name IN (:labels))) " +
         "ORDER BY " +
-        "CASE :sort " +
-        "WHEN 0 THEN i.name " +
-        "WHEN 3 THEN i.format " +
-        "ELSE NULL END " +
-        "COLLATE NOCASE " +
-        "CASE WHEN :sort IN (1, 2, 4) THEN 1 ELSE 0 END, " +
-        "CASE :sort " +
-        "WHEN 1 THEN i.date_modified " +
-        "WHEN 2 THEN i.size_bytes " +
-        "WHEN 4 THEN (SELECT MIN(il2.label_name) FROM image_labels il2 WHERE il2.image_id = i.id) " +
-        "END " +
-        "CASE WHEN :asc = 1 THEN 1 ELSE 0 END ASC, " +
-        "i.name ASC"
+        // Ordre ASCENDANT (actif seulement si :asc = 1)
+        "CASE WHEN :asc = 1 THEN " +
+        "  CASE :sort " +
+        "    WHEN 0 THEN i.name COLLATE NOCASE " +
+        "    WHEN 3 THEN i.format COLLATE NOCASE " +
+        "    WHEN 1 THEN i.date_modified " +
+        "    WHEN 2 THEN i.size_bytes " +
+        "    WHEN 4 THEN (SELECT MIN(il2.label_name) FROM image_labels il2 WHERE il2.image_id = i.id) COLLATE NOCASE " +
+        "  END " +
+        "END ASC, " +
+        // Ordre DESCENDANT (actif seulement si :asc = 0)
+        "CASE WHEN :asc = 0 THEN " +
+        "  CASE :sort " +
+        "    WHEN 0 THEN i.name COLLATE NOCASE " +
+        "    WHEN 3 THEN i.format COLLATE NOCASE " +
+        "    WHEN 1 THEN i.date_modified " +
+        "    WHEN 2 THEN i.size_bytes " +
+        "    WHEN 4 THEN (SELECT MIN(il2.label_name) FROM image_labels il2 WHERE il2.image_id = i.id) COLLATE NOCASE " +
+        "  END " +
+        "END DESC, " +
+        // Départage stable, toujours par nom croissant
+        "i.name COLLATE NOCASE ASC"
     )
     fun observeFiltered(
         sort: Int,
         asc: Int,
         includeAdult: Int,
+        adultOnly: Int,
+        adultLabel: String,
         hasFormats: Int,
         formats: List<String>,
         dateFrom: Long?,

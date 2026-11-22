@@ -9,17 +9,21 @@ Installation : smartphone Android 8.0+ (API 26+), fichier app-release.apk.
 
 ## 1bis. Wrapper Gradle (bug 2086c768)
 
-Le depot fournit `gradlew` (Unix), `gradlew.bat` (Windows) et
-`gradle/wrapper/gradle-wrapper.properties` (Gradle **8.9**, requis par AGP 8.5.2).
+Le depot fournit le wrapper Gradle complet :
 
-⚠️ Le binaire `gradle/wrapper/gradle-wrapper.jar` (~60 Ko) ne peut pas etre committe
-en texte par les agents. Il doit etre genere **une seule fois** depuis un poste avec Gradle
-installe, puis committe :
+- `gradlew` (Unix) et `gradlew.bat` (Windows)
+- `gradle/wrapper/gradle-wrapper.jar` (binaire, versionne)
+- `gradle/wrapper/gradle-wrapper.properties` (Gradle **8.9**, requis par AGP 8.5.2)
+
+Rien à générer : `./gradlew` fonctionne directement après un clone du depot.
+
+Si vous regenerez vous-meme le wrapper (mise a jour de version Gradle), utilisez :
 
     gradle wrapper --gradle-version 8.9 --distribution-type bin
 
-Sans ce `.jar`, `./gradlew` echoue avec
-`ClassNotFoundException: org.gradle.wrapper.GradleWrapperMain`.
+puis committez `gradlew`, `gradlew.bat`, `gradle/wrapper/gradle-wrapper.jar` et
+`gradle/wrapper/gradle-wrapper.properties`. Le `.gitignore` contient l'exception
+`!gradle/wrapper/gradle-wrapper.jar` qui autorise le versionnement de ce binaire.
 
 ## 2. Creer un keystore de release
 
@@ -108,4 +112,4 @@ Ou via Parametres > Applications > PhotoSorter > Desinstaller.
 - APK non signe : verifier que keystore.properties est present et correct
 - Modele TFLite absent : verifier app/assets/model.tflite et labels.txt dans le projet
 - Build echoue : verifier JDK 17 (java -version) et Android SDK installe
-- ./gradlew: ClassNotFoundException GradleWrapperMain : le gradle-wrapper.jar est absent (voir section 1bis)
+- ./gradlew: ClassNotFoundException GradleWrapperMain : verifier que gradle/wrapper/gradle-wrapper.jar est bien present (il est versionne dans le depot)

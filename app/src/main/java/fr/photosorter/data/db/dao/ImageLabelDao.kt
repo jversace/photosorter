@@ -17,4 +17,35 @@ interface ImageLabelDao {
 
     @Query("DELETE FROM image_labels WHERE image_id = :imageId")
     suspend fun clearForImage(imageId: Long)
+
+    /**
+     * Réconciliation idempotente du libellé système 'adulte' : insère un lien
+     * (image_id, label_name) pour TOUTES les images marquées is_adult = 1 qui n'en ont
+     * pas encore, en ignorant les liens déjà présents (INSERT OR IGNORE).
+     *
+     * Corrige la perte de liens provoquée par ImageDao.insertAll en REPLACE + FK CASCADE :
+     * après un re-scan, les images adultes issues d'un scan antérieur doivent voir leur
+     * lien recréé même si elles ne font pas partie du lot courant (bug c7681760).
+     *
+     * Room exige Long (ou Unit) pour un INSERT ... SELECT, pas Int (bug 768b171a).
+     *
+     * @return le nombre de liens effectivement insérés (0 si tout était déjà réconcilié).
+     */
+    @Query(
+        "INSERT OR IGNORE INTO image_labels (image_id, label_name) " +
+            "SELECT id, :adultLabel FROM images WHERE is_adult = 1"
+    )
+    suspend fun insertMissingAdultLabels(adultLabel: String): Long
+
+    /**
+     * Insère les liens (image_id, label_name) pour toutes les images dont l'URI
+     * est dans [uris]. Basé sur l'URI (stable, unique) plutôt que sur les rowIds
+     * retournés par un INSERT ... REPLACE, qui peuvent être -1 ou obsolètes.
+     * INSERT OR IGNORE : idempotent, ne duplique pas les liens existants.
+     */
+    @Query(
+        "INSERT OR IGNORE INTO image_labels (image_id, label_name) " +
+                "SELECT id, :label FROM images WHERE uri IN (:uris)"
+    )
+    suspend fun insertLabelsByUris(uris: List<String>, label: String)
 }

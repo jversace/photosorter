@@ -15,7 +15,8 @@ captures/
 *.dex
 
 # Exception : le jar du wrapper Gradle DOIT etre versionne
-gradle/wrapper/gradle-wrapper.jar
+# Le '!' est indispensable : sans lui le motif exclut le fichier au lieu de le ré-inclure (cf. *.jar ci-dessus).
+!gradle/wrapper/gradle-wrapper.jar
 
 # Signature release — NE JAMAIS VERSIONNER
 keystore.properties

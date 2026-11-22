@@ -8,7 +8,7 @@
     <string name="screen_scan_title">Scan</string>
     <string name="screen_labels_title">Libellés</string>
 
-    <!-- Placeholders (en attendant les vraies implémentations) -->
+    <!-- Placeholders -->
     <string name="screen_gallery_placeholder">La galerie sera affichée ici.</string>
     <string name="screen_scan_placeholder">Le scan des fichiers sera affiché ici.</string>
     <string name="screen_labels_placeholder">La gestion des libellés sera affichée ici.</string>
@@ -51,7 +51,10 @@
     <string name="filters_title">Filtres</string>
     <string name="filters_formats">Formats</string>
     <string name="filters_labels">Libellés</string>
-    <string name="filters_include_adult">Inclure le contenu adulte</string>
+    <string name="filters_adult_section">Contenu adulte</string>
+    <string name="filters_adult_show_all">Tout afficher</string>
+    <string name="filters_adult_hide">Masquer l\'adulte</string>
+    <string name="filters_adult_only">Uniquement adulte</string>
     <string name="filters_apply">Appliquer</string>
     <string name="filters_clear">Réinitialiser</string>
     <string name="filters_date_from">Date de début</string>
@@ -66,6 +69,9 @@
     <string name="scan_running_with_total">Scan en cours… %1$d / %2$d</string>
     <string name="scan_completed">Scan terminé : %1$d image(s) trouvée(s).</string>
     <string name="scan_error">Erreur de scan : %1$s</string>
+    <string name="scan_permission_required">L\'accès aux photos est nécessaire pour scanner le stockage.</string>
+    <string name="action_grant_permission">Autoriser l\'accès aux photos</string>
+    <string name="scan_permission_denied">Accès refusé. Autorisez l\'accès aux photos dans les réglages pour lancer le scan.</string>
 
     <!-- Détail plein écran -->
     <string name="detail_previous">Image précédente</string>
@@ -86,9 +92,6 @@
     <!-- Dialogues d'actions galerie -->
     <string name="dialog_delete_title">Supprimer les images</string>
     <string name="dialog_delete_message">Supprimer %1$d image(s) définitivement ? Cette action est irréversible.</string>
-    <string name="dialog_destination_label">Dossier/URI de destination</string>
-    <string name="dialog_move_title">Déplacer vers…</string>
-    <string name="dialog_copy_title">Copier vers…</string>
     <string name="dialog_label_assign_title">Assigner un libellé</string>
     <string name="dialog_label_remove_title">Retirer un libellé</string>
     <string name="dialog_label_name">Nom du libellé</string>

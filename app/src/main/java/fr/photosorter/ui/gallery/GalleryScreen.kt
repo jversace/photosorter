@@ -1,5 +1,10 @@
 package fr.photosorter.ui.gallery
 
+import android.app.Activity
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -11,16 +16,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import fr.photosorter.R
 import fr.photosorter.ui.gallery.components.DeleteConfirmDialog
-import fr.photosorter.ui.gallery.components.DestinationDialog
 import fr.photosorter.ui.gallery.components.GalleryActionBar
 import fr.photosorter.ui.gallery.components.GalleryFilterDialog
 import fr.photosorter.ui.gallery.components.GalleryTopBar
 import fr.photosorter.ui.gallery.components.LabelDialog
+
+/** Action à exécuter après le choix d'un répertoire destination via SAF. */
+private enum class PendingDestAction { MOVE, COPY }
 
 @Composable
 fun GalleryRoute(
@@ -42,11 +50,59 @@ internal fun GalleryScreen(
     viewModel: GalleryViewModel,
 ) {
     val snackbar = remember { SnackbarHostState() }
+    val context = LocalContext.current
     var showDelete by remember { mutableStateOf(false) }
-    var destMove by remember { mutableStateOf(false) }
-    var destCopy by remember { mutableStateOf(false) }
     var showFilters by remember { mutableStateOf(false) }
     var labelAssign by remember { mutableStateOf<Boolean?>(null) }
+    var pendingDestAction by remember { mutableStateOf<PendingDestAction?>(null) }
+
+    val openTreeLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree(),
+    ) { treeUri ->
+        val action = pendingDestAction
+        pendingDestAction = null
+        if (treeUri != null && action != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    treeUri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                )
+            } catch (_: SecurityException) {
+                // Permission non persistable : on continue avec l'URI fourni.
+            }
+            when (action) {
+                PendingDestAction.MOVE -> viewModel.moveSelected(treeUri.toString())
+                PendingDestAction.COPY -> viewModel.copySelected(treeUri.toString())
+            }
+        }
+    }
+
+    // Launcher pour la confirmation système (suppression scoped storage et,
+    // désormais, suppression de la source après un déplacement).
+    val deleteIntentLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult(),
+    ) { result ->
+        android.util.Log.i("GalleryScreen", "deleteIntentLauncher resultCode=${result.resultCode}")
+        val pending = state.pendingDelete
+        if (result.resultCode == Activity.RESULT_OK && pending != null) {
+            viewModel.onDeleteConfirmed(pending)
+        } else {
+            viewModel.onDeleteCancelled()
+        }
+    }
+
+    // Observation de la demande de confirmation système : on lance l'IntentSender fourni.
+    LaunchedEffect(state.pendingDelete) {
+        val pending = state.pendingDelete ?: return@LaunchedEffect
+        android.util.Log.i("GalleryScreen", "pendingDelete intentSender=${pending.intentSender != null} uris=${pending.uris} action=${pending.action}")
+        val sender = pending.intentSender
+        if (sender != null) {
+            deleteIntentLauncher.launch(IntentSenderRequest.Builder(sender).build())
+        } else {
+            // Repli API 29 : rien à lancer, on valide directement le nettoyage DB.
+            viewModel.onDeleteConfirmed(pending)
+        }
+    }
 
     state.feedback?.let { fb ->
         val msg = stringResource(feedbackRes(fb))
@@ -78,8 +134,14 @@ internal fun GalleryScreen(
                     enabled = !state.actionsBusy,
                     onDelete = { showDelete = true },
                     onShare = viewModel::shareSelected,
-                    onMove = { destMove = true },
-                    onCopy = { destCopy = true },
+                    onMove = {
+                        pendingDestAction = PendingDestAction.MOVE
+                        openTreeLauncher.launch(null)
+                    },
+                    onCopy = {
+                        pendingDestAction = PendingDestAction.COPY
+                        openTreeLauncher.launch(null)
+                    },
                     onLabel = { labelAssign = true },
                 )
             }
@@ -95,8 +157,6 @@ internal fun GalleryScreen(
     }
 
     if (showDelete) DeleteConfirmDialog(state.selectedCount, { showDelete = false; viewModel.deleteSelected() }, { showDelete = false })
-    if (destMove) DestinationDialog(stringResource(R.string.action_move), { uri -> destMove = false; viewModel.moveSelected(uri) }, { destMove = false })
-    if (destCopy) DestinationDialog(stringResource(R.string.action_copy), { uri -> destCopy = false; viewModel.copySelected(uri) }, { destCopy = false })
     if (showFilters) GalleryFilterDialog(state.filter, state.availableLabels, { showFilters = false }, { f -> showFilters = false; viewModel.setFilter(f) })
     labelAssign?.let { assign ->
         LabelDialog(assign, { name -> labelAssign = null; if (assign) viewModel.assignLabel(name) else viewModel.unassignLabel(name) }, { labelAssign = null })
